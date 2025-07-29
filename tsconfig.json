@@ -4,14 +4,20 @@
     "strict": true,
     "paths": {
       "@/*": [
-        "./*"
+        "./src/*"
       ]
-    }
+    },
+    "plugins": [
+      {
+        "name": "expo-router/typescript"
+      }
+    ]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    ".expo/types/router.d.ts"
   ]
 }
