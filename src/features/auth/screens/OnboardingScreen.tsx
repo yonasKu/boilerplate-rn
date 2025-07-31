@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ const slides = [
 
 const OnboardingScreen = () => {
   const router = useRouter();
+  const { bottom } = useSafeAreaInsets();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const ref = useRef<FlatList>(null);
 
@@ -87,7 +89,7 @@ const OnboardingScreen = () => {
         <LinearGradient
           colors={['rgba(255, 255, 255, 0.0)', 'rgba(255, 255, 255, 0.9)', 'white']}
           locations={[0, 0.2, 0.6]}
-          style={styles.contentBox}
+          style={[styles.contentBox, { paddingBottom: bottom > 0 ? bottom : 20 }]}
         >
           <Pagination />
           <Text style={styles.title}>Welcome To Sproutbook</Text>
@@ -144,7 +146,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingHorizontal: 30,
-    paddingBottom: 50,
+    paddingBottom: 20,
   },
   title: {
     fontSize: 32,

@@ -250,6 +250,7 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         marginRight: 10,
+        resizeMode: 'contain',
     },
     socialButtonText: {
         fontSize: 16,

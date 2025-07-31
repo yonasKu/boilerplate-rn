@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
+
 
 const AddChildDetailsScreen = () => {
     const router = useRouter();
@@ -37,9 +38,8 @@ const AddChildDetailsScreen = () => {
         setShowDatePicker(true);
     };
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#F9F9F9" />
+        return (
+        <View style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.avatarContainer}>
                     <View style={styles.avatar}>
@@ -114,8 +114,8 @@ const AddChildDetailsScreen = () => {
                       <Text style={styles.buttonText}>Continue</Text>
                   </TouchableOpacity>
                 </View>
-            </ScrollView>
-        </SafeAreaView>
+                        </ScrollView>
+        </View>
     );
 };
 
