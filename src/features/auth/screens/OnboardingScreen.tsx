@@ -61,7 +61,7 @@ const OnboardingScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" />
 
       {/* Image Slider in the background */}
       <FlatList
@@ -72,34 +72,29 @@ const OnboardingScreen = () => {
         horizontal
         showsHorizontalScrollIndicator={false}
         renderItem={({ item }) => (
-          <View style={{ marginVertical: 20 ,marginBottom:100}}>
-            <View style={styles.slideContainer}>
-              <Image source={item.image} style={styles.image} resizeMode="contain" />
-            </View>
+          <View style={styles.slideContainer}>
+            <Image source={item.image} style={styles.image} />
           </View>
         )}
         keyExtractor={(item) => item.id}
         style={styles.flatList}
       />
 
-      {/* Static Text and Footer Overlay */}
-      <View style={styles.overlayContainer}>
-        <BlurView style={styles.contentBox} intensity={80} tint="light">
-          <Pagination />
-          <Text style={styles.title}>Welcome To Sproutbook</Text>
-          <Text style={styles.subtitle}>
-            Easily capture everyday moments and turn them into shareable, lasting
-            memories
-          </Text>
-          <View style={styles.separator} />
-          <TouchableOpacity
-            style={styles.getStartedButton}
-            onPress={onGetStarted}
-          >
-            <Text style={styles.getStartedButtonText}>Get Started</Text>
-          </TouchableOpacity>
-        </BlurView>
-      </View>
+      {/* Blurry Overlay */}
+      <BlurView style={styles.contentBox} intensity={95} tint="light">
+        <Pagination />
+        <Text style={styles.title}>{'Welcome\nTo Sproutbook'}</Text>
+        <Text style={styles.subtitle}>
+          Easily capture everyday moments and turn them into shareable, lasting
+          memories
+        </Text>
+        <TouchableOpacity
+          style={styles.getStartedButton}
+          onPress={onGetStarted}
+        >
+          <Text style={styles.getStartedButtonText}>Get Started</Text>
+        </TouchableOpacity>
+      </BlurView>
     </SafeAreaView>
   );
 };
@@ -107,11 +102,10 @@ const OnboardingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    //backgroundColor: '#FFFFFF',
+    backgroundColor: '#f0f0f0',
   },
   flatList: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
   },
   slideContainer: {
     width: width,
@@ -120,32 +114,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   image: {
-    width: '75%',
-    height: '70%',
-    resizeMode: 'cover',
-    marginBottom:height/2.8,
-  },
-  overlayContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    overflow: 'hidden',
-    backgroundColor: 'tras',
+    width: '70%',
+    height: '75%',
+    resizeMode: 'contain',
+    position: 'absolute',
+    top: -height * 0.05, // Move image up slightly
   },
   contentBox: {
-    width: '90%',
-    borderRadius: 20,
-    padding: 20,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.38, // Reduce height of the content box
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 30,
+    paddingTop: 20,
+    paddingBottom: 30,
     alignItems: 'center',
-    marginBottom: 50, // Adjust as needed
-    overflow: 'hidden', // Ensures the blur effect respects the border radius
+    overflow: 'hidden',
   },
   title: {
-    fontSize: 32,
+    fontSize: 34,
     color: '#2F4858',
     fontWeight: 'bold',
     textAlign: 'center',
     fontFamily: 'serif',
+    lineHeight: 42,
+    marginTop: 20, // Pushes content down from the pagination
     marginBottom: 16,
   },
   subtitle: {
@@ -159,12 +155,12 @@ const styles = StyleSheet.create({
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 'auto', // Pushes indicators to the top of the box
   },
   indicator: {
     height: 8,
     width: 8,
-    backgroundColor: '#D3E0DC',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
     marginHorizontal: 4,
     borderRadius: 4,
   },
@@ -178,17 +174,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 'auto', // Push button to the bottom of the box
   },
   getStartedButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  separator: {
-    height: 2,
-    width: 20,
-    backgroundColor: '#E58C8A',
-    marginVertical: 10,
   },
 });
 
