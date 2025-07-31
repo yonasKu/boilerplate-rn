@@ -1,5 +1,6 @@
 import { Slot, SplashScreen, useRouter, useSegments } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 
@@ -22,22 +23,45 @@ function Layout() {
     }
   }, [fontsLoaded, error]);
 
+    const [viewedOnboarding, setViewedOnboarding] = useState<boolean | null>(null);
+
   useEffect(() => {
-    if (!fontsLoaded) return;
+    const checkOnboardingStatus = async () => {
+      try {
+        const value = await AsyncStorage.getItem('@viewedOnboarding');
+        setViewedOnboarding(value === 'true');
+      } catch (error) {
+        console.error("Error reading onboarding status from AsyncStorage", error);
+        setViewedOnboarding(false); // Default to showing onboarding on error
+      }
+    };
+    checkOnboardingStatus();
+  }, []);
 
-    const inAuthGroup = segments[0] === '(auth)';
+  // useEffect(() => {
+  //   // Wait until fonts are loaded and onboarding status has been checked
+  //   if (!fontsLoaded || viewedOnboarding === null) return;
 
-    // If the user is authenticated and the initial segment is not in the main app group,
-    // redirect them to the main journal screen.
-    if (isAuthenticated && inAuthGroup) {
-      router.replace('/(main)/journal');
-    } 
-    // If the user is not authenticated and they are not in the auth group,
-    // redirect them to the welcome screen.
-    else if (!isAuthenticated && !inAuthGroup) {
-      router.replace('/(auth)/welcome');
-    }
-  }, [isAuthenticated, segments, fontsLoaded, router]);
+  //   // If onboarding has not been viewed, redirect to the onboarding screen
+  //   if (!viewedOnboarding) {
+  //     router.replace('/onboarding');
+  //     return;
+  //   }
+
+  //   // --- Existing Authentication Logic ---
+  //   const inAuthGroup = segments[0] === '(auth)';
+
+  //   // If the user is authenticated and the initial segment is not in the main app group,
+  //   // redirect them to the main journal screen.
+  //   if (isAuthenticated && inAuthGroup) {
+  //     router.replace('/(main)/journal');
+  //   } 
+  //   // If the user is not authenticated and they are not in the auth group,
+  //   // redirect them to the welcome screen.
+  //   else if (!isAuthenticated && !inAuthGroup) {
+  //     router.replace('/(auth)/welcome');
+  //   }
+  // }, [isAuthenticated, segments, fontsLoaded, router, viewedOnboarding]);
 
   if (!fontsLoaded) {
     return null; // Render nothing until the fonts are loaded
