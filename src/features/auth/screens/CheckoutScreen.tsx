@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Image, TextInput } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+
 import { useRouter } from 'expo-router';
 
 const CheckoutScreen = () => {
@@ -67,7 +67,7 @@ const PaymentOption: React.FC<PaymentOptionProps> = ({ id, icon, title, subtitle
         />
 
         <View style={styles.promoContainer}>
-          <Feather name="tag" size={20} color="#E58C8A" />
+          <Image source={require('../../../assets/images/ticket.png')} style={styles.promoIcon} />
           <TextInput style={styles.promoInput} placeholder="Apply a promo code" />
           <TouchableOpacity>
             <Text style={styles.promoApply}>Apply</Text>
@@ -110,6 +110,7 @@ const styles = StyleSheet.create({
   radioSelected: { borderColor: '#5D9275' },
   radioInnerCircle: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#5D9275' },
   promoContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF0F0', borderRadius: 12, padding: 15, width: '100%', marginTop: 10 },
+  promoIcon: { width: 20, height: 20, resizeMode: 'contain' },
   promoInput: { flex: 1, marginLeft: 10, color: '#E58C8A' },
   promoApply: { color: '#E58C8A', fontWeight: 'bold' },
   footer: { padding: 20, borderTopWidth: 1, borderColor: '#E0E0E0' },

@@ -23,7 +23,7 @@ const SignUpScreen = () => {
                         <Text style={styles.socialButtonText}>Google</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.socialButton}>
-                        <Image source={require('../../../assets/images/Apple.png')} style={styles.socialIcon} />
+                        <Image source={require('../../../assets/images/Apple.png')} style={styles.socialIcona} />
                         <Text style={styles.socialButtonText}>Apple</Text>
                     </TouchableOpacity>
                 </View>
@@ -137,6 +137,12 @@ const styles = StyleSheet.create({
         height: 24,
         marginRight: 10,
     },
+    socialIcona: {
+        width: 20,
+        height: 24, // Adjusted height to match Google icon's container
+        marginRight: 10,
+        resizeMode: 'contain',
+    },
     socialButtonText: {
         fontSize: 16,
         color: '#2F4858',
@@ -194,7 +200,7 @@ const styles = StyleSheet.create({
     button: {
         backgroundColor: '#5D9275',
         paddingVertical: 18,
-        borderRadius: 25,
+        borderRadius: 16,
         alignItems: 'center',
         marginBottom: 20,
         shadowColor: '#000',

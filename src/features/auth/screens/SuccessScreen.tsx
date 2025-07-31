@@ -16,7 +16,7 @@ const SuccessScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ConfettiCannon
         count={300} // More confetti
-        origin={{ x: -10, y: 0 }}
+        origin={{ x: -10, y: 30 }}
         autoStart={false}
         ref={confettiRef}
         fallSpeed={8000} // Slower fall speed to last longer

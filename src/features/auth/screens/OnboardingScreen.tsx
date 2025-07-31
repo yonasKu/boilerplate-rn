@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
@@ -61,7 +61,7 @@ const OnboardingScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Image Slider in the background */}
       <FlatList
@@ -72,29 +72,38 @@ const OnboardingScreen = () => {
         horizontal
         showsHorizontalScrollIndicator={false}
         renderItem={({ item }) => (
-          <View style={styles.slideContainer}>
-            <Image source={item.image} style={styles.image} />
+          <View style={{ marginVertical: 20 ,marginBottom:100}}>
+            <View style={styles.slideContainer}>
+              <Image source={item.image} style={styles.image} resizeMode="contain" />
+            </View>
           </View>
         )}
         keyExtractor={(item) => item.id}
         style={styles.flatList}
       />
 
-      {/* Blurry Overlay */}
-      <BlurView style={styles.contentBox} intensity={95} tint="light">
-        <Pagination />
-        <Text style={styles.title}>{'Welcome\nTo Sproutbook'}</Text>
-        <Text style={styles.subtitle}>
-          Easily capture everyday moments and turn them into shareable, lasting
-          memories
-        </Text>
-        <TouchableOpacity
-          style={styles.getStartedButton}
-          onPress={onGetStarted}
+      {/* Static Text and Footer Overlay */}
+      <View style={styles.overlayContainer}>
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.0)', 'rgba(255, 255, 255, 0.9)', 'white']}
+          locations={[0, 0.2, 0.6]}
+          style={styles.contentBox}
         >
-          <Text style={styles.getStartedButtonText}>Get Started</Text>
-        </TouchableOpacity>
-      </BlurView>
+          <Pagination />
+          <Text style={styles.title}>Welcome To Sproutbook</Text>
+          <Text style={styles.subtitle}>
+            Easily capture everyday moments and turn them into shareable, lasting
+            memories
+          </Text>
+          <View style={styles.separator} />
+          <TouchableOpacity
+            style={styles.getStartedButton}
+            onPress={onGetStarted}
+          >
+            <Text style={styles.getStartedButtonText}>Get Started</Text>
+          </TouchableOpacity>
+        </LinearGradient>
+      </View>
     </SafeAreaView>
   );
 };
@@ -102,10 +111,11 @@ const OnboardingScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0',
+    //backgroundColor: '#FFFFFF',
   },
   flatList: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
   },
   slideContainer: {
     width: width,
@@ -114,34 +124,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   image: {
-    width: '70%',
-    height: '75%',
-    resizeMode: 'contain',
-    position: 'absolute',
-    top: -height * 0.05, // Move image up slightly
+    width: '75%',
+    height: '70%',
+    resizeMode: 'cover',
+    marginBottom:height/2.4,
   },
-  contentBox: {
+
+  overlayContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: height * 0.38, // Reduce height of the content box
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 30,
-    paddingTop: 20,
-    paddingBottom: 30,
+    height: height * 0.55,
+    justifyContent: 'flex-end',
+  },
+  contentBox: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
-    overflow: 'hidden',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 30,
+    paddingBottom: 50,
   },
   title: {
-    fontSize: 34,
+    fontSize: 32,
     color: '#2F4858',
     fontWeight: 'bold',
     textAlign: 'center',
     fontFamily: 'serif',
-    lineHeight: 42,
-    marginTop: 20, // Pushes content down from the pagination
     marginBottom: 16,
   },
   subtitle: {
@@ -155,12 +165,12 @@ const styles = StyleSheet.create({
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 'auto', // Pushes indicators to the top of the box
+    marginBottom: 20,
   },
   indicator: {
     height: 8,
     width: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: '#D3E0DC',
     marginHorizontal: 4,
     borderRadius: 4,
   },
@@ -174,12 +184,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 'auto', // Push button to the bottom of the box
   },
   getStartedButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  separator: {
+    height: 2,
+    width: 20,
+    backgroundColor: '#E58C8A',
+    marginVertical: 10,
   },
 });
 

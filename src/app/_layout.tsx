@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -72,8 +73,10 @@ function Layout() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <Layout />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <Layout />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
