@@ -32,6 +32,11 @@ export default function MainLayout() {
           title: 'New',
         }}
       />
+      <Tabs.Screen
+        name="settings"
+        // This hides the screen from the tab bar
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }

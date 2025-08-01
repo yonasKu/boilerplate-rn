@@ -23,7 +23,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
     <View style={[styles.container, { paddingBottom: bottom }]}>
       <View style={styles.mainContainer}>
         <View style={styles.tabBar}>
-            {state.routes.filter(r => r.name !== 'new').map((route, index) => {
+            {state.routes.filter(r => r.name !== 'new' && r.name !== 'settings').map((route, index) => {
               const { options } = descriptors[route.key];
               const label = options.title !== undefined ? options.title : route.name;
               const isFocused = state.index === index;

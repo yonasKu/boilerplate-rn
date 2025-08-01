@@ -1,6 +1,6 @@
-const { getDefaultConfig } = require('expo/metro-config');
+const { getDefaultConfig } = require('@expo/metro-config');
 
-/** @type {import('expo/metro-config').MetroConfig} */
+/** @type {import('@expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
 // This is the key change: it ensures that the bundler looks for the 'react-native' 
@@ -13,5 +13,9 @@ config.resolver.resolverMainFields = [
 
 // This is also required for Firebase to work correctly.
 config.resolver.sourceExts.push('mjs');
+
+// Firebase compatibility fixes for Expo SDK 53
+config.resolver.sourceExts.push('cjs');
+config.resolver.unstable_enablePackageExports = false;
 
 module.exports = config;

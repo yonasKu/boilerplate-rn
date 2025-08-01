@@ -13,7 +13,7 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useOnboarding } from '@/context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -27,7 +27,7 @@ const slides = [
 ];
 
 const OnboardingScreen = () => {
-  const router = useRouter();
+  const { setViewedOnboarding } = useOnboarding();
   const { bottom } = useSafeAreaInsets();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const ref = useRef<FlatList>(null);
@@ -38,13 +38,9 @@ const OnboardingScreen = () => {
     setCurrentSlideIndex(currentIndex);
   };
 
-  const onGetStarted = async () => {
-    try {
-      await AsyncStorage.setItem('@viewedOnboarding', 'true');
-      router.replace('/(auth)/signup'); // Navigate to the signup screen
-    } catch (e) {
-      console.error('Failed to save onboarding status.', e);
-    }
+  const onGetStarted = () => {
+    setViewedOnboarding(true);
+    // The navigation logic in _layout.tsx will handle the redirect.
   };
 
   const Pagination = () => (

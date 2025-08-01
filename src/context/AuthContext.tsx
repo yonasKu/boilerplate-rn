@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { auth } from '@/lib/firebase/firebaseConfig';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 
 // Define the shape of the context data
 interface AuthContextType {
   user: User | null; // The Firebase user object
   isAuthenticated: boolean; // Simple boolean flag
   isLoading: boolean; // To handle initial auth state loading
+  signOut: () => Promise<void>;
 }
 
 // Create the context
@@ -28,10 +29,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe();
   }, []);
 
+    const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   const value = {
     user,
-    isAuthenticated: !!user, // Coerce user object to boolean
+    isAuthenticated: !!user,
     isLoading,
+    signOut: handleSignOut,
   };
 
   return (

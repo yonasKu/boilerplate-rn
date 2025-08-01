@@ -26,6 +26,7 @@ const SignUpScreen = () => {
             await signUpWithEmail(email, password, firstName, lastName);
             // The onAuthStateChanged listener in AuthContext will handle the redirect automatically.
         } catch (error: any) {
+            console.error('Full sign-up error:', JSON.stringify(error, null, 2));
             // Provide a more user-friendly error message
             let errorMessage = 'An unexpected error occurred. Please try again.';
             if (error.code === 'auth/email-already-in-use') {
@@ -34,6 +35,8 @@ const SignUpScreen = () => {
                 errorMessage = 'The password is too weak. Please choose a stronger password.';
             } else if (error.code === 'auth/invalid-email') {
                 errorMessage = 'The email address is not valid. Please check and try again.';
+            } else if (error.code === 'permission-denied') {
+                errorMessage = 'Could not create user profile. Please ensure Firestore is enabled in your Firebase project.';
             }
             Alert.alert('Sign-Up Failed', errorMessage);
         } finally {

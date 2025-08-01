@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 const JournalScreen = () => {
     const insets = useSafeAreaInsets();
+    const router = useRouter();
     return (
         <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -18,7 +20,7 @@ const JournalScreen = () => {
                     <TouchableOpacity style={styles.headerButton}>
                         <Ionicons name="notifications-outline" size={24} color="#2F4858" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.headerButton}>
+                    <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
                         <Ionicons name="settings-outline" size={24} color="#2F4858" />
                     </TouchableOpacity>
                 </View>

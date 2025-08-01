@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import { OnboardingProvider, useOnboarding } from '@/context/OnboardingContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator, Text } from 'react-native';
 
@@ -10,76 +11,64 @@ import { View, ActivityIndicator, Text } from 'react-native';
 SplashScreen.preventAutoHideAsync();
 
 function Layout() {
-  const [fontsLoaded, error] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     'SpaceMono-Regular': require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { viewedOnboarding, isLoading: isOnboardingLoading } = useOnboarding();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (error) throw error;
-
+    if (fontError) throw fontError;
     if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, error]);
-
-    const [viewedOnboarding, setViewedOnboarding] = useState<boolean | null>(null);
+  }, [fontsLoaded, fontError]);
 
   useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      try {
-        const value = await AsyncStorage.getItem('@viewedOnboarding');
-        setViewedOnboarding(value === 'true');
-      } catch (error) {
-        console.error("Error reading onboarding status from AsyncStorage", error);
-        setViewedOnboarding(false); // Default to showing onboarding on error
-      }
-    };
-    checkOnboardingStatus();
-  }, []);
-
-  useEffect(() => {
-    // Wait until fonts are loaded, onboarding status is checked, and auth state is known.
-    if (!fontsLoaded || viewedOnboarding === null || isLoading) return;
+    const isLoading = !fontsLoaded || isAuthLoading || isOnboardingLoading;
+    if (isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
-    const inMainGroup = segments[0] === '(main)';
-    const isOnOnboarding = !segments[0] || segments[0] === 'onboarding';
 
-    console.log('Navigation state:', {
-      viewedOnboarding,
-      isAuthenticated,
-      inAuthGroup,
-      inMainGroup,
-      isOnOnboarding,
-      segments
-    });
+    console.log('--- NAVIGATING ---');
+    console.log('viewedOnboarding:', viewedOnboarding);
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('segments:', segments);
+    console.log('------------------');
 
     // If onboarding hasn't been seen, it's the highest priority.
-    if (!viewedOnboarding && !isOnOnboarding) {
-      console.log('Navigating to onboarding');
-      router.replace('/onboarding');
+    if (!viewedOnboarding) {
+      // Only redirect if we're not already on the onboarding screen
+      if (segments[0] !== 'onboarding') {
+        router.replace('/onboarding');
+      }
       return;
     }
 
-    // If the user is authenticated but is in the auth flow (e.g., on login screen),
-    // redirect them to the main part of the app.
-    if (isAuthenticated && inAuthGroup) {
-      console.log('Authenticated user in auth group, redirecting to journal');
-      router.replace('/(main)/journal');
-    } 
-    // If the user is NOT authenticated and is outside the auth flow,
-    // send them to the welcome screen to log in or sign up.
-    else if (!isAuthenticated && !inAuthGroup && viewedOnboarding) {
-      console.log('Unauthenticated user outside auth group, redirecting to welcome');
+    // If onboarding is done, but user is not logged in AND they are not in the auth flow,
+    // send them to the auth flow (welcome screen).
+    if (viewedOnboarding && !isAuthenticated && !inAuthGroup) {
       router.replace('/(auth)/welcome');
+      return;
     }
-  }, [isAuthenticated, segments, fontsLoaded, router, viewedOnboarding, isLoading]);
 
-  // Show loading screen instead of null to prevent black screen
-  if (!fontsLoaded || viewedOnboarding === null || isLoading) {
+    // If user is logged in but is still in the auth flow, send them to the main app.
+    if (isAuthenticated && inAuthGroup) {
+      router.replace('/(main)/journal');
+      return;
+    }
+
+    // If the user is authenticated and has seen onboarding, but is not in the main app, send them there.
+    if (isAuthenticated && viewedOnboarding && segments[0] !== '(main)') {
+      router.replace('/(main)/journal');
+      return;
+    }
+  }, [fontsLoaded, isAuthenticated, isAuthLoading, viewedOnboarding, isOnboardingLoading, segments, router]);
+
+  const isLoading = !fontsLoaded || isAuthLoading || isOnboardingLoading;
+  if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
         <ActivityIndicator size="large" color="#5D9275" />
@@ -95,7 +84,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <Layout />
+        <OnboardingProvider>
+          <Layout />
+        </OnboardingProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );
