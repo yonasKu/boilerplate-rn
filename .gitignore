@@ -18,6 +18,8 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+.env
+.env.local
 # Metro
 .metro-health-check*
 
@@ -29,6 +31,12 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+
+# Environment variables
+
+# Firebase native config files
+GoogleService-Info.plist
+google-services.json
 
 # local env files
 .env*.local

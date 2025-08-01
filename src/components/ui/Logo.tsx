@@ -7,7 +7,7 @@ const Logo = () => {
     <View style={styles.container}>
       {/* We will use a placeholder for now. The actual logo image will be added to assets later. */}
       <Image 
-        source={{ uri: 'https://placehold.co/100x100/5a8a5a/ffffff?text=Logo' }} 
+        source={require('@/assets/images/Logo_Icon.png')} 
         style={styles.logo}
       />
     </View>

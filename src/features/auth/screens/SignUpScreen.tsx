@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { Image } from 'react-native';
-
 import { useRouter } from 'expo-router';
+import { signUpWithEmail, useGoogleSignIn } from '@/lib/firebase/auth';
 
 const SignUpScreen = () => {
     const router = useRouter();
@@ -10,6 +10,46 @@ const SignUpScreen = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+
+    const handleSignUp = async () => {
+        if (!name || !email || !password) {
+            Alert.alert('Missing Information', 'Please fill in all required fields.');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const [firstName, ...lastNameParts] = name.trim().split(/\s+/);
+            const lastName = lastNameParts.join(' ');
+            await signUpWithEmail(email, password, firstName, lastName);
+            // The onAuthStateChanged listener in AuthContext will handle the redirect automatically.
+        } catch (error: any) {
+            // Provide a more user-friendly error message
+            let errorMessage = 'An unexpected error occurred. Please try again.';
+            if (error.code === 'auth/email-already-in-use') {
+                errorMessage = 'This email address is already in use by another account.';
+            } else if (error.code === 'auth/weak-password') {
+                errorMessage = 'The password is too weak. Please choose a stronger password.';
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = 'The email address is not valid. Please check and try again.';
+            }
+            Alert.alert('Sign-Up Failed', errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        try {
+            await promptGoogleSignIn();
+            // The hook's useEffect will handle the rest
+        } catch (error) {
+            console.error('Google Sign-In Error:', error);
+            Alert.alert('Sign-Up Error', 'An unexpected error occurred. Please try again.');
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -18,7 +58,7 @@ const SignUpScreen = () => {
                 <Text style={styles.title}>Create your account</Text>
 
                 <View style={styles.socialContainer}>
-                    <TouchableOpacity style={styles.socialButton}>
+                    <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
                         <Image source={require('../../../assets/images/Google.png')} style={styles.socialIcon} />
                         <Text style={styles.socialButtonText}>Google</Text>
                     </TouchableOpacity>
@@ -73,8 +113,8 @@ const SignUpScreen = () => {
                     </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={() => router.replace('/(auth)/success')}>
-                    <Text style={styles.buttonText}>Continue</Text>
+                <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={isLoading}>
+                    {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Continue</Text>}
                 </TouchableOpacity>
 
                 <View style={styles.footerTextContainer}>

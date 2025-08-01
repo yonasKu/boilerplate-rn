@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     width: '75%',
     height: '70%',
     resizeMode: 'cover',
-    marginBottom:height/2.4,
+    marginBottom:height/2.6,
   },
 
   overlayContainer: {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Image, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { signInWithEmail, useGoogleSignIn } from '@/lib/firebase/auth';
 
 
 export default function LoginScreen() {
@@ -9,6 +10,42 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+
+    const handleLogin = async () => {
+        if (!email || !password) {
+            Alert.alert('Login Failed', 'Please enter both email and password.');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await signInWithEmail(email, password);
+            // The onAuthStateChanged listener in AuthContext will handle the redirect automatically.
+        } catch (error: any) {
+            let errorMessage = 'An unexpected error occurred. Please try again.';
+            // Firebase returns 'auth/invalid-credential' for wrong email or password in modern SDKs.
+            if (error.code === 'auth/invalid-credential') {
+                errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+            } else if (error.code === 'auth/invalid-email') {
+                errorMessage = 'The email address is not valid. Please enter a valid email.';
+            }
+            Alert.alert('Login Failed', errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        try {
+            await promptGoogleSignIn();
+            // The hook's useEffect will handle the rest
+        } catch (error) {
+            console.error('Google Sign-In Error:', error);
+            Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -59,8 +96,8 @@ export default function LoginScreen() {
                 </View>
 
                 <View style={styles.loginRow}>
-                    <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/(auth)/add-profile')}>
-                        <Text style={styles.buttonText}>Log in</Text>
+                    <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
+                        {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Log in</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.faceIdButton}>
                         <Image source={require('../../../assets/images/user.png')} style={styles.faceIdIcon} />
@@ -74,7 +111,7 @@ export default function LoginScreen() {
                 </View>
 
                 <View style={styles.socialContainer}>
-                    <TouchableOpacity style={styles.socialButton}>
+                    <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
                         <Image source={require('../../../assets/images/Google.png')} style={styles.socialIcon} />
                         <Text style={styles.socialButtonText}>Google</Text>
                     </TouchableOpacity>
