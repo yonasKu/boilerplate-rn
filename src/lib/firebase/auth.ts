@@ -1,11 +1,15 @@
 import { auth, db } from './firebaseConfig';
-import {
+import { 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  GoogleAuthProvider,
   signInWithCredential,
-  updateProfile,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User,
+  UserCredential,
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import * as Google from 'expo-auth-session/providers/google';
@@ -34,6 +38,7 @@ interface UserProfile {
   }>;
   createdAt: Date;
   onboarded: boolean;
+  isVerified: boolean;
 }
 
 /**
@@ -48,27 +53,51 @@ export const signUpWithEmail = async (email: string, password: string, firstName
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
 
-  // Create a user document in Firestore with subscription data
-  await setDoc(doc(db, 'users', user.uid), {
-    uid: user.uid,
-    email: user.email,
-    name: `${firstName} ${lastName}`,
-    subscription: {
-      plan: 'basic', // Default plan, will be updated in pricing/checkout
-      status: 'trial',
-      startDate: new Date(),
-      trialEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day trial
-    },
-    lifestage: null, // Will be set during Add Profile
-    children: [], // Will be populated during Add Child Details
-    createdAt: new Date(),
-    onboarded: false, // Will be true after completing Add Child Details
-  });
-
-  // Sign out the user immediately to prevent auto-login
-  await auth.signOut();
+  // Send verification email
+  await sendEmailVerification(user);
   
+  // Create user profile in Firestore
+  const fullName = `${firstName} ${lastName}`.trim();
+  const now = new Date();
+  
+  try {
+    const { doc, setDoc } = await import('firebase/firestore');
+    const { db } = await import('./firebaseConfig');
+    
+    await setDoc(doc(db, 'users', user.uid), {
+      uid: user.uid,
+      name: fullName,
+      email: email,
+      lifestage: null, // Will be set in AddProfileScreen
+      subscription: {
+        plan: 'free',
+        status: 'trial',
+        startDate: now,
+        trialEndDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000) // 10 days trial
+      },
+      children: [],
+      createdAt: now,
+      updatedAt: now,
+      onboarded: false
+    });
+    
+    console.log('User profile created successfully in Firestore');
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+    // Don't throw here - profile creation failure shouldn't prevent signup
+  }
+  
+  // Keep user signed in for verification screen
   return userCredential;
+};
+
+/**
+ * Sends a password reset email to the user.
+ * @param {string} email - The user's email address.
+ * @returns {Promise<void>} - Promise that resolves when email is sent.
+ */
+export const resetPassword = async (email: string) => {
+  await sendPasswordResetEmail(auth, email);
 };
 
 /**
@@ -120,31 +149,13 @@ export const useGoogleSignIn = () => {
         const userDoc = await getDoc(userDocRef);
 
         if (!userDoc.exists()) {
-          // Extract first and last name from display name
-          const displayName = user.displayName || '';
-          const nameParts = displayName.split(' ');
-          const firstName = nameParts[0] || '';
-          const lastName = nameParts.slice(1).join(' ') || '';
-
-          const newUserProfile: UserProfile = {
-            uid: user.uid,
-            email: user.email,
-            name: displayName || user.email?.split('@')[0] || 'User',
-            subscription: {
-              plan: 'basic',
-              status: 'trial',
-              startDate: new Date(),
-              trialEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            },
-            lifestage: null,
-            children: [],
-            createdAt: new Date(),
-            onboarded: false,
-          };
-          await setDoc(userDocRef, newUserProfile);
-          
-          // Sign out the user immediately to prevent auto-login for new accounts
-          await auth.signOut();
+          // If it's a new user, send a verification email and sign out.
+          // The profile will be created on the verification screen.
+          if (!user.emailVerified) {
+             await sendEmailVerification(user);
+          }
+          // Sign out to force user to go through verification screen.
+          await firebaseSignOut(auth);
         }
       }
     };

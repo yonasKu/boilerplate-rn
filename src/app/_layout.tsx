@@ -40,9 +40,9 @@ const InitialLayout = () => {
         console.log('Redirecting to welcome screen...');
         router.replace('/(auth)/welcome');
       }
-    } else if (!inAuthGroup && !inMainGroup && segments && segments.length > 0) {
+    } else if (user && !inAuthGroup && !inMainGroup && segments && segments.length > 0) {
       // User is authenticated but not in any flow - only redirect to main app
-      // Don't check onboarding status here to avoid forcing onboarding after signup
+      // Allow auth flow completion (verify-email, pricing, etc.)
       console.log('Authenticated user, redirecting to main app...');
       router.replace('/(main)/(tabs)/journal');
     }

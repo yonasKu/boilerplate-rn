@@ -3,9 +3,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
     function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isEmailVerified() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
     }
 
     // ========== USERS COLLECTION ==========
@@ -50,7 +58,8 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp;
 
       // Users can update or delete children documents they own
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.parentId;
+      allow update, delete: if isAuthenticated() && 
+        (isOwner(resource.data.parentId) || isOwner(request.resource.data.parentId));
     }
 
     // ========== FUTURE COLLECTIONS ==========

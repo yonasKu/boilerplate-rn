@@ -24,7 +24,7 @@ export interface UserProfile {
 
 export interface ChildProfile {
   id: string;
-  parentUid: string;
+  parentId: string;
   name: string;
   dueDate?: string;
   birthDate?: string;
@@ -73,7 +73,7 @@ export const getUserChildren = async (uid: string): Promise<ChildProfile[]> => {
   try {
     const childrenQuery = query(
       collection(db, 'children'),
-      where('parentUid', '==', uid)
+      where('parentId', '==', uid)
     );
     const childrenSnapshot = await getDocs(childrenQuery);
     return childrenSnapshot.docs.map(doc => ({

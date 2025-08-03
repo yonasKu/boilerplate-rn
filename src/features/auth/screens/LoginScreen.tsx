@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Image, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { signInWithEmail, useGoogleSignIn } from '@/lib/firebase/auth';
+import { signInWithEmail, useGoogleSignIn, resetPassword } from '@/lib/firebase/auth';
 
 
 export default function LoginScreen() {
@@ -11,6 +11,9 @@ export default function LoginScreen() {
     const [rememberMe, setRememberMe] = useState(false);
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
+    const [isSendingReset, setIsSendingReset] = useState(false);
     const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
 
     const handleLogin = async () => {
@@ -27,17 +30,14 @@ export default function LoginScreen() {
             const { checkOnboardingStatus } = await import('../../../services/userService');
             const { getAuth } = await import('firebase/auth');
             const auth = getAuth();
+            
             const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
-            console.log('Post-login onboarding status:', status);
             
             if (!status.hasProfile) {
-                console.log('Redirecting to add-profile after login...');
                 router.replace('/(auth)/add-profile');
             } else if (!status.hasChild) {
-                console.log('Redirecting to add-child-details after login...');
                 router.replace('/(auth)/add-child-details');
             } else {
-                console.log('Onboarding complete, redirecting to main app...');
                 router.replace('/(main)/(tabs)/journal');
             }
         } catch (error: any) {
@@ -54,6 +54,36 @@ export default function LoginScreen() {
         }
     };
 
+    const handleForgotPassword = () => {
+        setResetEmail(email); // Pre-fill with current email if entered
+        setShowResetModal(true);
+    };
+
+    const handleSendResetEmail = async () => {
+        if (!resetEmail.trim()) {
+            Alert.alert('Error', 'Please enter your email address');
+            return;
+        }
+
+        setIsSendingReset(true);
+        try {
+            await resetPassword(resetEmail.trim());
+            setShowResetModal(false);
+            Alert.alert(
+                'Password Reset Email Sent! 📧',
+                `We've sent a password reset email to: ${resetEmail}\n\n` +
+                'Please check your inbox and click the link to create a new password.\n\n' +
+                'The reset link will expire in 1 hour.',
+                [{ text: 'OK', style: 'default' }]
+            );
+            setResetEmail('');
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to send reset email');
+        } finally {
+            setIsSendingReset(false);
+        }
+    };
+
     const handleGoogleSignIn = async () => {
         try {
             await promptGoogleSignIn();
@@ -67,6 +97,13 @@ export default function LoginScreen() {
             setTimeout(async () => {
                 const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
                 console.log('Post-Google-login onboarding status:', status);
+                console.log('User UID:', auth.currentUser?.uid);
+                
+                // Debug: Check children separately
+                const { getUserChildren } = await import('../../../services/userService');
+                const children = await getUserChildren(auth.currentUser?.uid || '');
+                console.log('Children found:', children.length);
+                console.log('Children data:', children);
                 
                 if (!status.hasProfile) {
                     console.log('Redirecting to add-profile after Google login...');
@@ -78,7 +115,7 @@ export default function LoginScreen() {
                     console.log('Onboarding complete, redirecting to main app...');
                     router.replace('/(main)/(tabs)/journal');
                 }
-            }, 500);
+            }, 1000);
         } catch (error) {
             console.error('Google Sign-In Error:', error);
             Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');
@@ -128,7 +165,7 @@ export default function LoginScreen() {
                         <View style={[styles.checkbox, rememberMe && styles.checkedCheckbox]} />
                         <Text style={styles.checkboxLabel}>Remember Me</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { /* Forgot Password */ }}>
+                    <TouchableOpacity onPress={handleForgotPassword}>
                         <Text style={styles.forgotPassword}>Forgot Password</Text>
                     </TouchableOpacity>
                 </View>
@@ -159,6 +196,48 @@ export default function LoginScreen() {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            {/* Password Reset Modal */}
+            {showResetModal && (
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>Reset Password</Text>
+                        <Text style={styles.modalDescription}>
+                            Enter your email address and we'll send you a link to reset your password.
+                        </Text>
+                        
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="Enter your email"
+                            value={resetEmail}
+                            onChangeText={setResetEmail}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                        />
+                        
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity 
+                                style={[styles.modalButton, styles.cancelButton]} 
+                                onPress={() => setShowResetModal(false)}
+                            >
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity 
+                                style={[styles.modalButton, styles.sendButton]} 
+                                onPress={handleSendResetEmail}
+                                disabled={isSendingReset}
+                            >
+                                {isSendingReset ? (
+                                    <ActivityIndicator color="#FFFFFF" />
+                                ) : (
+                                    <Text style={styles.sendButtonText}>Send Reset Email</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
         </SafeAreaView>
     );
 }
@@ -330,5 +409,85 @@ const styles = StyleSheet.create({
     socialButtonText: {
         fontSize: 16,
         color: '#2F4858',
+    },
+    
+    // Modal styles
+    modalOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1000,
+    },
+    modalContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        margin: 20,
+        width: '90%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#2F4858',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    modalDescription: {
+        fontSize: 14,
+        color: '#666666',
+        marginBottom: 16,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    modalInput: {
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        marginBottom: 20,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    modalButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    cancelButton: {
+        backgroundColor: '#F5F5F5',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    cancelButtonText: {
+        color: '#666666',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    sendButton: {
+        backgroundColor: '#4CAF50',
+    },
+    sendButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });

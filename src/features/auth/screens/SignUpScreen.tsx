@@ -24,8 +24,8 @@ const SignUpScreen = () => {
             const [firstName, ...lastNameParts] = name.trim().split(/\s+/);
             const lastName = lastNameParts.join(' ');
             await signUpWithEmail(email, password, firstName, lastName);
-            // Navigate to pricing screen for subscription selection
-            router.push('/(auth)/pricing');
+            // Navigate to verification screen with email parameter
+            router.replace({ pathname: '/(auth)/verify-email', params: { email } });
         } catch (error: any) {
             console.error('Full sign-up error:', JSON.stringify(error, null, 2));
             // Provide a more user-friendly error message

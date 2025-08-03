@@ -56,7 +56,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Check onboarding status when user changes
       if (currentUser) {
-        await refreshOnboardingStatus();
+        // Skip onboarding check for unverified users to prevent permission errors
+        if (currentUser.emailVerified) {
+          await refreshOnboardingStatus();
+        } else {
+          console.log('User not verified, skipping onboarding check');
+          setOnboardingStatus({
+            hasProfile: false,
+            hasChild: false,
+            isComplete: false
+          });
+        }
       } else {
         setOnboardingStatus(null);
       }
