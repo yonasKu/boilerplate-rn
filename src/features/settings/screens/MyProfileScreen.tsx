@@ -1,98 +1,117 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar } from 'react-native';
+import ScreenHeader from '../../../components/ui/ScreenHeader';
+import { getAuth, updateProfile } from 'firebase/auth';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
-import { updateUserLifestage } from '../../../services/userService';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../../lib/firebase/firebaseConfig';
 
-const AddProfileScreen = () => {
-    const router = useRouter();
-    const { user, refreshOnboardingStatus } = useAuth();
+const MyProfileScreen = () => {
+    const insets = useSafeAreaInsets();
+    const { user } = useAuth();
     const [name, setName] = useState('');
-    const [email, setEmail] = useState(user?.email || '');
-    const [lifestage, setLifestage] = useState('Soon to be parent');
+    const [email, setEmail] = useState('');
+    const [lifestage, setLifestage] = useState('');
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [loadingProfile, setLoadingProfile] = useState(true);
     const lifestageOptions = ['Soon to be parent', 'Parent'];
-
-    useEffect(() => {
-        const loadUserData = async () => {
-            if (user) {
-                const userDoc = await getDoc(doc(db, 'users', user.uid));
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    setName(userData.name || '');
-                    setEmail(userData.email || user.email || '');
-                    setLifestage(userData.lifestage || 'Soon to be parent');
-                }
-            }
-        };
-        loadUserData();
-    }, [user]);
 
     const handleSelect = (option: string) => {
         setLifestage(option);
         setIsPickerOpen(false);
     };
 
-    const handleContinue = async () => {
-        if (!user) {
-            Alert.alert('Error', 'User not authenticated');
-            return;
-        }
+    // Fetch actual user profile from Firestore
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (user) {
+                try {
+                    const { doc, getDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase/firebaseConfig');
+                    
+                    const userDocRef = doc(db, 'users', user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    
+                    if (userDoc.exists()) {
+                        const profileData = userDoc.data();
+                        setName(profileData.name || '');
+                        setEmail(profileData.email || user.email || '');
+                        setLifestage(profileData.lifestage || '');
+                    }
+                    setLoadingProfile(false);
+                } catch (error) {
+                    console.error('Error fetching user profile:', error);
+                    setLoadingProfile(false);
+                }
+            } else {
+                setLoadingProfile(false);
+            }
+        };
 
+        fetchUserProfile();
+    }, [user]);
+
+    const handleSaveChanges = async () => {
         setIsLoading(true);
-        try {
-            await updateUserLifestage(user.uid, lifestage);
-
-            // Refresh onboarding status after saving profile
-            await refreshOnboardingStatus();
-            
-            console.log('Profile updated successfully');
-            router.push('/(auth)/add-child-details');
-        } catch (error) {
-            console.error('Error updating profile:', error);
-            Alert.alert('Error', 'Failed to update profile. Please try again.');
-        } finally {
-            setIsLoading(false);
+        if (user) {
+            try {
+                // Update Firestore user profile
+                const { doc, setDoc } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase/firebaseConfig');
+                
+                const userDocRef = doc(db, 'users', user.uid);
+                await setDoc(userDocRef, {
+                    name: name.trim(),
+                    email: email.trim(),
+                    lifestage: lifestage,
+                    updatedAt: new Date()
+                }, { merge: true });
+                
+                console.log('Profile updated successfully');
+                // Optionally, you can show a success message to the user
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                // Optionally, show an error message to the user
+            }
         }
+        setIsLoading(false);
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
             <StatusBar barStyle="dark-content" backgroundColor="#F9F9F9" />
+            <ScreenHeader title="My Profile" />
             <ScrollView contentContainerStyle={styles.scrollContainer}>
-
-
                 <View style={styles.avatarContainer}>
                     <View style={styles.avatar}>
-                        <Image source={require('../../../assets/images/placeholder profile.png')} style={styles.avatarImage} />
+                        <Image source={require('../../../assets/images/sampleProfile.png')} style={styles.avatarImage} />
                     </View>
                     <TouchableOpacity style={styles.editIconContainer}>
                         <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
                     </TouchableOpacity>
                 </View>
 
-                <Text style={styles.label}>Name</Text>
+                <Text style={styles.label}>Name<Text style={styles.asterisk}>*</Text></Text>
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
+                        placeholder="your name"
+                        placeholderTextColor="#A9A9A9"
                         value={name}
-                        editable={false}
-                        placeholderTextColor="#999"
+                        onChangeText={setName}
                     />
                 </View>
 
-                <Text style={styles.label}>Email</Text>
+                <Text style={styles.label}>Email<Text style={styles.asterisk}>*</Text></Text>
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
+                        placeholder="your email"
+                        placeholderTextColor="#A9A9A9"
                         value={email}
-                        editable={false}
+                        onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        placeholderTextColor="#999"
                     />
                 </View>
 
@@ -113,7 +132,6 @@ const AddProfileScreen = () => {
                                     ) : (
                                         <Text style={styles.optionText}>{option}</Text>
                                     )}
-
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -123,14 +141,14 @@ const AddProfileScreen = () => {
                 <View style={styles.footer}>
                   <TouchableOpacity 
                     style={[styles.button, isLoading && styles.buttonDisabled]} 
-                    onPress={handleContinue}
+                    onPress={handleSaveChanges}
                     disabled={isLoading}
                   >
-                      <Text style={styles.buttonText}>{isLoading ? 'Saving...' : 'Continue'}</Text>
+                      <Text style={styles.buttonText}>{isLoading ? 'Saving...' : 'Save Changes'}</Text>
                   </TouchableOpacity>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 };
 
@@ -143,10 +161,9 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         paddingHorizontal: 20,
     },
-
     avatarContainer: {
         alignItems: 'center',
-        marginVertical: 40,
+        marginVertical: 20,
     },
     avatar: {
         width: 120,
@@ -197,7 +214,7 @@ const styles = StyleSheet.create({
     },
     pickerWrapper: {
         marginBottom: 20,
-        position: 'relative', // Needed for absolute positioning of options
+        position: 'relative',
     },
     pickerText: {
         flex: 1,
@@ -230,9 +247,9 @@ const styles = StyleSheet.create({
     optionItem: {
         paddingVertical: 5,
         width: '100%',
-        alignItems: 'flex-end', // Align text to the left
+        alignItems: 'flex-end',
         justifyContent: 'center',
-        paddingHorizontal: 15, // Adjust padding
+        paddingHorizontal: 15,
     },
     optionText: {
         fontSize: 14,
@@ -270,19 +287,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
-    sectionTitle: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#2F4858',
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    sectionSubtitle: {
-        fontSize: 16,
-        color: '#666',
-        marginBottom: 30,
-        textAlign: 'center',
-    },
 });
 
-export default AddProfileScreen;
+export default MyProfileScreen;

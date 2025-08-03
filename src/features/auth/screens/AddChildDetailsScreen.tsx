@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Platform, Alert } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../../context/AuthContext';
+import { addChild } from '../../../services/childService';
 
 
 const AddChildDetailsScreen = () => {
     const router = useRouter();
+    const { user, refreshOnboardingStatus } = useAuth();
     const [childName, setChildName] = useState('');
     const [date, setDate] = useState(new Date());
     const [dueDate, setDueDate] = useState('');
     const [gender, setGender] = useState("Don't know yet");
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const genderOptions = ['Boy', 'Girl', "Don't know yet"];
 
     const handleSelect = (option: string) => {
@@ -31,6 +35,36 @@ const AddChildDetailsScreen = () => {
                 day: 'numeric',
             });
             setDueDate(formattedDate);
+        }
+    };
+
+    const handleContinue = async () => {
+        if (!user) {
+            Alert.alert('Error', 'User not authenticated');
+            return;
+        }
+
+        if (!childName.trim()) {
+            Alert.alert('Error', 'Please enter your child\'s name');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await addChild({
+                name: childName,
+                dateOfBirth: date,
+                gender: gender as 'male' | 'female' | 'prefer_not_to_say'
+            }, user.uid);
+
+            await refreshOnboardingStatus();
+            console.log('Child added successfully');
+            router.replace('/(main)/(tabs)/journal');
+        } catch (error) {
+            console.error('Error adding child:', error);
+            Alert.alert('Error', 'Failed to add child. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -110,8 +144,12 @@ const AddChildDetailsScreen = () => {
                 </View>
 
                 <View style={styles.footer}>
-                  <TouchableOpacity style={styles.button} onPress={() => router.push('/(main)/journal')}>
-                      <Text style={styles.buttonText}>Continue</Text>
+                  <TouchableOpacity 
+                    style={[styles.button, isLoading && styles.buttonDisabled]} 
+                    onPress={handleContinue}
+                    disabled={isLoading}
+                  >
+                      <Text style={styles.buttonText}>{isLoading ? 'Saving...' : 'Continue'}</Text>
                   </TouchableOpacity>
                 </View>
                         </ScrollView>
@@ -255,7 +293,10 @@ const styles = StyleSheet.create({
         paddingVertical: 18,
         borderRadius: 16,
         alignItems: 'center',
-        marginBottom: 15, // Added margin
+    },
+    buttonDisabled: {
+        backgroundColor: '#A0A0A0',
+        opacity: 0.7,
     },
     buttonText: {
         color: '#FFFFFF',

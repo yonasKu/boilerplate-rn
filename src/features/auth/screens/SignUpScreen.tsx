@@ -24,7 +24,8 @@ const SignUpScreen = () => {
             const [firstName, ...lastNameParts] = name.trim().split(/\s+/);
             const lastName = lastNameParts.join(' ');
             await signUpWithEmail(email, password, firstName, lastName);
-            // The onAuthStateChanged listener in AuthContext will handle the redirect automatically.
+            // Navigate to pricing screen for subscription selection
+            router.push('/(auth)/pricing');
         } catch (error: any) {
             console.error('Full sign-up error:', JSON.stringify(error, null, 2));
             // Provide a more user-friendly error message

@@ -1,13 +1,17 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { auth } from '@/lib/firebase/firebaseConfig';
+import { auth } from '../lib/firebase/firebaseConfig';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { checkOnboardingStatus, OnboardingStatus } from '../services/userService';
 
 // Define the shape of the context data
 interface AuthContextType {
   user: User | null; // The Firebase user object
   isAuthenticated: boolean; // Simple boolean flag
   isLoading: boolean; // To handle initial auth state loading
+  onboardingStatus: OnboardingStatus | null; // User's onboarding completion status
+  isCheckingOnboarding: boolean; // Loading state for onboarding check
   signOut: () => Promise<void>;
+  refreshOnboardingStatus: () => Promise<void>; // Function to refresh onboarding status
 }
 
 // Create the context
@@ -17,12 +21,45 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(false);
+
+  // Function to check and update onboarding status
+  const refreshOnboardingStatus = async () => {
+    if (!user) {
+      setOnboardingStatus(null);
+      return;
+    }
+
+    setIsCheckingOnboarding(true);
+    try {
+      const status = await checkOnboardingStatus(user.uid);
+      setOnboardingStatus(status);
+      console.log('Onboarding status updated:', status);
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      setOnboardingStatus({
+        hasProfile: false,
+        hasChild: false,
+        isComplete: false
+      });
+    } finally {
+      setIsCheckingOnboarding(false);
+    }
+  };
 
   useEffect(() => {
     // onAuthStateChanged returns an unsubscribe function
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setIsLoading(false);
+      
+      // Check onboarding status when user changes
+      if (currentUser) {
+        await refreshOnboardingStatus();
+      } else {
+        setOnboardingStatus(null);
+      }
     });
 
     // Cleanup subscription on unmount
@@ -41,7 +78,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user,
     isAuthenticated: !!user,
     isLoading,
+    onboardingStatus,
+    isCheckingOnboarding,
     signOut: handleSignOut,
+    refreshOnboardingStatus,
   };
 
   return (

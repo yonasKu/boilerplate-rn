@@ -19,11 +19,13 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
     }
   };
 
+      const visibleRoutes = ['journal', 'recaps', 'search'];
+
     return (
     <View style={[styles.container, { paddingBottom: bottom }]}>
       <View style={styles.mainContainer}>
         <View style={styles.tabBar}>
-            {state.routes.filter(r => r.name !== 'new' && r.name !== 'settings').map((route, index) => {
+            {state.routes.filter(r => visibleRoutes.includes(r.name)).map((route, index) => {
               const { options } = descriptors[route.key];
               const label = options.title !== undefined ? options.title : route.name;
               const isFocused = state.index === index;
@@ -72,7 +74,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 10,
+    bottom: 22.5,
     left: 0,
     right: 0,
     alignItems: 'center',

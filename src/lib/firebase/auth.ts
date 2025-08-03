@@ -5,6 +5,7 @@ import {
   signOut as firebaseSignOut,
   GoogleAuthProvider,
   signInWithCredential,
+  updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import * as Google from 'expo-auth-session/providers/google';
@@ -18,9 +19,21 @@ WebBrowser.maybeCompleteAuthSession();
 interface UserProfile {
   uid: string;
   email: string | null;
-  firstName: string;
-  lastName: string;
+  name: string;
+  subscription: {
+    plan: string;
+    status: string;
+    startDate: Date;
+    trialEndDate?: Date;
+  };
+  lifestage: string | null;
+  children: Array<{
+    name: string;
+    age?: number;
+    gender?: string;
+  }>;
   createdAt: Date;
+  onboarded: boolean;
 }
 
 /**
@@ -35,16 +48,26 @@ export const signUpWithEmail = async (email: string, password: string, firstName
   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
   const user = userCredential.user;
 
-  // Create a user document in Firestore
+  // Create a user document in Firestore with subscription data
   await setDoc(doc(db, 'users', user.uid), {
     uid: user.uid,
     email: user.email,
-    firstName: firstName,
-    lastName: lastName,
+    name: `${firstName} ${lastName}`,
+    subscription: {
+      plan: 'basic', // Default plan, will be updated in pricing/checkout
+      status: 'trial',
+      startDate: new Date(),
+      trialEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7-day trial
+    },
+    lifestage: null, // Will be set during Add Profile
+    children: [], // Will be populated during Add Child Details
     createdAt: new Date(),
-    onboarded: true, // Or set to false if there's a separate onboarding flow post-signup
+    onboarded: false, // Will be true after completing Add Child Details
   });
 
+  // Sign out the user immediately to prevent auto-login
+  await auth.signOut();
+  
   return userCredential;
 };
 
@@ -106,11 +129,22 @@ export const useGoogleSignIn = () => {
           const newUserProfile: UserProfile = {
             uid: user.uid,
             email: user.email,
-            firstName: firstName,
-            lastName: lastName,
+            name: displayName || user.email?.split('@')[0] || 'User',
+            subscription: {
+              plan: 'basic',
+              status: 'trial',
+              startDate: new Date(),
+              trialEndDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+            lifestage: null,
+            children: [],
             createdAt: new Date(),
+            onboarded: false,
           };
           await setDoc(userDocRef, newUserProfile);
+          
+          // Sign out the user immediately to prevent auto-login for new accounts
+          await auth.signOut();
         }
       }
     };

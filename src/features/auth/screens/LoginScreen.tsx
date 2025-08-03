@@ -22,7 +22,24 @@ export default function LoginScreen() {
         setIsLoading(true);
         try {
             await signInWithEmail(email, password);
-            // The onAuthStateChanged listener in AuthContext will handle the redirect automatically.
+            
+            // Check onboarding status after login
+            const { checkOnboardingStatus } = await import('../../../services/userService');
+            const { getAuth } = await import('firebase/auth');
+            const auth = getAuth();
+            const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
+            console.log('Post-login onboarding status:', status);
+            
+            if (!status.hasProfile) {
+                console.log('Redirecting to add-profile after login...');
+                router.replace('/(auth)/add-profile');
+            } else if (!status.hasChild) {
+                console.log('Redirecting to add-child-details after login...');
+                router.replace('/(auth)/add-child-details');
+            } else {
+                console.log('Onboarding complete, redirecting to main app...');
+                router.replace('/(main)/(tabs)/journal');
+            }
         } catch (error: any) {
             let errorMessage = 'An unexpected error occurred. Please try again.';
             // Firebase returns 'auth/invalid-credential' for wrong email or password in modern SDKs.
@@ -40,7 +57,28 @@ export default function LoginScreen() {
     const handleGoogleSignIn = async () => {
         try {
             await promptGoogleSignIn();
-            // The hook's useEffect will handle the rest
+            
+            // Check onboarding status after Google login
+            const { checkOnboardingStatus } = await import('../../../services/userService');
+            const { getAuth } = await import('firebase/auth');
+            const auth = getAuth();
+            
+            // Small delay to ensure auth state is updated
+            setTimeout(async () => {
+                const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
+                console.log('Post-Google-login onboarding status:', status);
+                
+                if (!status.hasProfile) {
+                    console.log('Redirecting to add-profile after Google login...');
+                    router.replace('/(auth)/add-profile');
+                } else if (!status.hasChild) {
+                    console.log('Redirecting to add-child-details after Google login...');
+                    router.replace('/(auth)/add-child-details');
+                } else {
+                    console.log('Onboarding complete, redirecting to main app...');
+                    router.replace('/(main)/(tabs)/journal');
+                }
+            }, 500);
         } catch (error) {
             console.error('Google Sign-In Error:', error);
             Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');

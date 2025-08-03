@@ -80,6 +80,14 @@ const PricingScreen = () => {
         </TouchableOpacity>
         <Text style={styles.trialInfo}>Get 10 days free before being charged</Text>
       </View>
+      
+      {/* <TouchableOpacity 
+        style={styles.continueButton} 
+        onPress={() => router.push('/(auth)/checkout')}
+      >
+        <Text style={styles.continueButtonText}>Continue to Checkout</Text>
+      </TouchableOpacity> */}
+
     </SafeAreaView>
   );
 };
@@ -112,6 +120,18 @@ const styles = StyleSheet.create({
   button: { backgroundColor: '#5D9275', paddingVertical: 18, borderRadius: 16, alignItems: 'center' },
   buttonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
   trialInfo: { textAlign: 'center', color: '#E58C8A', marginTop: 10, fontSize: 14 },
+  continueButton: {
+    backgroundColor: '#5D9275',
+    margin: 20,
+    paddingVertical: 18,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
 });
 
 export default PricingScreen;

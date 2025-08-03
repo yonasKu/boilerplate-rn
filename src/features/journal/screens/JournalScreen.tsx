@@ -1,23 +1,59 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import WeekNavigator from '../components/WeekNavigator';
 
 const JournalScreen = () => {
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { user } = useAuth();
+    const [isWeekNavigatorVisible, setIsWeekNavigatorVisible] = useState(false);
+    const [userProfile, setUserProfile] = useState<any>(null);
+    const [loadingProfile, setLoadingProfile] = useState(true);
+
+    // Fetch actual user profile from Firestore
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (user) {
+                try {
+                    const { doc, getDoc } = await import('firebase/firestore');
+                    const { db } = await import('@/lib/firebase/firebaseConfig');
+                    
+                    const userDocRef = doc(db, 'users', user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    
+                    if (userDoc.exists()) {
+                        setUserProfile(userDoc.data());
+                    }
+                    setLoadingProfile(false);
+                } catch (error) {
+                    console.error('Error fetching user profile:', error);
+                    setLoadingProfile(false);
+                }
+            } else {
+                setLoadingProfile(false);
+            }
+        };
+
+        fetchUserProfile();
+    }, [user]);
+
     return (
         <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <View style={styles.header}>
-                <View style={styles.headerLeft}>
+                <TouchableOpacity style={styles.headerLeft} onPress={() => setIsWeekNavigatorVisible(!isWeekNavigatorVisible)}>
                     <Image source={require('../../../assets/images/sampleProfile.png')} style={styles.avatar} />
-                    <Text style={styles.headerTitle}>Matthew</Text>
-                    <Ionicons name="chevron-down" size={20} color="#2F4858" />
-                </View>
+                    <Text style={styles.headerTitle}>
+                        {loadingProfile ? 'Loading...' : (userProfile?.name || user?.email || 'User')}
+                    </Text>
+                    <Ionicons name={isWeekNavigatorVisible ? 'chevron-up' : 'chevron-down'} size={20} color="#2F4858" />
+                </TouchableOpacity>
                 <View style={styles.headerRight}>
-                    <TouchableOpacity style={styles.headerButton}>
+                    <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
                         <Ionicons name="notifications-outline" size={24} color="#2F4858" />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
@@ -25,6 +61,7 @@ const JournalScreen = () => {
                     </TouchableOpacity>
                 </View>
             </View>
+            {isWeekNavigatorVisible && <WeekNavigator />}
             <View style={styles.content}>
                 <Image source={require('../../../assets/images/leaf_home.png')} style={styles.mainImage} />
                 <Text style={styles.promptText}>Let's start your first memory</Text>

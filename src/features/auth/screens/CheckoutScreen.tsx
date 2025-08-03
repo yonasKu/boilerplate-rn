@@ -76,7 +76,7 @@ const PaymentOption: React.FC<PaymentOptionProps> = ({ id, icon, title, subtitle
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.button} onPress={() => router.replace('/(auth)/login')}>
+        <TouchableOpacity style={styles.button} onPress={() => router.replace('/(auth)/success')}>
           <Text style={styles.buttonText}>Start Free Trial</Text>
         </TouchableOpacity>
         <Text style={styles.termsText}>

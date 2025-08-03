@@ -1,56 +1,97 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Image, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '@/context/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenHeader from '../../../components/ui/ScreenHeader';
+import { useAuth } from '../../../context/AuthContext';
+import { useRouter } from 'expo-router';
 
 type SettingsOption = {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: any;
   text: string;
 };
 
 const settingsOptions: SettingsOption[] = [
-  { icon: 'people-outline', text: 'Partner access' },
-  { icon: 'gift-outline', text: 'Refer a friend' },
-  { icon: 'person-outline', text: 'Child Profiles' },
-  { icon: 'settings-outline', text: 'Account settings' },
-  { icon: 'card-outline', text: 'Gift cards' },
-  { icon: 'share-social-outline', text: 'Family sharing' },
+  { icon: require('../../../assets/images/people_icon.png'), text: 'Child Profiles' },
+  { icon: require('../../../assets/images/user.png'), text: 'Partner access' },
+  { icon: require('../../../assets/images/heart.png'), text: 'Refer a friend' },
+  { icon: require('../../../assets/images/profile_Icon.png'), text: 'Account settings' },
+  { icon: require('../../../assets/images/receipt-discount_icon.png'), text: 'Gift cards' },
+  { icon: require('../../../assets/images/Share_icon.png'), text: 'Family sharing' },
 ];
 
 const SettingsScreen = () => {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // Fetch actual user profile from Firestore
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user) {
+        try {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const { db } = await import('@/lib/firebase/firebaseConfig');
+          
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            setUserProfile(userDoc.data());
+          }
+          setLoadingProfile(false);
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          setLoadingProfile(false);
+        }
+      } else {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user]);
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <TouchableOpacity>
-            <Ionicons name="chevron-back" size={24} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <View style={{ width: 24 }} />
-        </View>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <ScreenHeader title="Settings" />
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
 
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
             <Image
-              source={{ uri: 'https://placehold.co/100x100' }} // Placeholder image
+              source={require('../../../assets/images/sampleProfile.png')}
               style={styles.profileImage}
             />
-            <TouchableOpacity style={styles.editIconContainer}>
-              <Ionicons name="pencil" size={18} color="#fff" />
+            <TouchableOpacity style={styles.editIconContainer} onPress={() => router.push('/profile')}>
+              <Image source={require('../../../assets/images/edit-2_icon.png')} style={styles.editIcon} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.profileName}>Eleanor</Text>
+          <Text style={styles.profileName}>
+            {loadingProfile ? 'Loading...' : (userProfile?.name || user?.email || 'User')}
+          </Text>
         </View>
 
         <View style={styles.optionsContainer}>
           {settingsOptions.map((option, index) => (
-            <TouchableOpacity key={index} style={styles.optionRow}>
+            <TouchableOpacity key={index} style={styles.optionRow} onPress={() => {
+                if (option.text === 'Child Profiles') {
+                  router.push('/child-profiles');
+                } else if (option.text === 'Account settings') {
+                  router.push('/account-settings');
+                } else if (option.text === 'Partner access') {
+                  router.push('/partner-access');
+                } else if (option.text === 'Refer a friend') {
+                  router.push('/refer-a-friend');
+                }
+              }}>
               <View style={styles.iconBackground}>
-                <Ionicons name={option.icon} size={24} color="#2E7D32" />
+                <Image source={option.icon} style={styles.optionIcon} />
               </View>
               <Text style={styles.optionText}>{option.text}</Text>
-              <Ionicons name="chevron-forward" size={24} color="#BDBDBD" />
+              <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.chevronIcon} />
             </TouchableOpacity>
           ))}
         </View>
@@ -59,69 +100,72 @@ const SettingsScreen = () => {
           <Text style={styles.logoutButtonText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 60, // Add padding to ensure scroll
   },
   profileSection: {
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 32,
+    paddingHorizontal: 20,
   },
   profileImageContainer: {
     position: 'relative',
   },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: '#E0F2F1',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#E8F5E9',
   },
   editIconContainer: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#4CAF50',
-    borderRadius: 15,
-    padding: 6,
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#5D9275',
+    borderRadius: 12,
+    padding: 4,
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: '#FFFFFF',
+  },
+  editIcon: {
+    width: 14,
+    height: 14,
+    tintColor: '#FFFFFF',
+    resizeMode: 'contain',
   },
   profileName: {
-    marginTop: 12,
-    fontSize: 20,
+    marginTop: 16,
+    fontSize: 18,
     fontWeight: '600',
+    color: '#2F4858',
   },
   optionsContainer: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
+    backgroundColor: '#FFFFFF',
   },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
   },
   iconBackground: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#E8F5E9',
     justifyContent: 'center',
     alignItems: 'center',
@@ -130,18 +174,35 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 16,
     fontSize: 16,
+    color: '#2F4858',
+    fontWeight: '400',
+  },
+  optionIcon: {
+    width: 20,
+    height: 20,
+    tintColor: '#5D9275',
+  },
+  chevronIcon: {
+    width: 16,
+    height: 16,
+    tintColor: '#2F4858',
+    transform: [{ rotate: '-90deg' }],
   },
   logoutButton: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: '#FBE9E7',
-    borderRadius: 8,
+    marginHorizontal: 20,
+    marginTop: 40,
+    marginBottom: 32,
+    paddingVertical: 16,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FFE5E5',
   },
   logoutButtonText: {
-    color: '#D32F2F',
+    color: '#E53E3E',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
 

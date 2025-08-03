@@ -31,6 +31,7 @@ const OnboardingScreen = () => {
   const { bottom } = useSafeAreaInsets();
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const ref = useRef<FlatList>(null);
+  const router = useRouter();
 
   const updateCurrentSlideIndex = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = e.nativeEvent.contentOffset.x;
@@ -40,7 +41,8 @@ const OnboardingScreen = () => {
 
   const onGetStarted = () => {
     setViewedOnboarding(true);
-    // The navigation logic in _layout.tsx will handle the redirect.
+    // Navigate directly to welcome screen instead of relying on automatic redirect
+    router.replace('/(auth)/welcome');
   };
 
   const Pagination = () => (
