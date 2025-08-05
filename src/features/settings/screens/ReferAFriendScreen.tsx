@@ -1,28 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar, Share } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
+import ReferFriendModal from '../components/ReferFriendModal';
 
 const ReferAFriendScreen = () => {
   const insets = useSafeAreaInsets();
   const referralLink = 'https://sproutbook.design';
+  const [isModalVisible, setModalVisible] = useState(false);
 
-  const handleShare = async () => {
-    try {
-      await Share.share({
-        message: `Give One Month Free To Anyone Who Signs Up Using Your Personalized Referral Link. Must Be A New User To Claim Free Month. ${referralLink}`,
-        url: referralLink,
-        title: 'Refer a Friend & Get a Free Month!',
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
+  const handleShare = () => {
+    setModalVisible(true);
   };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <ScreenHeader title="Refer a Friend" showShareIcon onSharePress={handleShare} />
+      <ReferFriendModal visible={isModalVisible} onClose={() => setModalVisible(false)} />
       <View style={styles.content}>
         <Image source={require('../../../assets/images/Logo_Big.png')} style={styles.logo} />
         <Text style={styles.title}>Invite Friends</Text>

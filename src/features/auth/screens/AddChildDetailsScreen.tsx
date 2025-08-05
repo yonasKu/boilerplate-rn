@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, Platform, Alert, ActivityIndicator } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
 import { addChild } from '../../../services/childService';
-
+import { uploadChildProfileImage } from '../../../services/userService';
+import * as ImagePicker from 'expo-image-picker';
 
 const AddChildDetailsScreen = () => {
     const router = useRouter();
@@ -13,10 +14,17 @@ const AddChildDetailsScreen = () => {
     const [date, setDate] = useState(new Date());
     const [dueDate, setDueDate] = useState('');
     const [gender, setGender] = useState("Don't know yet");
+    const [childImage, setChildImage] = useState<string | null>(null);
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
+    
+    const params = useLocalSearchParams();
+    const lifestage = params.lifestage as string || 'Soon to be parent';
     const genderOptions = ['Boy', 'Girl', "Don't know yet"];
+
+
 
     const handleSelect = (option: string) => {
         setGender(option);
@@ -51,10 +59,19 @@ const AddChildDetailsScreen = () => {
 
         setIsLoading(true);
         try {
+            let profileImageUrl: string | undefined = undefined;
+            
+            // Upload child image if selected
+            if (childImage) {
+                const childId = `temp_${Date.now()}`; // Temporary ID for upload
+                profileImageUrl = await uploadChildProfileImage(childId, childImage);
+            }
+
             await addChild({
                 name: childName,
                 dateOfBirth: date,
-                gender: gender as 'male' | 'female' | 'prefer_not_to_say'
+                gender: gender as 'male' | 'female' | 'prefer_not_to_say',
+                ...(profileImageUrl && { profileImageUrl })
             }, user.uid);
 
             await refreshOnboardingStatus();
@@ -72,14 +89,55 @@ const AddChildDetailsScreen = () => {
         setShowDatePicker(true);
     };
 
+    const pickChildImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Please allow access to your photos to upload a child picture.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+
+            if (!result.canceled) {
+                setIsUploadingImage(true);
+                const imageUri = result.assets[0].uri;
+                setChildImage(imageUri);
+                setIsUploadingImage(false);
+            }
+        } catch (error) {
+            console.error('Error picking child image:', error);
+            Alert.alert('Error', 'Failed to select child image. Please try again.');
+            setIsUploadingImage(false);
+        }
+    };
+
         return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.avatarContainer}>
-                    <View style={styles.avatar}>
-                        <Image source={require('../../../assets/images/placeholder profile.png')} style={styles.avatarImage} />
-                    </View>
-                    <TouchableOpacity style={styles.editIconContainer}>
+                    {isUploadingImage ? (
+                        <View style={[styles.avatar, styles.uploadingContainer]}>
+                            <ActivityIndicator size="large" color="#4A90E2" />
+                        </View>
+                    ) : (
+                        <View style={styles.avatar}>
+                            <Image 
+                                source={childImage ? { uri: childImage } : require('../../../assets/images/placeholder profile.png')} 
+                                style={styles.avatarImage} 
+                            />
+                        </View>
+                    )}
+                    <TouchableOpacity 
+                        style={styles.editIconContainer}
+                        onPress={pickChildImage}
+                        disabled={isUploadingImage}
+                    >
                         <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
                     </TouchableOpacity>
                 </View>
@@ -95,14 +153,17 @@ const AddChildDetailsScreen = () => {
                     />
                 </View>
 
-                <Text style={styles.label}>Due Date<Text style={styles.asterisk}>*</Text></Text>
+                <Text style={styles.label}>
+                    {lifestage === 'Soon to be parent' ? 'Due Date' : 'Birth Date'}<Text style={styles.asterisk}>*</Text>
+                </Text>
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder="child's due date"
+                        placeholder={`child's ${lifestage === 'Parent' ? 'birth date' : 'due date'}`}
                         placeholderTextColor="#A9A9A9"
                         value={dueDate}
                         onChangeText={setDueDate}
+                        editable={false}
                     />
                     <TouchableOpacity onPress={openDatePicker}>
                         <Image source={require('../../../assets/images/calendar.png')} style={styles.calendarIcon} />
@@ -153,7 +214,7 @@ const AddChildDetailsScreen = () => {
                   </TouchableOpacity>
                 </View>
                         </ScrollView>
-        </View>
+        </SafeAreaView>
     );
 };
 
@@ -302,6 +363,11 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    uploadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#E0E0E0',
     },
 });
 

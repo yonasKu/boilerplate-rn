@@ -62,12 +62,37 @@ service cloud.firestore {
         (isOwner(resource.data.parentId) || isOwner(request.resource.data.parentId));
     }
 
-    // ========== FUTURE COLLECTIONS ==========
-    // match /journal/{journalId} {
-    //   allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-    //   allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-    //   allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-    // }
+    // ========== JOURNAL ENTRIES COLLECTION ==========
+    match /journalEntries/{entryId} {
+      // A user can create an entry if they are logged in and the entry's `userId` field matches their own ID.
+      allow create: if isOwner(request.resource.data.userId)
+        && request.resource.data.keys().hasAll(['userId', 'text', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.childId is string
+        && (request.resource.data.media == null || request.resource.data.media is list)
+        && (request.resource.data.isFavorited == null || request.resource.data.isFavorited is bool)
+        && (request.resource.data.isMilestone == null || request.resource.data.isMilestone is bool)
+        && (request.resource.data.childAgeAtEntry == null || request.resource.data.childAgeAtEntry is string)
+        && (request.resource.data.likes == null || request.resource.data.likes is map)
+        && request.resource.data.createdAt is timestamp;
+      
+      // A user can read entries they own
+      allow read: if isOwner(resource.data.userId);
+      
+      // A user can update their own entry's content and tags
+      allow update: if isOwner(resource.data.userId)
+        && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt']) || 
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+      
+      // A user can update likes on any entry (but only the likes field)
+      allow update: if isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
+        (request.resource.data.likes[request.auth.uid] == true || 
+         (request.resource.data.likes[request.auth.uid] == null && resource.data.likes[request.auth.uid] == true));
+      
+      // A user can delete their own entry
+      allow delete: if isOwner(resource.data.userId);
+    }
 
     // match /subscriptions/{subscriptionId} {
     //   allow read: if request.auth != null && request.auth.uid == resource.data.userId;

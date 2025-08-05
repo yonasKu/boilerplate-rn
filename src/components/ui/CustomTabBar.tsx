@@ -2,9 +2,11 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { useRouter } from 'expo-router';
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { bottom } = useSafeAreaInsets();
+  const router = useRouter();
 
   const getIcon = (routeName: string): keyof typeof Feather.glyphMap => {
     switch (routeName) {
@@ -58,7 +60,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
         </View>
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('new')}
+            onPress={() => router.push('/new-entry')}
             style={styles.newButtonContainer}
           >
             <View style={styles.newButton}>

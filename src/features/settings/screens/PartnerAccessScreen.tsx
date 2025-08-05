@@ -20,10 +20,10 @@ const PartnerAccessScreen = () => {
           <Text style={styles.subtitle}>Invite your partner or spouse to contribute to the journal</Text>
 
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email*</Text>
+            <Text style={styles.label}>Email<Text style={styles.asterisk}>*</Text></Text>
             <TextInput
               style={styles.input}
-              placeholder="your partner email"
+              placeholder="Partner email"
               placeholderTextColor="#A0A0A0"
               value={email}
               onChangeText={setEmail}
@@ -49,21 +49,18 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    //alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: -60,
   },
   contentContainer: {
     width: '100%',
     alignItems: 'center',
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#5D9275',
-    borderStyle: 'dotted',
-    borderRadius: 16,
+    paddingHorizontal: 24,
   },
   logo: {
-    width: 60,
-    height: 60,
+    width: 88,
+    height: 88,
     marginBottom: 24,
   },
   title: {
@@ -83,9 +80,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   label: {
-    fontSize: 12,
-    color: '#E53E3E',
+    fontSize: 16,
+    color: '#2F4858',
     marginBottom: 8,
+  },
+  asterisk: {
+    color: '#E58C8A',
   },
   input: {
     backgroundColor: '#F8F9FA',

@@ -36,7 +36,7 @@ yarn-error.*
 
 # Firebase native config files
 GoogleService-Info.plist
-google-services.json
+google-services.json    
 
 # local env files
 .env*.local

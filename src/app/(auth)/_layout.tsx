@@ -43,13 +43,13 @@ export default function AuthLayout() {
        <Stack.Screen 
         name="add-child-details" 
         options={{
-          header: () => <CustomHeader title="Add Child Details" />,
+          header: () => <CustomHeader title="Tell us about your little one" />,
         }}
       />
        <Stack.Screen 
         name="add-profile" 
         options={{
-          header: () => <CustomHeader title="Add Profile" />,
+          header: () => <CustomHeader title="Tell us about yourself" />,
         }}
       />
     </Stack>

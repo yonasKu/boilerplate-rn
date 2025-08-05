@@ -5,6 +5,7 @@ import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../../../context/AuthContext';
 import { getUserProfile, UserProfile } from '../../../services/userService';
+import ReminderToast from '../../../components/ui/ReminderToast';
 
 interface AccordionSectionProps {
   title: string;
@@ -80,6 +81,7 @@ const AccountSettingsScreen = () => {
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showToast, setShowToast] = useState(false);
   
   const [reminders, setReminders] = useState({
     dailyEntries: false,
@@ -108,7 +110,15 @@ const AccountSettingsScreen = () => {
   }, [user]);
 
   const handleReminderChange = (key: keyof typeof reminders) => {
-    setReminders(prev => ({ ...prev, [key]: !prev[key] }));
+    const newValue = !reminders[key];
+    setReminders(prev => ({ ...prev, [key]: newValue }));
+
+    if (newValue) {
+      setShowToast(true);
+      setTimeout(() => {
+        setShowToast(false);
+      }, 4000); // Hide toast after 4 seconds
+    }
   };
 
   if (loading) {
@@ -151,12 +161,8 @@ const AccountSettingsScreen = () => {
           </View>
         </AccordionSection>
 
-        <AccordionSection title="Reminders" defaultExpanded={true}>
-          <ReminderRow label="Daily Entries" value={reminders.dailyEntries} onValueChange={() => handleReminderChange('dailyEntries')} />
-          <ReminderRow label="Comment" value={reminders.comment} onValueChange={() => handleReminderChange('comment')} />
-          <ReminderRow label="Likes" value={reminders.likes} onValueChange={() => handleReminderChange('likes')} />
-          <ReminderRow label="Monthly Recaps" value={reminders.monthlyRecaps} onValueChange={() => handleReminderChange('monthlyRecaps')} />
-          <ReminderRow label="Weekly Recaps" value={reminders.weeklyRecaps} onValueChange={() => handleReminderChange('weeklyRecaps')} />
+        <AccordionSection title="Notifications" defaultExpanded={true}>
+          <ReminderRow label="Push notifications" value={reminders.dailyEntries} onValueChange={() => handleReminderChange('dailyEntries')} />
         </AccordionSection>
 
         <AccordionSection title="Manage Subscription" defaultExpanded={true}>
@@ -189,6 +195,7 @@ const AccountSettingsScreen = () => {
         </AccordionSection>
 
       </ScrollView>
+      {showToast && <ReminderToast onClose={() => setShowToast(false)} />}
     </View>
   );
 };

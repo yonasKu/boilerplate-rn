@@ -1,4 +1,4 @@
 import { View, Text } from 'react-native';
-export default function Recaps() {
-  return <View><Text>Recaps Screen</Text></View>;
-}
+import RecapsScreen from '@/features/recaps/screens/RecapsScreen';
+
+export default RecapsScreen;

@@ -17,6 +17,7 @@ export interface ChildInput {
   dateOfBirth: Date;
   gender: 'male' | 'female' | 'prefer_not_to_say';
   avatar?: string;
+  profileImageUrl?: string;
 }
 
 export const addChild = async (child: ChildInput, parentId: string): Promise<string> => {

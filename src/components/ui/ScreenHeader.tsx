@@ -7,9 +7,10 @@ interface ScreenHeaderProps {
   showBackButton?: boolean;
   showShareIcon?: boolean;
   onSharePress?: () => void;
+  rightComponent?: React.ReactNode;
 }
 
-const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = true, showShareIcon = false, onSharePress }) => {
+const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = true, showShareIcon = false, onSharePress, rightComponent }) => {
   const router = useRouter();
 
   const handleBackPress = () => {
@@ -26,7 +27,9 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = tru
         <View style={styles.headerSpacer} />
       )}
       <Text style={styles.headerTitle}>{title}</Text>
-      {showShareIcon ? (
+      {rightComponent ? (
+        rightComponent
+      ) : showShareIcon ? (
         <TouchableOpacity onPress={onSharePress} style={styles.shareIconContainer}>
           <Image source={require('../../assets/images/Share_Android.png')} style={styles.shareIcon} />
         </TouchableOpacity>
@@ -48,6 +51,12 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 18,

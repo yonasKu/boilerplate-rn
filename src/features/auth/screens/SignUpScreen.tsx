@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Tex
 import { Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { signUpWithEmail, useGoogleSignIn } from '@/lib/firebase/auth';
+import { FontAwesome } from '@expo/vector-icons';
 
 const SignUpScreen = () => {
     const router = useRouter();
@@ -11,11 +12,35 @@ const SignUpScreen = () => {
     const [password, setPassword] = useState('');
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [passwordValidation, setPasswordValidation] = useState({
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        number: false,
+        specialChar: false,
+    });
     const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+
+    const validatePassword = (password: string) => {
+        const newValidation = {
+            length: password.length >= 8 && password.length <= 64,
+            uppercase: /[A-Z]/.test(password),
+            lowercase: /[a-z]/.test(password),
+            number: /[0-9]/.test(password),
+            specialChar: /[^A-Za-z0-9]/.test(password),
+        };
+        setPasswordValidation(newValidation);
+        return Object.values(newValidation).every(Boolean);
+    };
 
     const handleSignUp = async () => {
         if (!name || !email || !password) {
             Alert.alert('Missing Information', 'Please fill in all required fields.');
+            return;
+        }
+
+        if (!validatePassword(password)) {
+            Alert.alert('Invalid Password', 'Please ensure your password meets all the requirements.');
             return;
         }
 
@@ -109,7 +134,10 @@ const SignUpScreen = () => {
                         style={styles.input}
                         placeholder="Password"
                         value={password}
-                        onChangeText={setPassword}
+                        onChangeText={(text) => {
+                            setPassword(text);
+                            validatePassword(text);
+                        }}
                         secureTextEntry={!isPasswordVisible}
                     />
                     <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
@@ -117,7 +145,9 @@ const SignUpScreen = () => {
                     </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={isLoading}>
+                <PasswordStrengthIndicator validation={passwordValidation} />
+
+                <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={isLoading || !Object.values(passwordValidation).every(Boolean)} >
                     {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Continue</Text>}
                 </TouchableOpacity>
 
@@ -135,6 +165,55 @@ const SignUpScreen = () => {
                 </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
+    );
+};
+
+const PasswordStrengthIndicator = ({ validation }: { validation: { [key: string]: boolean } }) => {
+    const criteria = [
+        { key: 'length', text: 'Between 8 and 64 characters' },
+        { key: 'uppercase', text: 'At least one uppercase letter' },
+        { key: 'lowercase', text: 'At least one lowercase letter' },
+        { key: 'number', text: 'At least one number' },
+        { key: 'specialChar', text: 'At least one special character' },
+    ];
+
+    const strength = Object.values(validation).filter(Boolean).length;
+    let strengthText = 'Weak';
+    let strengthColor = '#F2C94C'; // Yellow for weak, as per the image
+
+    if (strength >= 5) {
+        strengthText = 'Strong';
+        strengthColor = '#5D9275'; // Green for strong
+    } else if (strength >= 3) {
+        strengthText = 'Medium';
+        strengthColor = '#F2994A'; // Orange for medium
+    }
+
+    return (
+        <View style={styles.validationContainer}>
+            <View style={styles.strengthIndicatorContainer}>
+                <Text style={[styles.strengthText, { color: strengthColor }]}>{strengthText}</Text>
+                <View style={styles.strengthBar}>
+                    {Array.from({ length: 5 }).map((_, index) => (
+                        <View
+                            key={index}
+                            style={[
+                                styles.strengthBarSegment,
+                                { backgroundColor: index < strength ? strengthColor : '#E0E0E0' },
+                            ]}
+                        />
+                    ))}
+                </View>
+            </View>
+            {criteria.map((item) => (
+                <View key={item.key} style={styles.criterionRow}>
+                    <FontAwesome name={validation[item.key] ? 'check' : 'circle-o'} size={16} color={validation[item.key] ? '#5D9275' : '#A9A9A9'} />
+                    <Text style={[styles.criterionText, { color: validation[item.key] ? '#2F4858' : '#A9A9A9' }]}>
+                        {item.text}
+                    </Text>
+                </View>
+            ))}
+        </View>
     );
 };
 
@@ -274,6 +353,40 @@ const styles = StyleSheet.create({
     },
     linkText: {
         color: '#5D9275',
+    },
+    validationContainer: {
+        marginBottom: 20,
+        padding: 15,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 12,
+    },
+    strengthIndicatorContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    strengthText: {
+        fontSize: 14,
+        fontWeight: 'bold',
+    },
+    strengthBar: {
+        flexDirection: 'row',
+    },
+    strengthBarSegment: {
+        width: 25,
+        height: 5,
+        borderRadius: 2.5,
+        marginLeft: 4,
+    },
+    criterionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 4,
+    },
+    criterionText: {
+        marginLeft: 10,
+        fontSize: 14,
     },
 });
 

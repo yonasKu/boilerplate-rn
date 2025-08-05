@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
-import { updateUserLifestage } from '../../../services/userService';
+import { updateUserProfile, uploadUserProfileImage } from '../../../services/userService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../../lib/firebase/firebaseConfig';
+import * as ImagePicker from 'expo-image-picker';
 
 const AddProfileScreen = () => {
     const router = useRouter();
@@ -12,8 +13,10 @@ const AddProfileScreen = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState(user?.email || '');
     const [lifestage, setLifestage] = useState('Soon to be parent');
+    const [profileImage, setProfileImage] = useState<string | null>(null);
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
     const lifestageOptions = ['Soon to be parent', 'Parent'];
 
     useEffect(() => {
@@ -36,24 +39,54 @@ const AddProfileScreen = () => {
         setIsPickerOpen(false);
     };
 
+    const pickProfileImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Please allow access to your photos to upload a profile picture.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+
+            if (!result.canceled) {
+                setIsUploadingImage(true);
+                const imageUri = result.assets[0].uri;
+                
+                if (user) {
+                    const downloadURL = await uploadUserProfileImage(user.uid, imageUri);
+                    setProfileImage(downloadURL);
+                }
+                
+                setIsUploadingImage(false);
+            }
+        } catch (error) {
+            console.error('Error picking profile image:', error);
+            Alert.alert('Error', 'Failed to upload profile image. Please try again.');
+            setIsUploadingImage(false);
+        }
+    };
+
     const handleContinue = async () => {
-        if (!user) {
-            Alert.alert('Error', 'User not authenticated');
+        if (!name.trim()) {
+            Alert.alert('Name Required', 'Please enter your name.');
             return;
         }
-
         setIsLoading(true);
         try {
-            await updateUserLifestage(user.uid, lifestage);
-
-            // Refresh onboarding status after saving profile
+            await updateUserProfile(user!.uid, { name, lifestage });
             await refreshOnboardingStatus();
-            
-            console.log('Profile updated successfully');
-            router.push('/(auth)/add-child-details');
+            router.push({
+                pathname: '/(auth)/add-child-details',
+                params: { lifestage }
+            });
         } catch (error) {
-            console.error('Error updating profile:', error);
-            Alert.alert('Error', 'Failed to update profile. Please try again.');
+            Alert.alert('Update Failed', 'Could not update your profile.');
         } finally {
             setIsLoading(false);
         }
@@ -66,10 +99,23 @@ const AddProfileScreen = () => {
 
 
                 <View style={styles.avatarContainer}>
-                    <View style={styles.avatar}>
-                        <Image source={require('../../../assets/images/placeholder profile.png')} style={styles.avatarImage} />
-                    </View>
-                    <TouchableOpacity style={styles.editIconContainer}>
+                    {isUploadingImage ? (
+                        <View style={[styles.avatar, styles.uploadingContainer]}>
+                            <ActivityIndicator size="large" color="#4A90E2" />
+                        </View>
+                    ) : (
+                        <View style={styles.avatar}>
+                            <Image
+                                source={profileImage ? { uri: profileImage } : require('../../../assets/images/placeholder profile.png')}
+                                style={styles.avatarImage}
+                            />
+                        </View>
+                    )}
+                    <TouchableOpacity 
+                        style={styles.editIconContainer}
+                        onPress={pickProfileImage}
+                        disabled={isUploadingImage}
+                    >
                         <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
                     </TouchableOpacity>
                 </View>
@@ -280,8 +326,30 @@ const styles = StyleSheet.create({
     sectionSubtitle: {
         fontSize: 16,
         color: '#666',
-        marginBottom: 30,
         textAlign: 'center',
+        marginBottom: 30,
+    },
+    uploadingContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+    },
+    cameraButton: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: '#4A90E2',
+        borderRadius: 20,
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        borderColor: '#fff',
+    },
+    cameraButtonText: {
+        fontSize: 20,
+        color: '#fff',
     },
 });
 

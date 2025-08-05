@@ -1,6 +1,12 @@
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase/firebaseConfig';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, storage } from '../lib/firebase/firebaseConfig';
 import { User } from 'firebase/auth';
+
+// Fix for crypto.getRandomValues() not supported - use timestamp-based ID
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+};
 
 export interface UserProfile {
   uid: string;
@@ -139,16 +145,20 @@ export const saveUserProfile = async (profile: Omit<UserProfile, 'createdAt' | '
   }
 };
 
-export const updateUserLifestage = async (uid: string, lifestage: string): Promise<void> => {
+/**
+ * Updates a user's profile with their name and lifestage.
+ */
+export const updateUserProfile = async (uid: string, data: { name: string; lifestage: string }): Promise<void> => {
   try {
     const now = new Date();
     await setDoc(doc(db, 'users', uid), {
-      lifestage,
+      name: data.name,
+      lifestage: data.lifestage,
       updatedAt: now,
     }, { merge: true });
-    console.log('User lifestage updated successfully');
+    console.log('User profile updated successfully');
   } catch (error) {
-    console.error('Error updating user lifestage:', error);
+    console.error('Error updating user profile:', error);
     throw error;
   }
 };
@@ -171,6 +181,122 @@ export const saveChildProfile = async (child: Omit<ChildProfile, 'id' | 'created
     return childRef.id;
   } catch (error) {
     console.error('Error saving child profile:', error);
+    throw error;
+  }
+};
+
+/**
+ * Upload user profile image to Firebase Storage
+ */
+export const uploadUserProfileImage = async (userId: string, imageUri: string): Promise<string> => {
+  try {
+    // Verify authentication state
+    if (!userId) {
+      throw new Error('User ID is required for upload');
+    }
+    
+    // Check Firebase Auth state
+    const { getAuth } = await import('firebase/auth');
+    const auth = getAuth();
+    console.log('Current user:', auth.currentUser?.uid);
+    console.log('Requested userId:', userId);
+    console.log('Auth match:', auth.currentUser?.uid === userId);
+    
+    if (!auth.currentUser) {
+      throw new Error('User must be authenticated to upload images');
+    }
+    
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+    const imageRef = ref(storage, `profile_images/${userId}/${generateId()}`);
+    
+    console.log('Uploading to:', imageRef.fullPath);
+    console.log('Auth token available:', !!auth.currentUser);
+    await uploadBytes(imageRef, blob);
+    const downloadURL = await getDownloadURL(imageRef);
+    
+    // Update user document with profile image URL
+    await setDoc(doc(db, 'users', userId), {
+      profileImageUrl: downloadURL,
+      updatedAt: new Date()
+    }, { merge: true });
+    
+    console.log('Profile image updated successfully:', downloadURL);
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading user profile image:', error);
+    throw error;
+  }
+};
+
+/**
+ * Upload child profile image to Firebase Storage
+ */
+export const uploadChildProfileImage = async (childId: string, imageUri: string): Promise<string> => {
+  try {
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+    const imageRef = ref(storage, `child_images/${childId}/${generateId()}`);
+    
+    await uploadBytes(imageRef, blob);
+    const downloadURL = await getDownloadURL(imageRef);
+    
+    // Update child document with profile image URL
+    await setDoc(doc(db, 'children', childId), {
+      profileImageUrl: downloadURL,
+      updatedAt: new Date()
+    }, { merge: true });
+    
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading child profile image:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete user profile image
+ */
+export const deleteUserProfileImage = async (userId: string, imageUrl: string): Promise<void> => {
+  try {
+    // Extract the path from the URL
+    const urlParts = imageUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+    const filePath = urlParts[urlParts.length - 2];
+    
+    const imageRef = ref(storage, `profile_images/${userId}/${fileName}`);
+    await deleteObject(imageRef);
+    
+    // Remove profile image URL from user document
+    await setDoc(doc(db, 'users', userId), {
+      profileImageUrl: null,
+      updatedAt: new Date()
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error deleting user profile image:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete child profile image
+ */
+export const deleteChildProfileImage = async (childId: string, imageUrl: string): Promise<void> => {
+  try {
+    // Extract the path from the URL
+    const urlParts = imageUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+    
+    const imageRef = ref(storage, `child_images/${childId}/${fileName}`);
+    await deleteObject(imageRef);
+    
+    // Remove profile image URL from child document
+    await setDoc(doc(db, 'children', childId), {
+      profileImageUrl: null,
+      updatedAt: new Date()
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error deleting child profile image:', error);
     throw error;
   }
 };

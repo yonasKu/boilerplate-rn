@@ -27,7 +27,7 @@ const SuccessScreen = () => {
         <Image source={require('../../../assets/images/Checked_BIG.png')} style={styles.successIcon} />
         <Text style={styles.title}>Account created successfully</Text>
         <TouchableOpacity style={styles.button} onPress={() => router.replace('/(auth)/login')}>
-          <Text style={styles.buttonText}>Continue to Login</Text>
+          <Text style={styles.buttonText}>Continue</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

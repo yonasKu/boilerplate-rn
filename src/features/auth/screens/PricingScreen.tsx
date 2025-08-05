@@ -75,7 +75,7 @@ const PricingScreen = () => {
 
       </ScrollView>
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('/(auth)/checkout')}>
+        <TouchableOpacity style={styles.button} onPress={() => router.push('/(auth)/login')}>
           <Text style={styles.buttonText}>Start Free Trial</Text>
         </TouchableOpacity>
         <Text style={styles.trialInfo}>Get 10 days free before being charged</Text>

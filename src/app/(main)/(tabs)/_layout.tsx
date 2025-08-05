@@ -26,12 +26,7 @@ export default function TabsLayout() {
           title: 'Search',
         }}
       />
-      <Tabs.Screen
-        name="new"
-        options={{
-          title: 'New',
-        }}
-      />
+
     </Tabs>
   );
 }

@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'expo-router';
+import { ProfileAvatar } from '../../../components/ProfileAvatar';
 
 type SettingsOption = {
   icon: any;
@@ -61,9 +62,11 @@ const SettingsScreen = () => {
 
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={require('../../../assets/images/sampleProfile.png')}
-              style={styles.profileImage}
+            <ProfileAvatar
+              imageUrl={userProfile?.profileImageUrl}
+              name={userProfile?.name || user?.email || 'User'}
+              size={80}
+              textSize={32}
             />
             <TouchableOpacity style={styles.editIconContainer} onPress={() => router.push('/profile')}>
               <Image source={require('../../../assets/images/edit-2_icon.png')} style={styles.editIcon} />
@@ -85,6 +88,8 @@ const SettingsScreen = () => {
                   router.push('/partner-access');
                 } else if (option.text === 'Refer a friend') {
                   router.push('/refer-a-friend');
+                } else if (option.text === 'Family sharing') {
+                  router.push('/family-sharing');
                 }
               }}>
               <View style={styles.iconBackground}>

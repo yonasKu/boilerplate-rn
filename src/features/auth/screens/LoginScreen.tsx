@@ -25,14 +25,14 @@ export default function LoginScreen() {
         setIsLoading(true);
         try {
             await signInWithEmail(email, password);
-            
+
             // Check onboarding status after login
             const { checkOnboardingStatus } = await import('../../../services/userService');
             const { getAuth } = await import('firebase/auth');
             const auth = getAuth();
-            
+
             const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
-            
+
             if (!status.hasProfile) {
                 router.replace('/(auth)/add-profile');
             } else if (!status.hasChild) {
@@ -41,6 +41,7 @@ export default function LoginScreen() {
                 router.replace('/(main)/(tabs)/journal');
             }
         } catch (error: any) {
+            console.error('Login Error:', JSON.stringify(error, null, 2));
             let errorMessage = 'An unexpected error occurred. Please try again.';
             // Firebase returns 'auth/invalid-credential' for wrong email or password in modern SDKs.
             if (error.code === 'auth/invalid-credential') {
@@ -87,24 +88,24 @@ export default function LoginScreen() {
     const handleGoogleSignIn = async () => {
         try {
             await promptGoogleSignIn();
-            
+
             // Check onboarding status after Google login
             const { checkOnboardingStatus } = await import('../../../services/userService');
             const { getAuth } = await import('firebase/auth');
             const auth = getAuth();
-            
+
             // Small delay to ensure auth state is updated
             setTimeout(async () => {
                 const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
                 console.log('Post-Google-login onboarding status:', status);
                 console.log('User UID:', auth.currentUser?.uid);
-                
+
                 // Debug: Check children separately
                 const { getUserChildren } = await import('../../../services/userService');
                 const children = await getUserChildren(auth.currentUser?.uid || '');
                 console.log('Children found:', children.length);
                 console.log('Children data:', children);
-                
+
                 if (!status.hasProfile) {
                     console.log('Redirecting to add-profile after Google login...');
                     router.replace('/(auth)/add-profile');
@@ -161,7 +162,7 @@ export default function LoginScreen() {
                 </View>
 
                 <View style={styles.row}>
-                                        <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
+                    <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
                         <View style={[styles.checkbox, rememberMe && styles.checkedCheckbox]} />
                         <Text style={styles.checkboxLabel}>Remember Me</Text>
                     </TouchableOpacity>
@@ -195,6 +196,19 @@ export default function LoginScreen() {
                         <Text style={styles.socialButtonText}>Apple</Text>
                     </TouchableOpacity>
                 </View>
+
+                <View style={styles.footerTextContainer}>
+                    <Text style={styles.termsText}>By clicking continue you agree to our</Text>
+                    <Text style={styles.termsText}>
+                        <Text style={styles.linkText}>Terms of Use</Text> and <Text style={styles.linkText}>Privacy Policy</Text>
+                    </Text>
+                </View>
+
+                <TouchableOpacity onPress={() => router.push('/signup')}>
+                    <Text style={styles.signInText}>
+                        Don't have an account? <Text style={styles.linkText}>Sign Up</Text>
+                    </Text>
+                </TouchableOpacity>
             </ScrollView>
 
             {/* Password Reset Modal */}
@@ -205,7 +219,7 @@ export default function LoginScreen() {
                         <Text style={styles.modalDescription}>
                             Enter your email address and we'll send you a link to reset your password.
                         </Text>
-                        
+
                         <TextInput
                             style={styles.modalInput}
                             placeholder="Enter your email"
@@ -214,17 +228,17 @@ export default function LoginScreen() {
                             keyboardType="email-address"
                             autoCapitalize="none"
                         />
-                        
+
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity 
-                                style={[styles.modalButton, styles.cancelButton]} 
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
                                 onPress={() => setShowResetModal(false)}
                             >
                                 <Text style={styles.cancelButtonText}>Cancel</Text>
                             </TouchableOpacity>
-                            
-                            <TouchableOpacity 
-                                style={[styles.modalButton, styles.sendButton]} 
+
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.sendButton]}
                                 onPress={handleSendResetEmail}
                                 disabled={isSendingReset}
                             >
@@ -238,6 +252,8 @@ export default function LoginScreen() {
                     </View>
                 </View>
             )}
+
+
         </SafeAreaView>
     );
 }
@@ -356,8 +372,25 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: '500',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    footerTextContainer: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    termsText: {
+        color: '#A9A9A9',
+        fontSize: 12,
+        lineHeight: 18,
+    },
+    signInText: {
+        textAlign: 'center',
+        color: '#A9A9A9',
+        fontSize: 14,
+    },
+    linkText: {
+        color: '#5D9275',
     },
     faceIdButton: {
         padding: 18,
@@ -365,7 +398,7 @@ const styles = StyleSheet.create({
         borderRadius: 16, // Updated border radius from image
     },
     faceIdIcon: {
-        width: 24,
+        // ... (rest of the styles remain the same)
         height: 24,
         tintColor: '#FFFFFF',
     },
@@ -410,7 +443,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#2F4858',
     },
-    
+
     // Modal styles
     modalOverlay: {
         position: 'absolute',

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { getAuth, updateProfile } from 'firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadUserProfileImage, deleteUserProfileImage } from '../../../services/userService';
+import { ProfileAvatar } from '../../../components/ProfileAvatar';
 
 const MyProfileScreen = () => {
     const insets = useSafeAreaInsets();
@@ -11,14 +14,49 @@ const MyProfileScreen = () => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [lifestage, setLifestage] = useState('');
+    const [profileImage, setProfileImage] = useState<string | null>(null);
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
     const lifestageOptions = ['Soon to be parent', 'Parent'];
 
     const handleSelect = (option: string) => {
         setLifestage(option);
         setIsPickerOpen(false);
+    };
+
+    const pickProfileImage = async () => {
+        try {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Please allow access to your photos to upload a profile picture.');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+
+            if (!result.canceled) {
+                setIsUploadingImage(true);
+                const imageUri = result.assets[0].uri;
+                
+                if (user) {
+                    const downloadURL = await uploadUserProfileImage(user.uid, imageUri);
+                    setProfileImage(downloadURL);
+                }
+                
+                setIsUploadingImage(false);
+            }
+        } catch (error) {
+            console.error('Error picking profile image:', error);
+            Alert.alert('Error', 'Failed to upload profile image. Please try again.');
+            setIsUploadingImage(false);
+        }
     };
 
     // Fetch actual user profile from Firestore
@@ -37,6 +75,7 @@ const MyProfileScreen = () => {
                         setName(profileData.name || '');
                         setEmail(profileData.email || user.email || '');
                         setLifestage(profileData.lifestage || '');
+                        setProfileImage(profileData.profileImageUrl || null);
                     }
                     setLoadingProfile(false);
                 } catch (error) {
@@ -83,10 +122,20 @@ const MyProfileScreen = () => {
             <ScreenHeader title="My Profile" />
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.avatarContainer}>
-                    <View style={styles.avatar}>
-                        <Image source={require('../../../assets/images/sampleProfile.png')} style={styles.avatarImage} />
-                    </View>
-                    <TouchableOpacity style={styles.editIconContainer}>
+                    <TouchableOpacity onPress={pickProfileImage} style={styles.avatar}>
+                        <ProfileAvatar
+                            imageUrl={profileImage}
+                            name={name || 'User'}
+                            size={120}
+                            textSize={40}
+                        />
+                        {isUploadingImage && (
+                            <View style={styles.uploadingContainer}>
+                                <ActivityIndicator size="small" color="#5D9275" />
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={pickProfileImage} style={styles.editIconContainer}>
                         <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
                     </TouchableOpacity>
                 </View>
@@ -186,6 +235,13 @@ const styles = StyleSheet.create({
     editIcon: {
         width: 50,
         height: 50,
+    },
+    uploadingContainer: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: 55,
     },
     label: {
         color: '#2F4858',
