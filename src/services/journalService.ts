@@ -152,7 +152,13 @@ export const toggleLike = async (entryId: string, userId: string) => {
       likes[userId] = true;
     }
     
-    transaction.update(entryRef, { likes });
+    // Update isFavorited based on whether current user has liked the entry
+    const isFavorited = !!likes[userId];
+    
+    transaction.update(entryRef, { 
+      likes,
+      isFavorited 
+    });
   });
 };
 

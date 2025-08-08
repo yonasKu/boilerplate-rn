@@ -1,13 +1,33 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useJournal } from '@/hooks/useJournal';
+import JournalEntryCard from '@/features/journal/components/JournalEntryCard';
 
 const SearchScreen = () => {
   const router = useRouter();
-  const [searchText, setSearchText] = useState('First Smile');
+  const [searchText, setSearchText] = useState('');
   const insets = useSafeAreaInsets();
+  const { entries } = useJournal();
+
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchText.trim().toLowerCase()), 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  const filtered = useMemo(() => {
+    if (!debouncedQuery) return [];
+    const res = entries.filter(e =>
+      e.title?.toLowerCase().includes(debouncedQuery) ||
+      e.text?.toLowerCase().includes(debouncedQuery) ||
+      e.tags?.some((t: string) => t.toLowerCase().includes(debouncedQuery))
+    );
+    console.log('Search:', debouncedQuery, '=>', res.length, 'matches');
+    return res;
+  }, [entries, debouncedQuery]);
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
@@ -27,11 +47,26 @@ const SearchScreen = () => {
           />
         </View>
       </View>
-      <View style={styles.resultsContainer}>
-        <Text style={styles.resultsText}>
-          Found 2 results for "{searchText}"
-        </Text>
-      </View>
+      {debouncedQuery ? (
+        <FlatList
+          data={filtered}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => router.push(`/journal/${item.id}` as any)}>
+              <JournalEntryCard entry={item} />
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <Text style={styles.resultsText}>
+              Found {filtered.length} result{filtered.length !== 1 ? 's' : ''} for "{debouncedQuery}"
+            </Text>
+          }
+          ListEmptyComponent={
+            <Text style={styles.empty}>No entries found for "{debouncedQuery}"</Text>
+          }
+        />
+      ) : null}
     </SafeAreaView>
   );
 };
@@ -83,6 +118,16 @@ const styles = StyleSheet.create({
   },
   resultsText: {
     fontSize: 16,
+    color: '#666',
+    marginBottom: 8,
+  },
+  list: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+  },
+  empty: {
+    textAlign: 'center',
+    marginTop: 40,
     color: '#666',
   },
 });

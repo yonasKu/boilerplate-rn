@@ -19,12 +19,13 @@ const AddChildDetailsScreen = () => {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     
     const params = useLocalSearchParams();
     const lifestage = params.lifestage as string || 'Soon to be parent';
-    const genderOptions = ['Boy', 'Girl', "Don't know yet"];
-
-
+    const genderOptions = lifestage === 'Soon to be parent' 
+        ? ['Boy', 'Girl', "Don't know yet"] 
+        : ['Boy', 'Girl'];
 
     const handleSelect = (option: string) => {
         setGender(option);
@@ -32,12 +33,10 @@ const AddChildDetailsScreen = () => {
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
-        const currentDate = selectedDate || date;
         setShowDatePicker(Platform.OS === 'ios');
-        setDate(currentDate);
 
         if (selectedDate) {
-            const formattedDate = currentDate.toLocaleDateString('en-US', {
+            const formattedDate = selectedDate.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
@@ -76,13 +75,27 @@ const AddChildDetailsScreen = () => {
 
             await refreshOnboardingStatus();
             console.log('Child added successfully');
-            router.replace('/(main)/(tabs)/journal');
+            setShowSuccessModal(true);
         } catch (error) {
             console.error('Error adding child:', error);
             Alert.alert('Error', 'Failed to add child. Please try again.');
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleAddAnotherChild = () => {
+        setShowSuccessModal(false);
+        setChildName('');
+        setDueDate('');
+        setChildImage(null);
+        setGender("Don't know yet");
+        router.push('/(auth)/add-child-details');
+    };
+
+    const handleStartJournaling = () => {
+        setShowSuccessModal(false);
+        router.replace('/(main)/(tabs)/journal');
     };
 
     const openDatePicker = () => {
@@ -117,7 +130,7 @@ const AddChildDetailsScreen = () => {
         }
     };
 
-        return (
+    return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.avatarContainer}>
@@ -140,6 +153,7 @@ const AddChildDetailsScreen = () => {
                     >
                         <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
                     </TouchableOpacity>
+                    <Text style={styles.addPhotoText}>Add photo</Text>
                 </View>
 
                 <Text style={styles.label}>Child's Name<Text style={styles.asterisk}>*</Text></Text>
@@ -213,7 +227,31 @@ const AddChildDetailsScreen = () => {
                       <Text style={styles.buttonText}>{isLoading ? 'Saving...' : 'Continue'}</Text>
                   </TouchableOpacity>
                 </View>
-                        </ScrollView>
+            </ScrollView>
+
+            {/* Success Modal */}
+            {showSuccessModal && (
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>Child Profile Added!</Text>
+                        <Text style={styles.modalSubtitle}>What would you like to do next?</Text>
+                        
+                        <TouchableOpacity 
+                            style={[styles.modalButton, styles.secondaryButton]} 
+                            onPress={handleAddAnotherChild}
+                        >
+                            <Text style={styles.secondaryButtonText}>Add another child</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                            style={[styles.modalButton, styles.primaryButton]} 
+                            onPress={handleStartJournaling}
+                        >
+                            <Text style={styles.primaryButtonText}>Start journaling</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
         </SafeAreaView>
     );
 };
@@ -364,10 +402,78 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
     },
+    addPhotoText: {
+        fontSize: 14,
+        color: '#6A8A7A',
+        fontWeight: '500',
+        marginTop: 8,
+    },
     uploadingContainer: {
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#E0E0E0',
+    },
+    modalOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        marginHorizontal: 20,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#2F4858',
+        marginBottom: 8,
+    },
+    modalSubtitle: {
+        fontSize: 16,
+        color: '#666666',
+        marginBottom: 24,
+        textAlign: 'center',
+    },
+    modalButton: {
+        width: '100%',
+        paddingVertical: 12,
+        borderRadius: 8,
+        marginBottom: 12,
+        alignItems: 'center',
+    },
+    primaryButton: {
+        backgroundColor: '#4A90E2',
+    },
+    secondaryButton: {
+        backgroundColor: '#F5F5F5',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    primaryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    secondaryButtonText: {
+        color: '#2F4858',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 

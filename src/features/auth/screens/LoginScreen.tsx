@@ -1,127 +1,40 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Image, Alert, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { signInWithEmail, useGoogleSignIn, resetPassword } from '@/lib/firebase/auth';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Image, ActivityIndicator } from 'react-native';
+import { useLogin } from '../hooks/useLogin';
+import { router } from 'expo-router';
 
 
 export default function LoginScreen() {
-    const router = useRouter();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
-    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [showResetModal, setShowResetModal] = useState(false);
-    const [resetEmail, setResetEmail] = useState('');
-    const [isSendingReset, setIsSendingReset] = useState(false);
-    const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+    const {
+        // State
+        email,
+        setEmail,
+        password,
+        setPassword,
+        rememberMe,
+        setRememberMe,
+        isPasswordVisible,
+        setIsPasswordVisible,
+        isLoading,
+        showResetModal,
+        setShowResetModal,
+        resetEmail,
+        setResetEmail,
+        isSendingReset,
+        biometricAvailable,
+        biometricEnabled,
+        biometricType,
+        
+        // Functions
+        handleLogin,
+        handleForgotPassword,
+        handleSendResetEmail,
+        handleGoogleSignIn,
+        handleBiometricLogin,
+        checkBiometricAvailability
+    } = useLogin();
 
-    const handleLogin = async () => {
-        if (!email || !password) {
-            Alert.alert('Login Failed', 'Please enter both email and password.');
-            return;
-        }
 
-        setIsLoading(true);
-        try {
-            await signInWithEmail(email, password);
-
-            // Check onboarding status after login
-            const { checkOnboardingStatus } = await import('../../../services/userService');
-            const { getAuth } = await import('firebase/auth');
-            const auth = getAuth();
-
-            const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
-
-            if (!status.hasProfile) {
-                router.replace('/(auth)/add-profile');
-            } else if (!status.hasChild) {
-                router.replace('/(auth)/add-child-details');
-            } else {
-                router.replace('/(main)/(tabs)/journal');
-            }
-        } catch (error: any) {
-            console.error('Login Error:', JSON.stringify(error, null, 2));
-            let errorMessage = 'An unexpected error occurred. Please try again.';
-            // Firebase returns 'auth/invalid-credential' for wrong email or password in modern SDKs.
-            if (error.code === 'auth/invalid-credential') {
-                errorMessage = 'Invalid email or password. Please check your credentials and try again.';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = 'The email address is not valid. Please enter a valid email.';
-            }
-            Alert.alert('Login Failed', errorMessage);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleForgotPassword = () => {
-        setResetEmail(email); // Pre-fill with current email if entered
-        setShowResetModal(true);
-    };
-
-    const handleSendResetEmail = async () => {
-        if (!resetEmail.trim()) {
-            Alert.alert('Error', 'Please enter your email address');
-            return;
-        }
-
-        setIsSendingReset(true);
-        try {
-            await resetPassword(resetEmail.trim());
-            setShowResetModal(false);
-            Alert.alert(
-                'Password Reset Email Sent! 📧',
-                `We've sent a password reset email to: ${resetEmail}\n\n` +
-                'Please check your inbox and click the link to create a new password.\n\n' +
-                'The reset link will expire in 1 hour.',
-                [{ text: 'OK', style: 'default' }]
-            );
-            setResetEmail('');
-        } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to send reset email');
-        } finally {
-            setIsSendingReset(false);
-        }
-    };
-
-    const handleGoogleSignIn = async () => {
-        try {
-            await promptGoogleSignIn();
-
-            // Check onboarding status after Google login
-            const { checkOnboardingStatus } = await import('../../../services/userService');
-            const { getAuth } = await import('firebase/auth');
-            const auth = getAuth();
-
-            // Small delay to ensure auth state is updated
-            setTimeout(async () => {
-                const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
-                console.log('Post-Google-login onboarding status:', status);
-                console.log('User UID:', auth.currentUser?.uid);
-
-                // Debug: Check children separately
-                const { getUserChildren } = await import('../../../services/userService');
-                const children = await getUserChildren(auth.currentUser?.uid || '');
-                console.log('Children found:', children.length);
-                console.log('Children data:', children);
-
-                if (!status.hasProfile) {
-                    console.log('Redirecting to add-profile after Google login...');
-                    router.replace('/(auth)/add-profile');
-                } else if (!status.hasChild) {
-                    console.log('Redirecting to add-child-details after Google login...');
-                    router.replace('/(auth)/add-child-details');
-                } else {
-                    console.log('Onboarding complete, redirecting to main app...');
-                    router.replace('/(main)/(tabs)/journal');
-                }
-            }, 1000);
-        } catch (error) {
-            console.error('Google Sign-In Error:', error);
-            Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');
-        }
-    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -175,8 +88,15 @@ export default function LoginScreen() {
                     <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
                         {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Log in</Text>}
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.faceIdButton}>
-                        <Image source={require('../../../assets/images/user.png')} style={styles.faceIdIcon} />
+                    <TouchableOpacity 
+                        style={[styles.faceIdButton, !biometricEnabled && styles.disabledFaceIdButton]} 
+                        onPress={handleBiometricLogin}
+                        disabled={!biometricEnabled}
+                    >
+                        <Image 
+                            source={require('../../../assets/images/iconoir_face-id.png')} 
+                            style={[styles.faceIdIcon, !biometricEnabled && styles.disabledFaceIdIcon]} 
+                        />
                     </TouchableOpacity>
                 </View>
 
@@ -204,11 +124,9 @@ export default function LoginScreen() {
                     </Text>
                 </View>
 
-                <TouchableOpacity onPress={() => router.push('/signup')}>
-                    <Text style={styles.signInText}>
-                        Don't have an account? <Text style={styles.linkText}>Sign Up</Text>
-                    </Text>
-                </TouchableOpacity>
+                <Text style={styles.signInText}>
+                    Don't have an account? <TouchableOpacity onPress={() => router.push('/signup')}><Text style={styles.linkText}>Sign Up</Text></TouchableOpacity>
+                </Text>
             </ScrollView>
 
             {/* Password Reset Modal */}
@@ -393,14 +311,25 @@ const styles = StyleSheet.create({
         color: '#5D9275',
     },
     faceIdButton: {
-        padding: 18,
-        backgroundColor: '#6A8A7A', // Updated color from image
-        borderRadius: 16, // Updated border radius from image
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#F0F0F0',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
     },
     faceIdIcon: {
-        // ... (rest of the styles remain the same)
-        height: 24,
-        tintColor: '#FFFFFF',
+        width: 28,
+        height: 28,
+        tintColor: '#333',
+    },
+    disabledFaceIdButton: {
+        opacity: 0.5,
+    },
+    disabledFaceIdIcon: {
+        tintColor: '#999',
     },
     dividerContainer: {
         flexDirection: 'row',

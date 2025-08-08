@@ -81,14 +81,14 @@ service cloud.firestore {
       
       // A user can update their own entry's content and tags
       allow update: if isOwner(resource.data.userId)
-        && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt']) || 
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes']);
       
-      // A user can update likes on any entry (but only the likes field)
+      // A user can update likes and isFavorited on any entry (for like functionality)
       allow update: if isAuthenticated() && 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited']) &&
         (request.resource.data.likes[request.auth.uid] == true || 
-         (request.resource.data.likes[request.auth.uid] == null && resource.data.likes[request.auth.uid] == true));
+         (request.resource.data.likes[request.auth.uid] == null && resource.data.likes[request.auth.uid] == true)) &&
+        (request.resource.data.isFavorited == true || request.resource.data.isFavorited == false);
       
       // A user can delete their own entry
       allow delete: if isOwner(resource.data.userId);

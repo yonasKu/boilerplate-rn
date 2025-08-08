@@ -1,84 +1,28 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Alert, ActivityIndicator } from 'react-native';
 import { Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { signUpWithEmail, useGoogleSignIn } from '@/lib/firebase/auth';
+import { useSignUp } from '../hooks/useSignUp';
 import { FontAwesome } from '@expo/vector-icons';
 
 const SignUpScreen = () => {
     const router = useRouter();
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [passwordValidation, setPasswordValidation] = useState({
-        length: false,
-        uppercase: false,
-        lowercase: false,
-        number: false,
-        specialChar: false,
-    });
-    const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
-
-    const validatePassword = (password: string) => {
-        const newValidation = {
-            length: password.length >= 8 && password.length <= 64,
-            uppercase: /[A-Z]/.test(password),
-            lowercase: /[a-z]/.test(password),
-            number: /[0-9]/.test(password),
-            specialChar: /[^A-Za-z0-9]/.test(password),
-        };
-        setPasswordValidation(newValidation);
-        return Object.values(newValidation).every(Boolean);
-    };
-
-    const handleSignUp = async () => {
-        if (!name || !email || !password) {
-            Alert.alert('Missing Information', 'Please fill in all required fields.');
-            return;
-        }
-
-        if (!validatePassword(password)) {
-            Alert.alert('Invalid Password', 'Please ensure your password meets all the requirements.');
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const [firstName, ...lastNameParts] = name.trim().split(/\s+/);
-            const lastName = lastNameParts.join(' ');
-            await signUpWithEmail(email, password, firstName, lastName);
-            // Navigate to verification screen with email parameter
-            router.replace({ pathname: '/(auth)/verify-email', params: { email } });
-        } catch (error: any) {
-            console.error('Full sign-up error:', JSON.stringify(error, null, 2));
-            // Provide a more user-friendly error message
-            let errorMessage = 'An unexpected error occurred. Please try again.';
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = 'This email address is already in use by another account.';
-            } else if (error.code === 'auth/weak-password') {
-                errorMessage = 'The password is too weak. Please choose a stronger password.';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = 'The email address is not valid. Please check and try again.';
-            } else if (error.code === 'permission-denied') {
-                errorMessage = 'Could not create user profile. Please ensure Firestore is enabled in your Firebase project.';
-            }
-            Alert.alert('Sign-Up Failed', errorMessage);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleGoogleSignIn = async () => {
-        try {
-            await promptGoogleSignIn();
-            // The hook's useEffect will handle the rest
-        } catch (error) {
-            console.error('Google Sign-In Error:', error);
-            Alert.alert('Sign-Up Error', 'An unexpected error occurred. Please try again.');
-        }
-    };
+    const {
+        name,
+        setName,
+        email,
+        setEmail,
+        password,
+        setPassword,
+        isPasswordVisible,
+        setIsPasswordVisible,
+        isLoading,
+        isPasswordFocused,
+        setIsPasswordFocused,
+        passwordValidation,
+        handleSignUp,
+        handleGoogleSignIn
+    } = useSignUp();
 
     return (
         <SafeAreaView style={styles.container}>
@@ -134,20 +78,21 @@ const SignUpScreen = () => {
                         style={styles.input}
                         placeholder="Password"
                         value={password}
-                        onChangeText={(text) => {
-                            setPassword(text);
-                            validatePassword(text);
-                        }}
+                        onChangeText={setPassword}
                         secureTextEntry={!isPasswordVisible}
+                        onFocus={() => setIsPasswordFocused(true)}
+                        onBlur={() => setIsPasswordFocused(false)}
                     />
                     <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
                         <Image source={require('../../../assets/images/eye.png')} style={{ width: 24, height: 24, tintColor: '#A9A9A9' }} />
                     </TouchableOpacity>
                 </View>
 
-                <PasswordStrengthIndicator validation={passwordValidation} />
+                {isPasswordFocused && password.length > 0 && (
+                    <PasswordStrengthIndicator validation={passwordValidation} />
+                )}
 
-                <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={isLoading || !Object.values(passwordValidation).every(Boolean)} >
+                <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={isLoading} >
                     {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Continue</Text>}
                 </TouchableOpacity>
 

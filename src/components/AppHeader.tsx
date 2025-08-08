@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { useRouter } from 'expo-router';
+import { ProfileAvatar } from './ProfileAvatar';
 
 interface AppHeaderProps {
   showBackButton?: boolean;
@@ -13,6 +14,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({ showBackButton = false }) => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   useEffect(() => {
     const auth = getAuth();
@@ -22,6 +25,33 @@ const AppHeader: React.FC<AppHeaderProps> = ({ showBackButton = false }) => {
 
     return () => unsubscribe();
   }, []);
+
+  // Fetch actual user profile from Firestore
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user) {
+        try {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const { db } = await import('@/lib/firebase/firebaseConfig');
+          
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            setUserProfile(userDoc.data());
+          }
+          setLoadingProfile(false);
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          setLoadingProfile(false);
+        }
+      } else {
+        setLoadingProfile(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, [user]);
 
   const handleBackPress = () => {
     if (router.canGoBack()) {
@@ -40,13 +70,16 @@ const AppHeader: React.FC<AppHeaderProps> = ({ showBackButton = false }) => {
           </TouchableOpacity>
         ) : (
           <>
-            {user?.photoURL ? (
-              <Image source={{ uri: user.photoURL }} style={styles.avatar} />
-            ) : (
-              <Image source={require('../assets/images/sample_parents2.png')} style={styles.avatar} />
-            )}
+            <ProfileAvatar
+              imageUrl={userProfile?.profileImageUrl}
+              name={userProfile?.name || user?.email || 'User'}
+              size={40}
+              textSize={16}
+            />
             <View>
-              <Text style={styles.userName}>{user?.displayName || 'User'}</Text>
+              <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+                {loadingProfile ? 'Loading...' : (userProfile?.name || user?.email || 'User')}
+              </Text>
             </View>
           </>
         )}

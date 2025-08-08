@@ -1,12 +1,15 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { bottom } = useSafeAreaInsets();
   const router = useRouter();
+  const [showCreateHint, setShowCreateHint] = useState(false);
+  const bounceAnim = useRef(new Animated.Value(0)).current;
 
   const getIcon = (routeName: string): keyof typeof Feather.glyphMap => {
     switch (routeName) {
@@ -22,6 +25,28 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
   };
 
       const visibleRoutes = ['journal', 'recaps', 'search'];
+
+  // Animation for new entry hint
+  useEffect(() => {
+    // Start bounce animation when component mounts
+    setTimeout(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(bounceAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(bounceAnim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ]),
+        { iterations: 3 }
+      ).start();
+    }, 1500); // Start after 1.5 seconds of app opening
+  }, []);
 
     return (
     <View style={[styles.container, { paddingBottom: bottom }]}>
@@ -59,15 +84,31 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
             })}
         </View>
 
-          <TouchableOpacity
-            onPress={() => router.push('/new-entry')}
-            style={styles.newButtonContainer}
-          >
-            <View style={styles.newButton}>
-              <Feather name="edit" size={20} color="#fff" />
-              <Text style={styles.newButtonText}>New</Text>
-            </View>
-          </TouchableOpacity>
+          <View style={styles.newButtonContainer}>
+            <Animated.View
+              style={[
+                styles.newButton,
+                {
+                  transform: [
+                    {
+                      translateY: bounceAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -12]
+                      })
+                    }
+                  ]
+                }
+              ]}
+            >
+              <TouchableOpacity
+                onPress={() => router.push('/new-entry')}
+                style={styles.newButton}
+              >
+                <Feather name="edit" size={20} color="#fff" />
+                <Text style={styles.newButtonText}>New</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
       </View>
     </View>
   );
@@ -141,6 +182,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
+  },
+  createHint: {
+    position: 'absolute',
+    top: -45,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  createHintText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   label: {
     fontSize: 12,

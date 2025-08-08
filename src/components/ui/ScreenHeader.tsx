@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+
 import { useRouter } from 'expo-router';
 
 interface ScreenHeaderProps {
@@ -8,13 +9,19 @@ interface ScreenHeaderProps {
   showShareIcon?: boolean;
   onSharePress?: () => void;
   rightComponent?: React.ReactNode;
+  onBack?: () => void;
+  showCalendarIcon?: boolean;
 }
 
-const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = true, showShareIcon = false, onSharePress, rightComponent }) => {
+const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = true, showShareIcon = false, onSharePress, rightComponent, onBack, showCalendarIcon = false }) => {
   const router = useRouter();
 
   const handleBackPress = () => {
-    router.back();
+    if (onBack) {
+      onBack();
+    } else {
+      router.back();
+    }
   };
 
   return (
@@ -26,7 +33,10 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = tru
       ) : (
         <View style={styles.headerSpacer} />
       )}
-      <Text style={styles.headerTitle}>{title}</Text>
+            <View style={styles.titleContainer}>
+                {showCalendarIcon && <Image source={require('../../assets/images/calendar.png')} style={styles.calendarIcon} />}
+        <Text style={styles.headerTitle}>{title}</Text>
+      </View>
       {rightComponent ? (
         rightComponent
       ) : showShareIcon ? (
@@ -58,10 +68,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+    titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+    calendarIcon: {
+    width: 20,
+    height: 20,
+    tintColor: '#2E2E2E',
+  },
   headerTitle: {
-    fontSize: 18,
+        fontSize: 16,
     fontWeight: '600',
-    color: '#2F4858',
+    color: '#2E2E2E',
   },
   headerSpacer: {
     width: 32,
@@ -80,12 +100,12 @@ const styles = StyleSheet.create({
   shareIcon: {
     width: 20,
     height: 20,
-    tintColor: '#2F4858',
+    tintColor: '#2E2E2E',
   },
   backIcon: {
     width: 24,
     height: 24,
-    tintColor: '#2F4858',
+    tintColor: '#2E2E2E',
   },
 });
 
