@@ -8,6 +8,7 @@ import { Colors } from '@/theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Carousel from 'react-native-reanimated-carousel';
+import ImageViewing from 'react-native-image-viewing';
 
 const { width, height } = Dimensions.get('window');
 const heroHeight = width * 1.1; // Reduced height as per user request
@@ -82,6 +83,7 @@ const JournalEntryViewScreen = () => {
 
     const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date();
     const allMedia = entry.media || [];
+    const imagesForViewer = allMedia.map(item => ({ uri: item.url }));
 
     const handleImagePress = (index: number) => {
         setCurrentImageIndex(index);
@@ -198,52 +200,23 @@ const JournalEntryViewScreen = () => {
             />
 
             {/* Full Screen Image Gallery Modal */}
-            <Modal
+            <ImageViewing
+                images={imagesForViewer}
+                imageIndex={currentImageIndex}
                 visible={showFullScreenGallery}
-                transparent={false}
-                animationType="fade"
                 onRequestClose={() => setShowFullScreenGallery(false)}
-            >
-                <StatusBar hidden />
-                <View style={styles.fullScreenContainer }>
+                HeaderComponent={() => (
                     <TouchableOpacity
-                        style={[styles.closeButton, { left: 20 }]}
+                        style={[styles.fullScreenCloseButton, { top: insets.top + 10 }]}
                         onPress={() => setShowFullScreenGallery(false)}
                     >
-                        <Image source={require('../../../assets/images/Chevron_Left_icon.png')} style={styles.iconImage} />
+                        <Image
+                            source={require('../../../assets/images/Chevron_Left_icon.png')}
+                            style={styles.closeIcon}
+                        />
                     </TouchableOpacity>
-                    <FlatList
-                        data={allMedia}
-                        horizontal
-                        pagingEnabled
-                        showsHorizontalScrollIndicator={false}
-                        keyExtractor={(item, index) => index.toString()}
-                        renderItem={({ item, index }) => (
-                            <View style={styles.fullScreenImageContainer}>
-                                <Image
-                                    source={{ uri: item.url }}
-                                    style={styles.fullScreenImage}
-                                    resizeMode="contain"
-                                />
-                            </View>
-                        )}
-                        initialScrollIndex={currentImageIndex}
-                        getItemLayout={(data, index) => ({
-                            length: width,
-                            offset: width * index,
-                            index,
-                        })}
-                        windowSize={3}
-                        initialNumToRender={1}
-                        maxToRenderPerBatch={1}
-                    />
-                    <View style={[styles.fullScreenPagination, { bottom: insets.bottom + 20 }]}>
-                        <Text style={styles.paginationText}>
-                            {currentImageIndex + 1} / {allMedia.length}
-                        </Text>
-                    </View>
-                </View>
-            </Modal>
+                )}
+            />
         </View>
     );
 };
@@ -268,33 +241,10 @@ const styles = StyleSheet.create({
         height: heroHeight,
         position: 'relative',
     },
-    carouselImageContainer: {
-        width: width,
-        height: heroHeight,
-    },
     carouselImage: {
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
-    },
-    paginationContainer: {
-        position: 'absolute',
-        bottom: 20,
-        left: 0,
-        right: 0,
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    paginationDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        marginHorizontal: 4,
-    },
-    paginationDotActive: {
-        backgroundColor: 'white',
     },
     headerButtons: {
         flexDirection: 'row',
@@ -319,7 +269,6 @@ const styles = StyleSheet.create({
         height: 24,
         tintColor: 'white',
     },
-    
     contentContainer: {
         padding: 20,
         backgroundColor: Colors.white,
@@ -411,36 +360,15 @@ const styles = StyleSheet.create({
         height: '100%',
         borderRadius: 2,
     },
-    fullScreenContainer: {
-        flex: 1,
-        marginTop:25,   
-        backgroundColor: 'black',
-    },
-    closeButton: {
+    fullScreenCloseButton: {
         position: 'absolute',
         left: 20,
-        zIndex: 1,
+        zIndex: 10,
     },
-    fullScreenImageContainer: {
-        width: width,
-        height: height,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    fullScreenImage: {
-        width: '100%',
-        height: '100%',
-    },
-    fullScreenPagination: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        alignItems: 'center',
-    },
-    paginationText: {
-        color: 'white',
-        fontSize: 16,
-        fontFamily: 'Poppins-SemiBold',
+    closeIcon: {
+        width: 24,
+        height: 24,
+        tintColor: Colors.white,
     },
 });
 

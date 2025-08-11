@@ -207,23 +207,10 @@ const NewEntryScreen = () => {
       <View style={styles.headerRightContainer}>
         <TouchableOpacity
           style={[styles.actionButton, isDisabled && styles.disabledActionButton]}
-          onPress={() => {
-            if (isPreview) {
-              setIsPreview(false);
-            } else {
-              setIsPreview(true);
-            }
-          }}
+          onPress={handleSave}
           disabled={isDisabled}
         >
-          {isPreview ? (
-            <Image 
-              source={require('../../../assets/images/edit-2_icon.png')} 
-              style={[styles.headerIcon, isDisabled && styles.disabledHeaderIcon]} 
-            />
-          ) : (
-            <Ionicons name="checkmark" size={20} color={isDisabled ? '#BDBDBD' : '#5D9275'} />
-          )}
+          <Ionicons name="checkmark" size={20} color={isDisabled ? '#BDBDBD' : '#5D9275'} />
         </TouchableOpacity>
       </View>
     );
@@ -331,36 +318,14 @@ const NewEntryScreen = () => {
       </ScrollView>
 
       <View style={[styles.toolbar, { paddingBottom: Platform.OS === 'ios' ? 20 : 0 }]}>
-        <TouchableOpacity style={styles.toolbarButton} onPress={pickMedia}>
-          <Image source={require('../../../assets/images/gallery_icon.png')} style={[styles.toolbarIcon, { tintColor: '#A09D94' }]} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.toolbarButton} onPress={takePhoto}>
-          <Image source={require('../../../assets/images/Camera_icon.png')} style={[styles.toolbarIcon, { tintColor: '#A09D94' }]} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.toolbarButton}
-          onPress={() => {
-            if (isPreview) {
-              handleSave();
-            } else {
-              setIsPreview(true);
-            }
-          }}
-
-          disabled={isLoading || !entryText.trim() || !childId}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#5D9275" />
-          ) : (
-            <Image
-              source={require('../../../assets/images/Send_icon.png')}
-              style={[
-                styles.sendIcon,
-                (!entryText.trim() || !childId) ? styles.disabledIcon : { tintColor: '#5D9275' }
-              ]}
-            />
-          )}
-        </TouchableOpacity>
+        <View style={styles.toolbarActionsLeft}>
+          <TouchableOpacity style={styles.toolbarButton} onPress={pickMedia}>
+            <Image source={require('../../../assets/images/gallery_icon.png')} style={[styles.toolbarIconGallery, { tintColor: '#A09D94' }]} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.toolbarButton} onPress={takePhoto}>
+            <Image source={require('../../../assets/images/Camera_icon.png')} style={[styles.toolbarIconCamera, { tintColor: '#A09D94' }]} />
+          </TouchableOpacity>
+        </View>
       </View>
       <ShareBottomSheet
         isVisible={showShareSheet}
@@ -413,7 +378,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectedChild: {
-    borderWidth: 0.25,
+    borderWidth: .5,
     borderColor: Colors.primary,
   },
   selectedChildName: {
@@ -488,28 +453,42 @@ const styles = StyleSheet.create({
   },
   toolbar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     paddingVertical: 10,
+    paddingHorizontal: 20, 
     borderTopWidth: 1,
     borderTopColor: Colors.lightGrey,
     backgroundColor: Colors.white,
   },
+  toolbarActionsLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
   toolbarButton: {
-    padding: 2,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   toolbarIcon: {
-    width: 25,
-    height: 25,
-    resizeMode: 'contain',
+    width: 28,
+    height: 28,
+    resizeMode: 'cover',
+  },
+  toolbarIconCamera: {
+    width: 28,
+    height: 28,
+    resizeMode: 'cover',
+  },
+  toolbarIconGallery: {
+    width: 24,
+    height: 24,
+    resizeMode: 'cover',
   },
   disabledIcon: {
     opacity: 0.4,
-  },
-  sendIcon: {
-    width: 30,
-    height: 30,
-    resizeMode: 'contain',
   },
   headerRightContainer: {
     flexDirection: 'row',

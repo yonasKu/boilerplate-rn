@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   dateContainer: {
-    alignSelf:'flex-start',
+    alignSelf:'center',
     alignItems: 'flex-end',
     //justifyContent: 'center',
     marginRight: 6,
