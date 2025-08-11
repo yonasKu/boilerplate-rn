@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.offWhite,
     },
 
     header: {
@@ -453,6 +453,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 10,
+        backgroundColor: Colors.white,
         borderBottomWidth: 1,
         borderBottomColor: Colors.offWhite,
         gap: 16,
@@ -484,6 +485,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
+        backgroundColor: Colors.white,
     },
     listContentContainer: {
         paddingHorizontal: 16,

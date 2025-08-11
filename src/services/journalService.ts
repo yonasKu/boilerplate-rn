@@ -179,17 +179,38 @@ export const toggleLike = async (entryId: string, userId: string) => {
 
 // 8. Calculates child's age at a specific date
 export const calculateChildAgeAtDate = (birthDate: Date, entryDate: Date): string => {
-  const diffTime = Math.abs(entryDate.getTime() - birthDate.getTime());
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  const years = Math.floor(diffDays / 365);
-  const months = Math.floor((diffDays % 365) / 30);
-  const days = Math.floor((diffDays % 365) % 30);
-  
-  let ageString = '';
-  if (years > 0) ageString += `${years} year${years > 1 ? 's' : ''}`;
-  if (months > 0) ageString += `${ageString ? ', ' : ''}${months} month${months > 1 ? 's' : ''}`;
-  if (days > 0 || (!years && !months)) ageString += `${ageString ? ', ' : ''}${days} day${days > 1 ? 's' : ''}`;
-  
-  return ageString || '0 days';
+  const birth = new Date(birthDate);
+  const entry = new Date(entryDate);
+
+  let years = entry.getFullYear() - birth.getFullYear();
+  let months = entry.getMonth() - birth.getMonth();
+  let days = entry.getDate() - birth.getDate();
+
+  if (days < 0) {
+    months--;
+    const lastMonth = new Date(entry.getFullYear(), entry.getMonth(), 0);
+    days += lastMonth.getDate();
+  }
+
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  const parts = [];
+  if (years > 0) {
+    parts.push(`${years} year${years > 1 ? 's' : ''}`);
+  }
+  if (months > 0) {
+    parts.push(`${months} month${months > 1 ? 's' : ''}`);
+  }
+  if (days > 0) {
+    parts.push(`${days} day${days > 1 ? 's' : ''}`);
+  }
+
+  if (parts.length === 0) {
+    return 'Today';
+  }
+
+  return parts.join(', ');
 };

@@ -178,6 +178,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: Colors.offWhite,
   },
   empty: {
     borderWidth: 1,

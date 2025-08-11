@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import TimelineDropdown, { TimelineOption } from './TimelineDropdown';
+import { Colors } from '@/theme';
 
 interface JournalFilterProps {
   onAgePress: () => void;
@@ -94,30 +95,28 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: 10,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    backgroundColor: Colors.offWhite,
   },
   chip: {
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
+    borderColor: Colors.offWhite,
+    backgroundColor: Colors.white,
     minWidth: 80, // Ensure a minimum width for the filter buttons
     alignItems: 'center', // Center text horizontally
   },
   activeChip: {
-    backgroundColor: '#6D9C74',
-    borderColor: '#6D9C74',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   chipText: {
-    color: '#333333',
+    color: Colors.darkGrey,
     fontWeight: '500',
   },
   activeChipText: {
-    color: '#FFFFFF',
+    color: Colors.white,
   },
   chipContent: {
     flexDirection: 'row',

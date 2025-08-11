@@ -126,40 +126,45 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
         <View style={styles.topSection}>
 
           <View style={styles.contentContainer}>
-            <View style={styles.headerActions}>
-              {entry.isMilestone && (
-                <Ionicons name="trophy-outline" size={20} color={Colors.primary} style={styles.actionIcon} />
-              )}
-              {onLike && (
-                <TouchableOpacity onPress={onLike}>
-                  <Ionicons
-                    name={isLiked ? 'heart' : 'heart-outline'}
-                    size={22}
-                    color={isLiked ? Colors.error : Colors.mediumGrey}
-                    style={styles.actionIcon}
-                  />
-                </TouchableOpacity>
-              )}
-              {onShare && (
-                <TouchableOpacity onPress={onShare} style={styles.actionIcon}>
-                  <Image
-                    source={require('@/assets/images/Share_icon.png')}
-                    style={styles.shareIcon}
-                  />
-                </TouchableOpacity>
-              )}
-            </View>
             <View style={{ flexDirection: 'row', flexShrink: 1, width: '100%' ,overflow:'hidden',alignItems:'center'}}>
               <View style={styles.dateContainer}>
                 <Text style={styles.dateDayOfWeek}>{formattedDate.dayOfWeek}</Text>
                 <Text style={styles.dateDay}>{formattedDate.day}</Text>
                 <Text style={styles.dateMonth}>{formattedDate.month}</Text>
               </View>
-              <Text style={styles.entryText} numberOfLines={4}>{entry.text}</Text>
+              <Text style={styles.entryText} numberOfLines={3}>{entry.text}</Text>
             </View>
           </View>
         </View>
         {renderMedia()}
+        <View style={styles.footerActions}>
+              <View style={styles.ageContainer}>
+            <Text style={styles.childAge}>{entry.childAgeAtEntry}</Text>
+          </View>
+          <View style={styles.actionButtons}>
+            {entry.isMilestone && (
+              <Ionicons name="trophy-outline" size={20} color={Colors.primary} style={styles.actionIcon} />
+            )}
+            {onLike && (
+              <TouchableOpacity onPress={onLike}>
+                <Ionicons
+                  name={isLiked ? 'heart' : 'heart-outline'}
+                  size={22}
+                  color={isLiked ? Colors.error : Colors.mediumGrey}
+                  style={styles.actionIcon}
+                />
+              </TouchableOpacity>
+            )}
+            {onShare && (
+              <TouchableOpacity onPress={onShare} style={styles.actionIcon}>
+                <Image
+                  source={require('@/assets/images/Share_icon.png')}
+                  style={styles.shareIcon}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
       </View>
     </Pressable>
   );
@@ -167,9 +172,19 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#F8F6F4',
+    backgroundColor: Colors.white,
     borderRadius: 16,
     overflow: 'hidden',
+    padding: 4,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.41,
+    elevation: 2,
+   
   },
   topSection: {
     flexDirection: 'row',
@@ -206,10 +221,12 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
   },
-  headerActions: {
+  footerActions: {
+    padding: 4,
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginBottom: 4,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
   },
   actionIcon: {
     marginLeft: 12,
@@ -217,6 +234,20 @@ const styles = StyleSheet.create({
   shareIcon: {
     width: 22,
     height: 22,
+  },
+  ageContainer: {
+    flex: 1,
+  },
+  childAge: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: Colors.lightGrey,
+    fontFamily: 'Poppins',
+    fontWeight: '400',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   entryText: {
     fontSize: 14,
@@ -228,7 +259,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 16,
     overflow: 'hidden',
-    height: 220, // Set a fixed height for the container
+    height: 170, // Decreased from 220 to 160 for smaller images
   },
   leftColumn: {
     flex: 1,
@@ -255,7 +286,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    marginVertical: 5,  
+    marginVertical: 2,  // Decreased from 5 to 2 for tighter overlay
     backgroundColor: 'rgba(46, 139, 87, 0.3)', // Green overlay
     justifyContent: 'center',
     alignItems: 'center',
