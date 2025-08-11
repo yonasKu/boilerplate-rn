@@ -82,7 +82,7 @@ const NewEntryScreen = () => {
 
   const pickMedia = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       quality: 1,
     });
@@ -90,7 +90,7 @@ const NewEntryScreen = () => {
     if (!result.canceled) {
       const newMedia = result.assets.map(asset => ({
         uri: asset.uri,
-        type: asset.type === 'video' ? 'video' : 'image' as 'image' | 'video'
+        type: 'image' as 'image'
       }));
       setMedia(prevMedia => [...prevMedia, ...newMedia]);
     }
@@ -104,6 +104,7 @@ const NewEntryScreen = () => {
     }
 
     let result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 1,
@@ -345,6 +346,7 @@ const NewEntryScreen = () => {
               setIsPreview(true);
             }
           }}
+
           disabled={isLoading || !entryText.trim() || !childId}
         >
           {isLoading ? (
@@ -411,6 +413,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectedChild: {
+    borderWidth: 0.25,
     borderColor: Colors.primary,
   },
   selectedChildName: {

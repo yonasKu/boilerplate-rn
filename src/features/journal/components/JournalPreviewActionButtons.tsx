@@ -8,7 +8,7 @@ interface JournalPreviewActionButtonsProps {
   isMilestone: boolean;
   onToggleFavorite: () => void;
   onToggleMilestone: () => void;
-  onShare: () => void;
+  onShare?: () => void;
 }
 
 const JournalPreviewActionButtons: React.FC<JournalPreviewActionButtonsProps> = ({ 
@@ -20,13 +20,15 @@ const JournalPreviewActionButtons: React.FC<JournalPreviewActionButtonsProps> = 
 }) => {
   return (
     <View style={styles.toggleContainer}>
-      <TouchableOpacity
-        style={[styles.toggleButton, { borderColor: '#E0E0E0', backgroundColor: '#F5F5F5' }]}
-        onPress={onShare}
-      >
-        <Image source={require('../../../assets/images/Share_icon.png')} style={[styles.milestoneIcon, { tintColor: '#555' }]} />
-        <Text style={styles.toggleText}>Share</Text>
-      </TouchableOpacity>
+      {onShare && (
+        <TouchableOpacity
+          style={[styles.toggleButton, { borderColor: '#E0E0E0', backgroundColor: '#F5F5F5' }]}
+          onPress={onShare}
+        >
+          <Image source={require('../../../assets/images/Share_icon.png')} style={[styles.milestoneIcon, { tintColor: '#555' }]} />
+          <Text style={styles.toggleText}>Share</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity
         style={[styles.toggleButton, isFavorited && styles.activeToggleButton]}
         onPress={onToggleFavorite}
