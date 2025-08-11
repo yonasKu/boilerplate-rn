@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
 import { useRouter } from 'expo-router';
+import { Colors } from '@/theme';
 
 interface ScreenHeaderProps {
   title: string;
@@ -57,14 +58,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   backButton: {
     padding: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: Colors.lightGrey,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -76,12 +77,12 @@ const styles = StyleSheet.create({
     calendarIcon: {
     width: 20,
     height: 20,
-    tintColor: '#2E2E2E',
+    tintColor: Colors.darkGrey,
   },
   headerTitle: {
         fontSize: 16,
     fontWeight: '600',
-    color: '#2E2E2E',
+    color: Colors.darkGrey,
   },
   headerSpacer: {
     width: 32,
@@ -93,19 +94,19 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: Colors.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
   shareIcon: {
     width: 20,
     height: 20,
-    tintColor: '#2E2E2E',
+    tintColor: Colors.darkGrey,
   },
   backIcon: {
     width: 24,
     height: 24,
-    tintColor: '#2E2E2E',
+    tintColor: Colors.darkGrey,
   },
 });
 

@@ -7,6 +7,8 @@ import { useAuth } from '../../../context/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadUserProfileImage, deleteUserProfileImage } from '../../../services/userService';
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
+import { Colors } from '../../../theme/colors';
+import { Button } from '../../../components/Button';
 
 const MyProfileScreen = () => {
     const insets = useSafeAreaInsets();
@@ -188,13 +190,13 @@ const MyProfileScreen = () => {
                 </View>
 
                 <View style={styles.footer}>
-                  <TouchableOpacity 
-                    style={[styles.button, isLoading && styles.buttonDisabled]} 
-                    onPress={handleSaveChanges}
-                    disabled={isLoading}
-                  >
-                      <Text style={styles.buttonText}>{isLoading ? 'Saving...' : 'Save Changes'}</Text>
-                  </TouchableOpacity>
+                    <Button 
+                        title="Save Changes"
+                        onPress={handleSaveChanges}
+                        loading={isLoading}
+                        disabled={isLoading}
+                        size="large"
+                    />
                 </View>
             </ScrollView>
         </View>
@@ -204,7 +206,7 @@ const MyProfileScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: Colors.white,
     },
     scrollContainer: {
         flexGrow: 1,
@@ -218,7 +220,7 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: Colors.white,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -240,24 +242,24 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        backgroundColor: Colors.white,
         borderRadius: 55,
     },
     label: {
-        color: '#2F4858',
+        color: Colors.darkGrey,
         marginBottom: 8,
         fontSize: 16,
         fontWeight: '500',
     },
     asterisk: {
-        color: '#E58C8A',
+        color: Colors.error,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: Colors.lightGrey,
         borderRadius: 12,
         paddingHorizontal: 15,
         height: 55,
@@ -266,7 +268,7 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: 16,
-        color: '#2F4858',
+        color: Colors.darkGrey,
     },
     pickerWrapper: {
         marginBottom: 20,
@@ -275,53 +277,47 @@ const styles = StyleSheet.create({
     pickerText: {
         flex: 1,
         fontSize: 16,
-        color: '#2F4858',
+        color: Colors.darkGrey,
     },
     arrowIcon: {
         width: 20,
         height: 20,
-        tintColor: '#A9A9A9',
+        tintColor: Colors.mediumGrey,
     },
     optionsContainer: {
         position: 'absolute',
         top: '100%',
-        right: 0,
-        width: 200,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        width: '100%',
+        backgroundColor: Colors.white,
+        borderRadius: 16,
         marginTop: 8,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        paddingVertical: 10,
+        borderColor: Colors.lightGrey,
+        padding: 8,
         zIndex: 1,
         elevation: 3,
-        shadowColor: '#000',
+        shadowColor: Colors.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
     },
     optionItem: {
-        paddingVertical: 5,
-        width: '100%',
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        paddingHorizontal: 15,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
     },
     optionText: {
-        fontSize: 14,
-        color: '#A9A9A9',
-        paddingVertical: 10,
+        fontSize: 16,
+        fontFamily: 'Poppins',
+        color: Colors.darkGrey,
     },
     selectedOptionButton: {
-        backgroundColor: '#E6F3EE',
-        borderRadius: 16,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        alignSelf: 'flex-end',
+        backgroundColor: Colors.lightPink,
+        borderRadius: 12,
     },
     selectedOptionText: {
-        color: '#5D9275',
+        color: Colors.primary,
         fontWeight: '600',
+        padding: 12,
     },
     footer: {
         flex: 1,
@@ -329,19 +325,19 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     button: {
-        backgroundColor: '#5D9275',
+        backgroundColor: Colors.primary,
         paddingVertical: 18,
         borderRadius: 16,
         alignItems: 'center',
     },
     buttonDisabled: {
-        backgroundColor: '#A0A0A0',
+        backgroundColor: Colors.mediumGrey,
         opacity: 0.7,
     },
     buttonText: {
-        color: '#FFFFFF',
+        color: Colors.white,
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '600',
     },
 });
 

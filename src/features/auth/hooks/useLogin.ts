@@ -98,7 +98,7 @@ export const useLogin = () => {
             if (!status.hasProfile) {
                 router.replace('/(auth)/add-profile');
             } else if (!status.hasChild) {
-                router.replace('/(auth)/add-child-details');
+                router.replace('/(auth)/add-profile');
             } else {
                 router.replace('/(main)/(tabs)/journal');
             }
@@ -190,6 +190,36 @@ export const useLogin = () => {
         } catch (error) {
             console.error('Google Sign-In Error:', error);
             Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');
+        }
+    };
+
+    const toggleBiometricSwitch = async (value: boolean) => {
+        if (value) {
+            // The user wants to enable biometrics
+            if (!email || !password) {
+                Alert.alert(
+                    'Enable Biometrics',
+                    'Please enter your email and password first to enable biometric login.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+            try {
+                await biometricService.enableBiometric(email, password);
+                setBiometricEnabled(true);
+                Alert.alert('Success', 'Biometric login has been enabled.');
+            } catch (error: any) {
+                Alert.alert('Error', `Failed to enable biometric login: ${error.message}`);
+            }
+        } else {
+            // The user wants to disable biometrics
+            try {
+                await biometricService.disableBiometric();
+                setBiometricEnabled(false);
+                Alert.alert('Success', 'Biometric login has been disabled.');
+            } catch (error: any) {
+                Alert.alert('Error', `Failed to disable biometric login: ${error.message}`);
+            }
         }
     };
 
@@ -364,6 +394,7 @@ export const useLogin = () => {
         handleSendResetEmail,
         handleGoogleSignIn,
         handleBiometricLogin,
-        checkBiometricAvailability
+        checkBiometricAvailability,
+        toggleBiometricSwitch
     };
 };

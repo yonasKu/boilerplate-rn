@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Image, ActivityIndicator, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useLogin } from '../hooks/useLogin';
 import { router } from 'expo-router';
+import { Colors } from '../../../theme/colors';
+import { Button } from '../../../components/Button';
 
 
 export default function LoginScreen() {
@@ -24,154 +26,166 @@ export default function LoginScreen() {
         biometricAvailable,
         biometricEnabled,
         biometricType,
-        
+
         // Functions
         handleLogin,
         handleForgotPassword,
         handleSendResetEmail,
         handleGoogleSignIn,
         handleBiometricLogin,
-        checkBiometricAvailability
+        checkBiometricAvailability,
+        toggleBiometricSwitch
     } = useLogin();
 
 
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-            <ScrollView contentContainerStyle={styles.scrollContainer}>
+            <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+            <KeyboardAvoidingView
+                style={styles.keyboardAvoidingView}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContainer}>
 
 
-                <View style={styles.logoContainer}>
-                    <Image source={require('../../../assets/images/Logo_text.png')} style={styles.logo} />
-                </View>
+                    <View style={styles.logoContainer}>
+                        <Image source={require('../../../assets/images/Logo_Icon_small.png')} style={styles.logo} />
+                    </View>
 
-                <Text style={styles.label}>Email<Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.inputContainer}>
-                    <Image source={require('../../../assets/images/sms.png')} style={styles.inputIcon} />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                </View>
-
-                <Text style={styles.label}>Password<Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.inputContainer}>
-                    <Image source={require('../../../assets/images/password-check.png')} style={styles.inputIcon} />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Password"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={!isPasswordVisible}
-                    />
-                    <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
-                        <Image source={require('../../../assets/images/eye.png')} style={{ width: 24, height: 24, tintColor: '#A9A9A9' }} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.row}>
-                    <TouchableOpacity style={styles.checkboxContainer} onPress={() => setRememberMe(!rememberMe)}>
-                        <View style={[styles.checkbox, rememberMe && styles.checkedCheckbox]} />
-                        <Text style={styles.checkboxLabel}>Remember Me</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleForgotPassword}>
-                        <Text style={styles.forgotPassword}>Forgot Password</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.loginRow}>
-                    <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={isLoading}>
-                        {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Log in</Text>}
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.faceIdButton, !biometricEnabled && styles.disabledFaceIdButton]} 
-                        onPress={handleBiometricLogin}
-                        disabled={!biometricEnabled}
-                    >
-                        <Image 
-                            source={require('../../../assets/images/iconoir_face-id.png')} 
-                            style={[styles.faceIdIcon, !biometricEnabled && styles.disabledFaceIdIcon]} 
-                        />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.dividerContainer}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.orText}>Or</Text>
-                    <View style={styles.dividerLine} />
-                </View>
-
-                <View style={styles.socialContainer}>
-                    <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
-                        <Image source={require('../../../assets/images/Google.png')} style={styles.socialIcon} />
-                        <Text style={styles.socialButtonText}>Google</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.socialButton}>
-                        <Image source={require('../../../assets/images/Apple.png')} style={styles.socialIcon} />
-                        <Text style={styles.socialButtonText}>Apple</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.footerTextContainer}>
-                    <Text style={styles.termsText}>By clicking continue you agree to our</Text>
-                    <Text style={styles.termsText}>
-                        <Text style={styles.linkText}>Terms of Use</Text> and <Text style={styles.linkText}>Privacy Policy</Text>
-                    </Text>
-                </View>
-
-                <Text style={styles.signInText}>
-                    Don't have an account? <TouchableOpacity onPress={() => router.push('/signup')}><Text style={styles.linkText}>Sign Up</Text></TouchableOpacity>
-                </Text>
-            </ScrollView>
-
-            {/* Password Reset Modal */}
-            {showResetModal && (
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>Reset Password</Text>
-                        <Text style={styles.modalDescription}>
-                            Enter your email address and we'll send you a link to reset your password.
-                        </Text>
-
+                    <View style={styles.inputContainer}>
                         <TextInput
-                            style={styles.modalInput}
-                            placeholder="Enter your email"
-                            value={resetEmail}
-                            onChangeText={setResetEmail}
+                            style={styles.input}
+                            placeholder="Email address *"
+                            placeholderTextColor={Colors.black}
+                            value={email}
+                            onChangeText={setEmail}
                             keyboardType="email-address"
                             autoCapitalize="none"
+                            accessibilityLabel="Email address input"
                         />
+                    </View>
 
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.cancelButton]}
-                                onPress={() => setShowResetModal(false)}
-                            >
-                                <Text style={styles.cancelButtonText}>Cancel</Text>
-                            </TouchableOpacity>
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Password *"
+                            placeholderTextColor={Colors.black}
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!isPasswordVisible}
+                            accessibilityLabel="Password input"
+                        />
+                        <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
+                            <Image source={require('../../../assets/images/eye.png')} style={{ width: 24, height: 24, tintColor: Colors.mediumGrey }} />
+                        </TouchableOpacity>
+                    </View>
 
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.sendButton]}
-                                onPress={handleSendResetEmail}
-                                disabled={isSendingReset}
-                            >
-                                {isSendingReset ? (
-                                    <ActivityIndicator color="#FFFFFF" />
-                                ) : (
-                                    <Text style={styles.sendButtonText}>Send Reset Email</Text>
-                                )}
-                            </TouchableOpacity>
+                    <View style={styles.faceIdToggleContainer}>
+                        <Text style={styles.faceIdToggleLabel}>Enable Face ID</Text>
+                        <Switch
+                            trackColor={{ false: Colors.lightGrey, true: Colors.primary }}
+                            thumbColor={Colors.white}
+                            ios_backgroundColor={Colors.lightGrey}
+                            onValueChange={toggleBiometricSwitch}
+                            value={biometricEnabled}
+                        />
+                    </View>
+
+                    {biometricAvailable && (
+                        <View style={styles.faceIdToggleContainer}>
+                            <Text style={styles.faceIdToggleLabel}>Enable {biometricType}</Text>
+                            <Switch
+                                trackColor={{ false: Colors.lightGrey, true: Colors.primary }}
+                                thumbColor={Colors.white}
+                                ios_backgroundColor={Colors.lightGrey}
+                                onValueChange={toggleBiometricSwitch}
+                                value={biometricEnabled}
+                            />
+                        </View>
+                    )}
+
+                    <Button
+                        title="Log In"
+                        onPress={() => handleLogin()}
+                        loading={isLoading}
+                        disabled={isLoading}
+                        variant="primary"
+                        size="large"
+                        style={{ paddingVertical: 18, width: '100%', marginVertical: 20 }}
+                    />
+
+                    <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPasswordContainer}>
+                        <Text style={styles.forgotPassword}>Forgot Password?</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.dividerContainer}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.orText}>Or</Text>
+                        <View style={styles.dividerLine} />
+                    </View>
+
+                    <View style={styles.socialContainer}>
+                        <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
+                            <Image source={require('../../../assets/images/google_logo.png')} style={styles.socialIcon} />
+                            <Text style={styles.socialButtonText}>Google</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.socialButton}>
+                            <Image source={require('../../../assets/images/apple_logo.png')} style={styles.socialIcon} />
+                            <Text style={styles.socialButtonText}>Apple</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity onPress={() => router.push('/signup')}>
+                        <Text style={styles.signInText}>
+                            Don't have an account? <Text style={styles.linkText}>Sign Up</Text>
+                        </Text>
+                    </TouchableOpacity>
+                </ScrollView>
+
+                {/* Password Reset Modal */}
+                {showResetModal && (
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContainer}>
+                            <Text style={styles.modalTitle}>Reset Password</Text>
+                            <Text style={styles.modalDescription}>
+                                Enter your email address and we'll send you a link to reset your password.
+                            </Text>
+
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Enter your email"
+                                value={resetEmail}
+                                onChangeText={setResetEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.cancelButton]}
+                                    onPress={() => setShowResetModal(false)}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.sendButton]}
+                                    onPress={handleSendResetEmail}
+                                    disabled={isSendingReset}
+                                >
+                                    {isSendingReset ? (
+                                        <ActivityIndicator color="#FFFFFF" />
+                                    ) : (
+                                        <Text style={styles.sendButtonText}>Send Reset Email</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
-            )}
+                )}
 
-
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }
@@ -185,6 +199,9 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         padding: 20,
     },
+    keyboardAvoidingView: {
+        flex: 1,
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -193,6 +210,9 @@ const styles = StyleSheet.create({
     backButton: {
         padding: 10,
         marginLeft: -10,
+    },
+    forgotPasswordContainer: {
+        alignItems: 'center',
     },
     backIcon: {
         width: 24,
@@ -208,7 +228,8 @@ const styles = StyleSheet.create({
     },
     logoContainer: {
         alignItems: 'center',
-        marginVertical: 40,
+        marginTop: 30,
+        marginBottom: 40,
     },
     logo: {
         width: 150,
@@ -227,24 +248,25 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: Colors.lightGrey,
         borderRadius: 16,
-        paddingHorizontal: 15,
-        marginBottom: 20,
-        height: 60,
+        paddingHorizontal: 16,
+        paddingVertical: 2,
+        marginBottom: 16,
     },
     inputIcon: {
         width: 20,
         height: 20,
         marginRight: 10,
-        tintColor: '#A9A9A9',
+        tintColor: Colors.mediumGrey,
     },
     input: {
         flex: 1,
-        height: '100%',
         fontSize: 16,
+        color: Colors.black,
+        paddingVertical: 18,
     },
     row: {
         flexDirection: 'row',
@@ -265,15 +287,16 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     checkedCheckbox: {
-        backgroundColor: '#5D9275',
+        backgroundColor: Colors.primary,
     },
     checkboxLabel: {
-        color: '#5D9275',
+        color: Colors.primary,
         fontWeight: '500',
     },
     forgotPassword: {
-        color: '#5D9275',
+        color: Colors.lightGrey,
         fontWeight: 'bold',
+        fontSize: 16,
     },
     loginRow: {
         flexDirection: 'row',
@@ -281,55 +304,24 @@ const styles = StyleSheet.create({
         gap: 15,
         marginVertical: 20,
     },
-    loginButton: {
-        flex: 1,
-        backgroundColor: '#6A8A7A', // Updated color from image
-        paddingVertical: 18,
-        borderRadius: 16, // Updated border radius from image
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    footerTextContainer: {
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    termsText: {
-        color: '#A9A9A9',
-        fontSize: 12,
-        lineHeight: 18,
-    },
-    signInText: {
-        textAlign: 'center',
-        color: '#A9A9A9',
-        fontSize: 14,
-    },
-    linkText: {
-        color: '#5D9275',
-    },
     faceIdButton: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: '#F0F0F0',
-        justifyContent: 'center',
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: Colors.primary,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-    },
-    faceIdIcon: {
-        width: 28,
-        height: 28,
-        tintColor: '#333',
+        justifyContent: 'center',
     },
     disabledFaceIdButton: {
-        opacity: 0.5,
+        backgroundColor: Colors.lightGrey,
+    },
+    faceIdIcon: {
+        width: 24,
+        height: 24,
+        tintColor: Colors.white,
     },
     disabledFaceIdIcon: {
-        tintColor: '#999',
+        tintColor: Colors.mediumGrey,
     },
     dividerContainer: {
         flexDirection: 'row',
@@ -339,60 +331,92 @@ const styles = StyleSheet.create({
     dividerLine: {
         flex: 1,
         height: 1,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: Colors.lightGrey,
     },
     orText: {
         marginHorizontal: 15,
-        color: '#A9A9A9',
+        color: Colors.mediumGrey,
         fontSize: 14,
     },
     socialContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: 'column',
+        gap: 16,
         marginBottom: 20,
     },
     socialButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 16,
-        paddingVertical: 18,
-        width: '48%',
+        borderColor: Colors.lightGrey,
+        borderRadius: 50,
+        paddingVertical: 14,
+        width: '100%',
     },
     socialIcon: {
         width: 24,
+        height: 24,
+        marginRight: 10,
+    },
+    socialIcona: {
+        width: 20,
         height: 24,
         marginRight: 10,
         resizeMode: 'contain',
     },
     socialButtonText: {
         fontSize: 16,
-        color: '#2F4858',
+        color: Colors.black,
     },
-
-    // Modal styles
+    footerTextContainer: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    termsText: {
+        color: Colors.mediumGrey,
+        fontSize: 12,
+        lineHeight: 18,
+    },
+    signInText: {
+        marginTop: 10,
+        textAlign: 'center',
+        color: Colors.darkGrey,
+        fontSize: 14,
+    },
+    linkText: {
+        color: Colors.primary,
+    },
+    faceIdToggleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginVertical: 20,
+        paddingHorizontal: 10,
+    },
+    faceIdToggleLabel: {
+        fontSize: 16,
+        color: Colors.darkGrey,
+    },
     modalOverlay: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: Colors.black + '80',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 1000,
     },
     modalContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderRadius: 16,
         padding: 24,
         margin: 20,
         width: '90%',
         maxWidth: 400,
-        shadowColor: '#000',
+        shadowColor: Colors.black,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -404,24 +428,25 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#2F4858',
+        color: Colors.darkGrey,
         marginBottom: 8,
         textAlign: 'center',
     },
     modalDescription: {
         fontSize: 14,
-        color: '#666666',
+        color: Colors.mediumGrey,
         marginBottom: 16,
         textAlign: 'center',
         lineHeight: 20,
     },
     modalInput: {
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: Colors.lightGrey,
         borderRadius: 8,
         padding: 12,
         fontSize: 16,
         marginBottom: 20,
+        color: Colors.black,
     },
     modalButtons: {
         flexDirection: 'row',
@@ -435,20 +460,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     cancelButton: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: Colors.lightGrey,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: Colors.lightGrey,
     },
     cancelButtonText: {
-        color: '#666666',
+        color: Colors.darkGrey,
         fontSize: 16,
         fontWeight: '600',
     },
     sendButton: {
-        backgroundColor: '#4CAF50',
+        backgroundColor: Colors.primary,
     },
     sendButtonText: {
-        color: '#FFFFFF',
+        color: Colors.white,
         fontSize: 16,
         fontWeight: '600',
     },

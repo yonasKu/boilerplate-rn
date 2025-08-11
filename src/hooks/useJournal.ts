@@ -137,5 +137,18 @@ export const useJournal = () => {
     }
   };
 
-  return { entries, isLoading, error, addEntry, updateEntry, deleteEntry, toggleLike };
+  const getEntryById = async (entryId: string) => {
+    setIsLoading(true);
+    try {
+      const entry = await journalService.fetchJournalEntryById(entryId);
+      return entry;
+    } catch (e) {
+      setError('Failed to fetch entry.');
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { entries, isLoading, error, addEntry, updateEntry, deleteEntry, toggleLike, getEntryById };
 };

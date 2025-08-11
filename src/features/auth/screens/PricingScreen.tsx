@@ -1,137 +1,401 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, StatusBar } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, StatusBar, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { Colors } from '../../../theme/colors';
 
 const PricingScreen = () => {
   const router = useRouter();
+  const [showPlans, setShowPlans] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('annual');
 
-    const Feature = ({ text }: { text: string }) => (
+  const handlePayment = () => {
+    // Stub function for payment processing
+    console.log(`${Platform.OS === 'ios' ? 'Apple Pay' : 'Google Pay'} payment initiated`);
+    router.push('/(auth)/checkout');
+  };
+
+  const Feature = ({ text }: { text: string }) => (
     <View style={styles.featureItem}>
-      <Image source={require('../../../assets/images/check.png')} style={styles.checkIcon} />
+      <Feather name="check" size={16} color={Colors.darkGrey} />
       <Text style={styles.featureText}>{text}</Text>
     </View>
   );
 
+  const PlanOption = ({ id, price, billing, popular, saved, selected, onPress }: { id: string; price: string; billing: string; popular: boolean; saved: string | boolean; selected: boolean; onPress: () => void }) => (
+    <TouchableOpacity onPress={onPress} style={[styles.planOption, selected && styles.planOptionSelected]}>
+      <View style={styles.planRadio}>
+        {selected && <View style={styles.planRadioSelected} />}
+      </View>
+      <View style={styles.planDetails}>
+        <Text style={styles.planPrice}>{price}</Text>
+        <Text style={styles.planBilling}>{billing}</Text>
+      </View>
+      {popular && <View style={styles.popularBadge}><Text style={styles.popularBadgeText}>Most popular</Text></View>}
+      {saved && <View style={styles.savedBadge}><Text style={styles.savedBadgeText}>Save {saved}</Text></View>}
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F4F4F4" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <LinearGradient
-          colors={['#6EAD8A', '#5D9275']}
-          style={styles.testimonialCard}
-        >
-          <View style={styles.starsContainer}>
-            {[...Array(5)].map((_, i) => <FontAwesome key={i} name="star" size={16} color="#FFD700" />)}
-          </View>
-          <Text style={styles.testimonialText}>"This app made it so easy to capture all the precious early memories with my baby"</Text>
-          <View style={styles.authorContainer}>
-            <Image source={require('../../../assets/images/sampleProfile.png')} style={styles.avatar} />
-            <View>
-              <Text style={styles.authorName}>Alexandra W</Text>
-              <Text style={styles.authorLocation}>Carlsbad, CA</Text>
-            </View>
-          </View>
-        </LinearGradient>
+        <View style={styles.contentContainer}>
+          <Text style={styles.title}>Start with 10 days free</Text>
+          <Text style={styles.subtitle}>Capture your baby's journey today with:</Text>
 
-        <TouchableOpacity onPress={() => {}}>
-          <Text style={styles.giftLink}>Join today for free!</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.planCard, selectedPlan === 'monthly' && styles.selectedPlan]} onPress={() => setSelectedPlan('monthly')}>
-          <View style={styles.planDetails}>
-            <View style={styles.radioCircle}>
-              {selectedPlan === 'monthly' && <Image source={require('../../../assets/images/check.png')} style={styles.radioCheck} />}
-            </View>
-            <View>
-              <Text style={styles.planTitle}>Monthly</Text>
-              <Text style={styles.planPrice}>$4.99/month</Text>
-            </View>
+          <View style={styles.featuresContainer}>
+            <Feature text="Effortless photo & memory journaling" />
+            <Feature text="AI powered, shareable recaps" />
+            <Feature text="Automatic, secure family sharing & more" />
           </View>
-        </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.planCard, selectedPlan === 'annual' && styles.selectedPlan]} onPress={() => setSelectedPlan('annual')}>
-          <View style={styles.planDetails}>
-            <View style={styles.radioCircle}>
-              {selectedPlan === 'annual' && <Image source={require('../../../assets/images/check.png')} style={styles.radioCheck} />}
+          <View style={styles.testimonialCard}>
+            <View style={styles.testimonialHeader}>
+              <View style={styles.starsContainer}>
+                {[...Array(5)].map((_, i) => (
+                  <Feather key={i} name="star" size={16} color="#FFC700" style={{ marginRight: 2 }} />
+                ))}
+              </View>
+              <View style={styles.authorContainer}>
+                <Text style={styles.authorName}>Alexandria W.</Text>
+                <Image source={require('@/assets/images/sampleProfile.png')} style={styles.authorImage} />
+              </View>
             </View>
-            <View>
-              <Text style={styles.planTitle}>Annual</Text>
-              <Text style={styles.planPrice}>$44.99/year</Text>
-            </View>
+            <Text style={styles.testimonialText}>
+              "This app made it so easy to capture all the precious early memories with my baby"
+            </Text>
           </View>
-          <View style={styles.mostPopularBadge}>
-            <Text style={styles.mostPopularBadgeText}>Most Popular</Text>
-          </View>
-        </TouchableOpacity>
 
-        <Text style={styles.whatsIncluded}>What's included</Text>
-        <Feature text="Effortless photo & memory journaling" />
-        <Feature text="AI-powered, shareable recaps" />
-        <Feature text="Personalized reminders, family access, & more" />
+          {!showPlans && (
+            <View style={styles.pricingInfoContainer}>
+              <Text style={styles.priceText}>Get 10 days free, then just $3.95/month</Text>
+              <Text style={styles.billingText}>(billed $40/year)</Text>
+            </View>
+          )}
+
+
+          {showPlans && (
+            <View style={styles.planSelectorContainer}>
+              <PlanOption
+                id="annual"
+                price="$3.99/month"
+                billing="Billed at $48/year"
+                popular
+                saved="33%"
+                selected={selectedPlan === 'annual'}
+                onPress={() => setSelectedPlan('annual')}
+              />
+              <PlanOption
+                id="monthly"
+                price="$5.99/month"
+                billing="Billed monthly"
+                popular={false}
+                saved={false}
+                selected={selectedPlan === 'monthly'}
+                onPress={() => setSelectedPlan('monthly')}
+              />
+            </View>
+          )}
+          <TouchableOpacity onPress={() => setShowPlans(!showPlans)}>
+            <Text style={styles.seePlansText}>{showPlans ? 'Hide plans' : 'See all plans'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.paymentButton} onPress={handlePayment}>
+            <View style={styles.paymentButtonContent}>
+              <Text style={styles.paymentButtonText}>Subscribe with </Text>
+              <Image
+                source={Platform.OS === 'ios'
+                  ? require('@/assets/images/apple_logo.png')
+                  : require('@/assets/images/google_logo.png')
+                }
+                style={styles.paymentLogo}
+              />
+              <Text style={styles.paymentButtonText}> Pay</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity>
+            <Text style={styles.moreWaysText}>More ways to pay</Text>
+          </TouchableOpacity>
+        </View>
+
 
       </ScrollView>
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.button} onPress={() => router.push('/(auth)/login')}>
-          <Text style={styles.buttonText}>Start Free Trial</Text>
-        </TouchableOpacity>
-        <Text style={styles.trialInfo}>Get 10 days free before being charged</Text>
+        <Text style={styles.footerInfoText}>Get 10 days free before being charged</Text>
+        <Text style={styles.promoText}>
+          Have a promo code? <Text style={styles.redeemText}>Redeem code</Text>
+        </Text>
       </View>
-      
-      {/* <TouchableOpacity 
-        style={styles.continueButton} 
-        onPress={() => router.push('/(auth)/checkout')}
-      >
-        <Text style={styles.continueButtonText}>Continue to Checkout</Text>
-      </TouchableOpacity> */}
-
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContainer: { padding: 20 },
-  testimonialCard: { borderRadius: 20, padding: 20, marginBottom: 15 },
-  starsContainer: { flexDirection: 'row', marginBottom: 10 },
-  testimonialText: { color: '#FFFFFF', fontSize: 16, marginBottom: 15, lineHeight: 24 },
-  authorContainer: { flexDirection: 'row', alignItems: 'center' },
-  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E0E0E0', marginRight: 10 },
-  authorName: { color: '#FFFFFF', fontWeight: 'bold' },
-  authorLocation: { color: '#FFFFFF', opacity: 0.8 },
-  giftLink: { color: '#5A5A5A', textAlign: 'center', marginBottom: 20, fontWeight: 'bold', fontSize: 16 },
-  planCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 12, padding: 20, marginBottom: 15, backgroundColor: '#FFFFFF' },
-  selectedPlan: { borderColor: '#5D9275', borderWidth: 2 },
-  planDetails: { flexDirection: 'row', alignItems: 'center' },
-  planTitle: { fontSize: 18, fontWeight: 'bold', color: '#2F4858' },
-  radioCircle: { width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  radioCheck: { width: 16, height: 16, tintColor: '#5D9275' },
-  mostPopularBadge: { backgroundColor: '#5D9275', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-  mostPopularBadgeText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 12 },
-  planPrice: { fontSize: 16, color: '#2F4858' },
-  whatsIncluded: { fontSize: 18, fontWeight: 'bold', color: '#2F4858', marginBottom: 15, marginTop: 10 },
-  featureItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  featureText: { marginLeft: 10, fontSize: 16, color: '#2F4858' },
-  checkIcon: { width: 20, height: 20, resizeMode: 'contain' },
-  footer: { backgroundColor: '#FFFFFF', marginBottom: 20, padding: 20, borderTopWidth: 1, borderColor: '#E0E0E0' },
-  button: { backgroundColor: '#5D9275', paddingVertical: 18, borderRadius: 16, alignItems: 'center' },
-  buttonText: { color: '#FFFFFF', fontSize: 18, fontWeight: 'bold' },
-  trialInfo: { textAlign: 'center', color: '#E58C8A', marginTop: 10, fontSize: 14 },
-  continueButton: {
-    backgroundColor: '#5D9275',
-    margin: 20,
-    paddingVertical: 18,
-    borderRadius: 16,
+  safeArea: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    //justifyContent: 'space-between',
+  },
+  contentContainer: {
+    marginVertical: 24,
+    padding: 12,
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  header: {
+    width: '100%',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  progressIndicator: {
+    height: 4,
+    width: 60,
+    backgroundColor: Colors.primary,
+    borderRadius: 2,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: Colors.darkGrey,
+    //textAlign: 'center',
+    marginBottom: 12,
+
+  },
+  subtitle: {
+    fontSize: 16,
+    color: Colors.mediumGrey,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontFamily: 'Poppins',
+  },
+  featuresContainer: {
+    alignSelf: 'flex-start',
+    marginBottom: 14,
+    marginLeft: '10%'
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  featureText: {
+    fontSize: 14,
+    color: Colors.darkGrey,
+    marginLeft: 12,
+    fontFamily: 'Poppins',
+  },
+  testimonialCard: {
+    backgroundColor: Colors.lightPink,
+    borderRadius: 12,
+    padding: 20,
+    width: '90%',
+    marginBottom: 32,
+    alignSelf: 'center',
+  },
+  testimonialHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+  },
+  authorContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  continueButtonText: {
-    color: '#FFFFFF',
+  authorName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.darkGrey,
+    marginRight: 8,
+    fontFamily: 'Poppins',
+  },
+  authorImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  testimonialText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.darkGrey,
+    lineHeight: 22,
+    fontFamily: 'Poppins',
+  },
+  pricingInfoContainer: {
+    alignItems: 'center',
+    marginBottom: 12,
+    marginVertical: 25,
+    gap: 4,
+  },
+  priceText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins',
+  },
+  billingText: {
+    fontSize: 14,
+    color: Colors.mediumGrey,
+    marginTop: 4,
+    fontFamily: 'Poppins',
+  },
+  seePlansText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: Colors.darkGrey,
+    textDecorationLine: 'underline',
+    marginBottom: 24,
+    fontFamily: 'Poppins',
+  },
+  paymentButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 6,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '90%',
+    marginBottom: 12,
+  },
+  paymentButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  paymentButtonText: {
+    color: Colors.white,
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'Poppins',
+    marginHorizontal: -8,
   },
+  paymentLogo: {
+    width: 45,
+    height: 25,
+    resizeMode: 'contain',
+  },
+  moreWaysText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: Colors.darkGrey,
+    textDecorationLine: 'underline',
+    marginBottom: 24,
+    fontFamily: 'Poppins',
+  },
+  footer: {
+    alignItems: 'center',
+    marginBottom: 25,
+    paddingTop: 24,
+    width: '100%',
+  },
+  footerInfoText: {
+    fontSize: 14,
+    color: Colors.secondary,
+    marginBottom: 8,
+    fontFamily: 'Poppins',
+  },
+  promoText: {
+    fontSize: 14,
+    color: Colors.mediumGrey,
+    fontFamily: 'Poppins',
+  },
+  redeemText: {
+    fontWeight: 'bold',
+    color: Colors.darkGrey,
+    textDecorationLine: 'underline',
+    fontFamily: 'Poppins',
+  },
+  planSelectorContainer: {
+    width: '95%',
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderRadius: 20,
+    marginBottom: 24,
+    paddingTop: 20,
+    paddingBottom: 10,
+    paddingHorizontal: 10,
+    position: 'relative',
+    alignItems: 'center',
+  },
+  planOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    width: '100%',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  planOptionSelected: {
+    borderColor: Colors.primary,
+  },
+  planRadio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  planRadioSelected: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+  },
+  planDetails: {
+    flex: 1,
+  },
+  planPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins',
+  },
+  planBilling: {
+    fontSize: 14,
+    color: Colors.mediumGrey,
+    fontFamily: 'Poppins',
+  },
+  popularBadge: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+    position: 'absolute',
+    top: -18,
+    zIndex: 1,
+  },
+  popularBadgeText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins',
+  },
+  savedBadge: {
+    backgroundColor: Colors.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  savedBadgeText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins',
+  }
 });
 
 export default PricingScreen;

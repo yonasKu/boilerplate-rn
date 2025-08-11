@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, Image, TextInput } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TextInput, StatusBar, TouchableOpacity } from 'react-native';
+import { Button } from '../../../components/Button';
 
 import { useRouter } from 'expo-router';
 
@@ -43,7 +44,7 @@ const PaymentOption: React.FC<PaymentOptionProps> = ({ id, icon, title, subtitle
         <Text style={styles.sectionTitle}>Payment Option</Text>
         <PaymentOption
           id="apple"
-          icon={require('../../../assets/images/Apple.png')}
+          icon={require('../../../assets/images/apple_logo.png')}
           title="Apple Pay"
           subtitle="Pay with Face/Touch ID"
           selected={selectedPayment === 'apple'}
@@ -51,7 +52,7 @@ const PaymentOption: React.FC<PaymentOptionProps> = ({ id, icon, title, subtitle
         />
         <PaymentOption
           id="google"
-          icon={require('../../../assets/images/Google.png')}
+          icon={require('../../../assets/images/google_logo.png')}
           title="Google Pay"
           subtitle="Pay with Google"
           selected={selectedPayment === 'google'}
@@ -76,9 +77,12 @@ const PaymentOption: React.FC<PaymentOptionProps> = ({ id, icon, title, subtitle
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.button} onPress={() => router.replace('/(auth)/success')}>
-          <Text style={styles.buttonText}>Start Free Trial</Text>
-        </TouchableOpacity>
+        <Button 
+          title="Start Free Trial" 
+          onPress={() => router.replace('/(auth)/success')}
+          variant="primary"
+          size="large"
+        />
         <Text style={styles.termsText}>
           By clicking continue you agree to our <Text style={styles.linkText}>Terms of Use</Text> and <Text style={styles.linkText}>Privacy Policy</Text>
         </Text>

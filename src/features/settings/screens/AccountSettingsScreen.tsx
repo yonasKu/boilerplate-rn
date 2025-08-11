@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../../../context/AuthContext';
 import { getUserProfile, UserProfile } from '../../../services/userService';
-import ReminderToast from '../../../components/ui/ReminderToast';
+import { Colors } from '../../../theme/colors';
 
 interface AccordionSectionProps {
   title: string;
@@ -20,7 +20,7 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({ title, children, de
     <View style={styles.section}>
       <TouchableOpacity style={styles.sectionHeader} onPress={() => setIsExpanded(!isExpanded)}>
         <Text style={styles.sectionTitle}>{title}</Text>
-        <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={20} color="#2F4858" />
+        <Feather name={isExpanded ? 'chevron-up' : 'chevron-down'} size={24} color={Colors.mediumGrey} />
       </TouchableOpacity>
       {isExpanded && <View style={styles.sectionContent}>{children}</View>}
     </View>
@@ -30,49 +30,29 @@ const AccordionSection: React.FC<AccordionSectionProps> = ({ title, children, de
 interface ReminderRowProps {
   label: string;
   value: boolean;
-  onValueChange: () => void;
+  onValueChange: (value: boolean) => void;
+  isLast?: boolean;
 }
 
-// Safe date formatting utility
-const formatDate = (dateInput: any): string => {
-  if (!dateInput) return '';
-  
-  try {
-    let date: Date;
-    
-    // Handle Firebase Timestamp objects
-    if (dateInput.toDate) {
-      date = dateInput.toDate();
-    } else if (dateInput instanceof Date) {
-      date = dateInput;
-    } else if (typeof dateInput === 'string' || typeof dateInput === 'number') {
-      date = new Date(dateInput);
-    } else {
-      return '';
-    }
-    
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      return '';
-    }
-    
-    return date.toLocaleDateString();
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return '';
-  }
+const ReminderRow: React.FC<ReminderRowProps> = ({ label, value, onValueChange, isLast = false }) => {
+  return (
+    <View style={[styles.row, isLast && styles.rowLast]}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Switch
+        trackColor={{ false: '#E9E9EA', true: Colors.primary }}
+        thumbColor={Colors.white}
+        ios_backgroundColor="#E9E9EA"
+        onValueChange={onValueChange}
+        value={value}
+      />
+    </View>
+  );
 };
 
-const ReminderRow: React.FC<ReminderRowProps> = ({ label, value, onValueChange }) => (
-  <View style={styles.row}>
+const InfoRow: React.FC<{ label: string; value: string; isLast?: boolean }> = ({ label, value, isLast = false }) => (
+  <View style={[styles.row, isLast && styles.rowLast]}>
     <Text style={styles.rowLabel}>{label}</Text>
-    <Switch
-      trackColor={{ false: '#E0E0E0', true: '#5D9275' }}
-      thumbColor={'#FFFFFF'}
-      ios_backgroundColor="#E0E0E0"
-      onValueChange={onValueChange}
-      value={value}
-    />
+    <Text style={styles.rowValue}>{value}</Text>
   </View>
 );
 
@@ -81,150 +61,114 @@ const AccountSettingsScreen = () => {
   const { user } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showToast, setShowToast] = useState(false);
-  
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
   const [reminders, setReminders] = useState({
-    dailyEntries: false,
-    comment: true,
+    dailyEntries: true,
+    comments: false,
     likes: true,
-    monthlyRecaps: false,
     weeklyRecaps: true,
+    monthlyRecaps: true,
   });
 
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user) return;
-      
       try {
         setLoading(true);
         const profile = await getUserProfile(user.uid);
         setUserProfile(profile);
+        // Here you would also fetch and set reminder preferences
       } catch (error) {
         console.error('Error fetching user profile:', error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchUserData();
   }, [user]);
 
   const handleReminderChange = (key: keyof typeof reminders) => {
-    const newValue = !reminders[key];
-    setReminders(prev => ({ ...prev, [key]: newValue }));
-
-    if (newValue) {
-      setShowToast(true);
-      setTimeout(() => {
-        setShowToast(false);
-      }, 4000); // Hide toast after 4 seconds
-    }
+    setReminders(prev => ({ ...prev, [key]: !prev[key] }));
+    // Here you would typically save the new settings to your backend
   };
 
   if (loading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#5D9275" />
+      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]} >
       <ScreenHeader title="Account settings" />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        
         <AccordionSection title="Security" defaultExpanded={true}>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Email</Text>
-            <Text style={styles.rowValue}>{user?.email || 'Not provided'}</Text>
-          </View>
+          <InfoRow label="Email" value={user?.email || 'user@gmail.com'} />
           <View style={styles.row}>
             <Text style={styles.rowLabel}>Password</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.rowValue}>••••••••</Text>
-              <TouchableOpacity style={{ marginLeft: 8 }}>
-                <Feather name="eye-off" size={16} color="#888" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </AccordionSection>
-
-        <AccordionSection title="Profile" defaultExpanded={true}>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Name</Text>
-            <Text style={styles.rowValue}>{userProfile?.name || 'Not provided'}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Lifestage</Text>
-            <Text style={styles.rowValue}>{userProfile?.lifestage || 'Not set'}</Text>
+            <TouchableOpacity style={styles.passwordContainer} onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
+              <Text style={styles.rowValue}>{isPasswordVisible ? 'password123' : '••••••••'}</Text>
+              <Feather name={isPasswordVisible ? 'eye' : 'eye-off'} size={20} color={Colors.mediumGrey} style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
           </View>
         </AccordionSection>
 
         <AccordionSection title="Notifications" defaultExpanded={true}>
-          <ReminderRow label="Push notifications" value={reminders.dailyEntries} onValueChange={() => handleReminderChange('dailyEntries')} />
+          <ReminderRow label="Daily Entries" value={reminders.dailyEntries} onValueChange={() => handleReminderChange('dailyEntries')} />
+          <ReminderRow label="Comments" value={reminders.comments} onValueChange={() => handleReminderChange('comments')} />
+          <ReminderRow label="Likes" value={reminders.likes} onValueChange={() => handleReminderChange('likes')} />
+          <ReminderRow label="Weekly Recaps" value={reminders.weeklyRecaps} onValueChange={() => handleReminderChange('weeklyRecaps')} />
+          <ReminderRow label="Monthly Recaps" value={reminders.monthlyRecaps} onValueChange={() => handleReminderChange('monthlyRecaps')} isLast={true} />
         </AccordionSection>
 
         <AccordionSection title="Manage Subscription" defaultExpanded={true}>
-           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Current Plan</Text>
-            <Text style={styles.rowValue}>{userProfile?.subscription?.plan || 'Free'}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Status</Text>
-            <Text style={[styles.rowValue, { 
-              color: userProfile?.subscription?.status === 'active' ? '#5D9275' : '#E74C3C' 
-            }]}>
-              {userProfile?.subscription?.status || 'Inactive'}
-            </Text>
-          </View>
-          {userProfile?.subscription?.trialEndDate && (
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Trial Ends</Text>
-              <Text style={styles.rowValue}>
-                {formatDate(userProfile.subscription.trialEndDate)}
-              </Text>
-            </View>
-          )}
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>Member Since</Text>
-            <Text style={styles.rowValue}>
-              {formatDate(userProfile?.createdAt) || 'Loading...'}
-            </Text>
-          </View>
+          <InfoRow label="Current Plan" value="Sproutbook Monthly" />
+          <InfoRow label="Next Billing Date" value="22 August 2025" />
+          <InfoRow label="Amount" value="5.99/mo" isLast={true} />
         </AccordionSection>
-
       </ScrollView>
-      {showToast && <ReminderToast onClose={() => setShowToast(false)} />}
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F7F7',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F7F7F7',
   },
   scrollContainer: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingBottom: 40,
   },
   section: {
-    marginBottom: 16,
+    marginVertical: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EDEDED',
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#2F4858',
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins-SemiBold',
   },
   sectionContent: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -232,19 +176,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 18,
+    paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    borderBottomColor: '#F0F0F0',
+  },
+  rowLast: {
+    borderBottomWidth: 0,
   },
   rowLabel: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 16,
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins-Regular',
   },
   rowValue: {
-    fontSize: 14,
-    color: '#2F4858',
-    fontWeight: '500',
+    fontSize: 16,
+    color: Colors.mediumGrey,
+    fontFamily: 'Poppins-Regular',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 

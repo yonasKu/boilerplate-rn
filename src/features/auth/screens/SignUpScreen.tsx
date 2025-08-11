@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignUp } from '../hooks/useSignUp';
 import { FontAwesome } from '@expo/vector-icons';
+import { Button } from '../../../components/Button';
+import { Colors } from '../../../theme/colors';
 
 const SignUpScreen = () => {
     const router = useRouter();
@@ -26,89 +28,98 @@ const SignUpScreen = () => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-            <ScrollView contentContainerStyle={styles.scrollContainer}>
-                <Text style={styles.title}>Create your account</Text>
+            <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+            <KeyboardAvoidingView
+                style={styles.keyboardAvoidingView}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+                <ScrollView contentContainerStyle={styles.scrollContainer}>
+                    <Text style={styles.title}>Create your account</Text>
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Name *"
+                            value={name}
+                            onChangeText={setName}
+                            placeholderTextColor={Colors.black}
+                            accessibilityLabel="Name input"
+                            autoCapitalize="words"
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Email address *"
+                            placeholderTextColor={Colors.black}
+                            value={email}
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            accessibilityLabel="Email address input"
+                        />
+                    </View>
+                    <View style={styles.inputContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Password *"
+                            placeholderTextColor={Colors.black}
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!isPasswordVisible}
+                            onFocus={() => setIsPasswordFocused(true)}
+                            onBlur={() => setIsPasswordFocused(false)}
+                            accessibilityLabel="Password input"
+                            textContentType="password"
+                        />
+                        <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
+                            <Image source={require('../../../assets/images/eye.png')} style={{ width: 24, height: 24, tintColor: '#A9A9A9' }} />
+                        </TouchableOpacity>
+                    </View>
 
-                <View style={styles.socialContainer}>
-                    <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
-                        <Image source={require('../../../assets/images/Google.png')} style={styles.socialIcon} />
-                        <Text style={styles.socialButtonText}>Google</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.socialButton}>
-                        <Image source={require('../../../assets/images/Apple.png')} style={styles.socialIcona} />
-                        <Text style={styles.socialButtonText}>Apple</Text>
-                    </TouchableOpacity>
-                </View>
+                    {isPasswordFocused && password.length > 0 && (
+                        <PasswordStrengthIndicator validation={passwordValidation} />
+                    )}
 
-                <View style={styles.dividerContainer}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.orText}>Or</Text>
-                    <View style={styles.dividerLine} />
-                </View>
-
-                <Text style={styles.label}>Name<Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.inputContainer}>
-                    <Image source={require('../../../assets/images/user.png')} style={styles.inputIcon} />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Name"
-                        value={name}
-                        onChangeText={setName}
+                    <Button
+                        title="Sign Up"
+                        onPress={handleSignUp}
+                        loading={isLoading}
+                        disabled={isLoading}
+                        variant="primary"
+                        size="large"
+                        style={{ paddingVertical: 16, marginVertical: 20 }}
                     />
-                </View>
 
-                <Text style={styles.label}>Email<Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.inputContainer}>
-                    <Image source={require('../../../assets/images/sms.png')} style={styles.inputIcon} />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="email"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                </View>
+                    <View style={styles.dividerContainer}>
+                        <View style={styles.dividerLine} />
+                        <Text style={styles.orText}>Or</Text>
+                        <View style={styles.dividerLine} />
+                    </View>
 
-                <Text style={styles.label}>Password<Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.inputContainer}>
-                    <Image source={require('../../../assets/images/password-check.png')} style={styles.inputIcon} />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Password"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry={!isPasswordVisible}
-                        onFocus={() => setIsPasswordFocused(true)}
-                        onBlur={() => setIsPasswordFocused(false)}
-                    />
-                    <TouchableOpacity onPress={() => setIsPasswordVisible(!isPasswordVisible)}>
-                        <Image source={require('../../../assets/images/eye.png')} style={{ width: 24, height: 24, tintColor: '#A9A9A9' }} />
+                    <View style={styles.socialContainer}>
+                        <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
+                            <Image source={require('../../../assets/images/google_logo.png')} style={styles.socialIcon} />
+                            <Text style={styles.socialButtonText}>Continue with Google</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.socialButton}>
+                            <Image source={require('../../../assets/images/apple_logo.png')} style={styles.socialIcona} />
+                            <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
+                        <Text style={styles.signInText}>
+                            Already have an account? <Text style={styles.linkText}>Sign In</Text>
+                        </Text>
                     </TouchableOpacity>
-                </View>
-
-                {isPasswordFocused && password.length > 0 && (
-                    <PasswordStrengthIndicator validation={passwordValidation} />
-                )}
-
-                <TouchableOpacity style={styles.button} onPress={handleSignUp} disabled={isLoading} >
-                    {isLoading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.buttonText}>Continue</Text>}
-                </TouchableOpacity>
-
-                <View style={styles.footerTextContainer}>
-                    <Text style={styles.termsText}>By clicking continue you agree to our</Text>
-                    <Text style={styles.termsText}>
-                        <Text style={styles.linkText}>Terms of Use</Text> and <Text style={styles.linkText}>Privacy Policy</Text>
-                    </Text>
-                </View>
-
-                <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-                    <Text style={styles.signInText}>
-                        Already have an account? <Text style={styles.linkText}>Sign In</Text>
-                    </Text>
-                </TouchableOpacity>
-            </ScrollView>
+                </ScrollView>
+            </KeyboardAvoidingView>
+            <View style={styles.footerTextContainer}>
+                <Text style={styles.termsText}>By clicking continue you agree to our</Text>
+                <Text style={styles.termsText}>
+                    <Text style={styles.linkText}>Terms of Use</Text> and <Text style={styles.linkText}>Privacy Policy</Text>
+                </Text>
+            </View>
         </SafeAreaView>
     );
 };
@@ -171,34 +182,33 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         padding: 20,
     },
+    keyboardAvoidingView: {
+        flex: 1,
+    },
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#2F4858',
+        color: Colors.black,
         textAlign: 'center',
-        marginVertical: 50,
-        fontFamily: 'serif',
+        marginTop: 10,
+        marginBottom: 30,
+        fontFamily: 'Poppins',
     },
     socialContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        flexDirection: 'column',
+        gap: 16,
         marginBottom: 20,
     },
     socialButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 16,
-        paddingVertical: 18,
-        width: '48%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        backgroundColor: Colors.white,
+        borderWidth: 1.15,
+        borderColor: Colors.lightGrey,
+        borderRadius: 50,
+        paddingVertical: 14,
+        width: '100%',
     },
     socialIcon: {
         width: 24,
@@ -213,7 +223,7 @@ const styles = StyleSheet.create({
     },
     socialButtonText: {
         fontSize: 16,
-        color: '#2F4858',
+        color: Colors.black,
     },
     dividerContainer: {
         flexDirection: 'row',
@@ -223,86 +233,65 @@ const styles = StyleSheet.create({
     dividerLine: {
         flex: 1,
         height: 1,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: Colors.lightGrey,
     },
     orText: {
         marginHorizontal: 15,
-        color: '#A9A9A9',
+        color: Colors.mediumGrey,
         fontSize: 14,
     },
-    label: {
-        color: '#2F4858',
-        marginBottom: 5,
-        fontSize: 16,
-        fontWeight: '500',
-    },
     asterisk: {
-        color: '#E58C8A',
+        color: Colors.secondary,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: Colors.lightGrey,
         borderRadius: 16,
-        paddingHorizontal: 15,
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        paddingHorizontal: 16,
+        paddingVertical: 2,
+        marginBottom: 16,
+
     },
     inputIcon: {
         width: 20,
         height: 20,
         marginRight: 10,
-        tintColor: '#A9A9A9',
+        tintColor: Colors.mediumGrey,
     },
     input: {
         flex: 1,
         height: 50,
         fontSize: 16,
     },
-    button: {
-        backgroundColor: '#5D9275',
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        elevation: 4,
-    },
-    buttonText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
+
     footerTextContainer: {
+        position: 'absolute',
+        bottom: 30,
+        left: 0,
+        right: 0,
         alignItems: 'center',
-        marginBottom: 20,
+        paddingHorizontal: 20,
     },
     termsText: {
-        color: '#A9A9A9',
+        color: Colors.mediumGrey,
         fontSize: 12,
         lineHeight: 18,
     },
     signInText: {
         textAlign: 'center',
-        color: '#A9A9A9',
+        color: Colors.mediumGrey,
         fontSize: 14,
     },
     linkText: {
-        color: '#5D9275',
+        color: Colors.primary,
     },
     validationContainer: {
         marginBottom: 20,
         padding: 15,
-        backgroundColor: '#F8F9FA',
+        backgroundColor: Colors.white,
         borderRadius: 12,
     },
     strengthIndicatorContainer: {

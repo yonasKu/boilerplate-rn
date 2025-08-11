@@ -52,6 +52,12 @@ export default function AuthLayout() {
           header: () => <CustomHeader title="Tell us about yourself" />,
         }}
       />
+        <Stack.Screen 
+        name="verify-email" 
+        options={{
+          header: () => <CustomHeader title="Verify Email" />,
+        }}
+      />
     </Stack>
   );
 }

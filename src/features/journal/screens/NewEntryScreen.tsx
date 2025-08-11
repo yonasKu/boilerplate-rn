@@ -10,7 +10,12 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import { getAuth } from 'firebase/auth';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
+import { Colors } from '@/theme/colors';
 import JournalEntryCard from '@/features/journal/components/JournalEntryCard';
+import JournalEntryPreviewCard from '@/features/journal/components/JournalEntryPreviewCard';
+import ShareBottomSheet from '@/features/journal/components/ShareBottomSheet';
+import JournalPreviewActionButtons from '../components/JournalPreviewActionButtons';
 import { JournalEntry } from '@/hooks/useJournal';
 
 type Media = {
@@ -30,8 +35,9 @@ const NewEntryScreen = () => {
   const [isFavorited, setIsFavorited] = useState(false);
   const [isMilestone, setIsMilestone] = useState(false);
   const [childId, setChildId] = useState<string>('');
-  const [children, setChildren] = useState<Array<{ id: string; name: string; dateOfBirth: Date }>>([]);
+  const [children, setChildren] = useState<Array<{ id: string; name: string; dateOfBirth: Date; profileImageUrl?: string }>>([]);
   const [isPreview, setIsPreview] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   useEffect(() => {
     const loadChildren = async () => {
@@ -42,11 +48,15 @@ const NewEntryScreen = () => {
       try {
         const q = query(collection(db, 'children'), where('parentId', '==', currentUser.uid));
         const querySnapshot = await getDocs(q);
-        const childrenData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          dateOfBirth: doc.data().dateOfBirth?.toDate ? doc.data().dateOfBirth.toDate() : new Date(doc.data().dateOfBirth)
-        } as { id: string; name: string; dateOfBirth: Date }));
+        const childrenData = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            profileImageUrl: data.profileImageUrl,
+            dateOfBirth: data.dateOfBirth?.toDate ? data.dateOfBirth.toDate() : new Date(data.dateOfBirth)
+          };
+        });
 
         setChildren(childrenData);
         
@@ -146,8 +156,6 @@ const NewEntryScreen = () => {
         url: item.uri
       }));
 
-      const allMedia = [...uploadedMedia, ...existingMedia];
-
       if (isEditMode && entryId) {
         await updateEntry(entryId as string, {
           text: entryText,
@@ -176,27 +184,45 @@ const NewEntryScreen = () => {
     }
   };
 
+  const handleShare = (type: 'copy' | 'system') => {
+    if (type === 'copy') {
+      // Copy entry text to clipboard
+      Alert.alert('Copied', 'Entry text copied to clipboard');
+    } else {
+      // System share
+      Alert.alert('Share', 'System share dialog will open');
+    }
+    setShowShareSheet(false);
+  };
+
   const renderHeaderRight = () => {
     if (isLoading) {
       return <ActivityIndicator color="#5D9275" />;
     }
 
+    const isDisabled = !entryText.trim() || !childId;
+
     return (
       <View style={styles.headerRightContainer}>
-        <TouchableOpacity onPress={() => setIsFavorited(!isFavorited)}>
-          <Ionicons name={isFavorited ? 'heart' : 'heart-outline'} size={28} color={isFavorited ? '#E91E63' : '#555'} />
-        </TouchableOpacity>
         <TouchableOpacity
+          style={[styles.actionButton, isDisabled && styles.disabledActionButton]}
           onPress={() => {
             if (isPreview) {
-              handleSave();
+              setIsPreview(false);
             } else {
               setIsPreview(true);
             }
           }}
-          disabled={!entryText.trim() || !childId}
+          disabled={isDisabled}
         >
-          <Ionicons name={'checkmark'} size={28} color={!entryText.trim() || !childId ? '#BDBDBD' : '#5D9275'} />
+          {isPreview ? (
+            <Image 
+              source={require('../../../assets/images/edit-2_icon.png')} 
+              style={[styles.headerIcon, isDisabled && styles.disabledHeaderIcon]} 
+            />
+          ) : (
+            <Ionicons name="checkmark" size={20} color={isDisabled ? '#BDBDBD' : '#5D9275'} />
+          )}
         </TouchableOpacity>
       </View>
     );
@@ -255,51 +281,39 @@ const NewEntryScreen = () => {
       >
         {isPreview ? (
           <View>
-            <JournalEntryCard
+            <JournalEntryPreviewCard
               entry={{
-                id: 'preview',
                 text: entryText,
                 media: media.map(m => ({ url: m.uri, type: m.type })),
-                isFavorited: isFavorited,
-                isMilestone: isMilestone,
-                childId: childId,
-                childAgeAtEntry: 'Just now',
-                createdAt: new Date(),
-                likes: {},
-              } as unknown as JournalEntry}
-              isPreview={true}
+              }}
             />
-            <View style={styles.toggleContainer}>
-              <TouchableOpacity
-                style={[styles.toggleButton, isFavorited && styles.activeToggleButton]}
-                onPress={() => setIsFavorited(!isFavorited)}
-              >
-                <Ionicons name={isFavorited ? 'heart' : 'heart-outline'} size={20} color={isFavorited ? '#FFF' : '#555'} />
-                <Text style={[styles.toggleText, isFavorited && styles.activeToggleText]}>Favorite</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleButton, isMilestone && styles.activeToggleButton]}
-                onPress={() => setIsMilestone(!isMilestone)}
-              >
-                <Image source={require('../../../assets/images/Trophy_icon.png')} style={[styles.milestoneIcon, { tintColor: isMilestone ? '#FFF' : '#555' }]} />
-                <Text style={[styles.toggleText, isMilestone && styles.activeToggleText]}>Milestone</Text>
-              </TouchableOpacity>
-            </View>
+            <JournalPreviewActionButtons
+              isFavorited={isFavorited}
+              isMilestone={isMilestone}
+              onToggleFavorite={() => setIsFavorited(!isFavorited)}
+              onToggleMilestone={() => setIsMilestone(!isMilestone)}
+              onShare={() => setShowShareSheet(true)}
+            />
           </View>
         ) : (
           <>
             <View style={styles.childSelectorContainer}>
-              {children.map((child) => (
-                <TouchableOpacity
-                  key={child.id}
-                  style={[styles.childOption, childId === child.id && styles.selectedChild]}
-                  onPress={() => setChildId(child.id)}
-                >
-                  <Text style={[styles.childName, childId === child.id && styles.selectedChildText]}>
-                    {child.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.childSelector}>
+                {children.map(child => (
+                  <TouchableOpacity
+                    key={child.id}
+                    style={[styles.childOption, childId === child.id && styles.selectedChild]}
+                    onPress={() => setChildId(child.id)}
+                  >
+                    <ProfileAvatar 
+                      imageUrl={child.profileImageUrl}
+                      name={child.name} 
+                      size={32} 
+                    />
+                    <Text style={[styles.childName, childId === child.id && styles.selectedChildName]}>{child.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
             <TextInput
               style={styles.textInput}
@@ -316,12 +330,6 @@ const NewEntryScreen = () => {
       </ScrollView>
 
       <View style={[styles.toolbar, { paddingBottom: Platform.OS === 'ios' ? 20 : 0 }]}>
-        <TouchableOpacity style={styles.toolbarButton}>
-          <Image source={require('../../../assets/images/Text_Icon.png')} style={[styles.toolbarIcon, { tintColor: '#A09D94' }]} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.toolbarButton}>
-          <Image source={require('../../../assets/images/magicpen_icon.png')} style={[styles.toolbarIcon, { tintColor: '#A09D94' }]} />
-        </TouchableOpacity>
         <TouchableOpacity style={styles.toolbarButton} onPress={pickMedia}>
           <Image source={require('../../../assets/images/gallery_icon.png')} style={[styles.toolbarIcon, { tintColor: '#A09D94' }]} />
         </TouchableOpacity>
@@ -352,6 +360,11 @@ const NewEntryScreen = () => {
           )}
         </TouchableOpacity>
       </View>
+      <ShareBottomSheet
+        isVisible={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        onShare={handleShare}
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -359,7 +372,7 @@ const NewEntryScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   scrollView: {
     flex: 1,
@@ -369,27 +382,44 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     flexGrow: 1,
   },
+  label: {
+    fontSize: 14,
+    color: Colors.mediumGrey,
+    marginBottom: 8,
+    marginLeft: 10,
+  },
   childSelectorContainer: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 20,
     justifyContent: 'center',
   },
+  childSelector: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 10,
+  },
   childOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.lightPink,
+    marginRight: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   selectedChild: {
-    backgroundColor: '#5D9275',
-    borderColor: '#5D9275',
+    borderColor: Colors.primary,
+  },
+  selectedChildName: {
+    color: Colors.primary,
+    fontWeight: '600',
   },
   childName: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.mediumGrey,
   },
   selectedChildText: {
     color: 'white',
@@ -398,7 +428,7 @@ const styles = StyleSheet.create({
   textInput: {
     fontSize: 16,
     lineHeight: 26,
-    color: '#333',
+    color: Colors.darkGrey,
     flex: 1,
     textAlignVertical: 'top',
     paddingHorizontal: 20,
@@ -438,19 +468,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#F5F5F5',
+    borderColor: Colors.lightGrey,
+    backgroundColor: Colors.white,
   },
   activeToggleButton: {
-    backgroundColor: '#5D9275',
-    borderColor: '#5D9275',
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   toggleText: {
     fontSize: 14,
-    color: '#555',
+    color: Colors.mediumGrey,
   },
   activeToggleText: {
-    color: '#FFF',
+    color: Colors.white,
     fontWeight: '600',
   },
   toolbar: {
@@ -459,8 +489,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-    backgroundColor: '#FFFFFF',
+    borderTopColor: Colors.lightGrey,
+    backgroundColor: Colors.white,
   },
   toolbarButton: {
     padding: 2,
@@ -486,7 +516,38 @@ const styles = StyleSheet.create({
   milestoneIcon: {
     width: 20,
     height: 20,
-    tintColor: '#FFF',
+    tintColor: Colors.white,
+  },
+  previewContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
+  },
+  disabledActionButton: {
+    backgroundColor: Colors.offWhite,
+    borderColor: Colors.lightGrey,
+  },
+  headerIcon: {
+    width: 20,
+    height: 20,
+    tintColor: Colors.primary,
+  },
+  disabledHeaderIcon: {
+    tintColor: Colors.lightGrey,
   },
 });
 

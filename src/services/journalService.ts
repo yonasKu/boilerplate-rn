@@ -9,6 +9,7 @@ import {
   getDocs, 
   orderBy, 
   doc, 
+  getDoc, // Add getDoc
   updateDoc, 
   deleteDoc, 
   runTransaction,
@@ -83,6 +84,20 @@ export const createJournalEntry = async (entryData: {
 };
 
 // 3. Fetches all journal entries for a specific user
+// 3. Fetches a single journal entry by its ID
+export const fetchJournalEntryById = async (entryId: string): Promise<JournalEntry | null> => {
+  const entryRef = doc(db, 'journalEntries', entryId);
+  const docSnap = await getDoc(entryRef);
+
+  if (docSnap.exists()) {
+    return { id: docSnap.id, ...docSnap.data() } as JournalEntry;
+  } else {
+    console.warn(`No journal entry found with ID: ${entryId}`);
+    return null;
+  }
+};
+
+// 4. Fetches all journal entries for a specific user
 export const fetchUserJournalEntries = async (userId: string): Promise<JournalEntry[]> => {
   const q = query(
     collection(db, 'journalEntries'),
@@ -94,7 +109,7 @@ export const fetchUserJournalEntries = async (userId: string): Promise<JournalEn
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JournalEntry));
 };
 
-// 4. Updates an existing journal entry
+// 5. Updates an existing journal entry
 export const updateJournalEntry = async (entryId: string, updates: {
   text?: string;
   media?: Array<{
@@ -112,7 +127,7 @@ export const updateJournalEntry = async (entryId: string, updates: {
   });
 };
 
-// 5. Deletes a journal entry and its associated media
+// 6. Deletes a journal entry and its associated media
 export const deleteJournalEntry = async (entryId: string, mediaUrls: string[]) => {
   // Delete associated media files from storage
   const deletePromises = mediaUrls.map(async (url) => {
@@ -130,7 +145,7 @@ export const deleteJournalEntry = async (entryId: string, mediaUrls: string[]) =
   await deleteDoc(doc(db, 'journalEntries', entryId));
 };
 
-// 6. Toggles like on a journal entry using transaction
+// 7. Toggles like on a journal entry using transaction
 export const toggleLike = async (entryId: string, userId: string) => {
   const entryRef = doc(db, 'journalEntries', entryId);
   
@@ -162,7 +177,7 @@ export const toggleLike = async (entryId: string, userId: string) => {
   });
 };
 
-// 7. Calculates child's age at a specific date
+// 8. Calculates child's age at a specific date
 export const calculateChildAgeAtDate = (birthDate: Date, entryDate: Date): string => {
   const diffTime = Math.abs(entryDate.getTime() - birthDate.getTime());
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));

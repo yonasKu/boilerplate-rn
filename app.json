@@ -8,9 +8,9 @@
     "scheme": "sproutbook",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./src/assets/images/splash-icon.png",
+      "image": "./src/assets/images/splash_logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#2E7E78"
     },
     "ios": {
       "supportsTablet": true
@@ -18,7 +18,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#2E7E78"
       },
       "package": "com.anonymous.SproutBook",
       "googleServicesFile": "./android/app/google-services.json"
@@ -37,7 +37,8 @@
       ],
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

@@ -7,12 +7,12 @@ import {
   StyleSheet,
   FlatList,
   Dimensions,
-  TouchableOpacity,
   StatusBar,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Button } from '../../../components/Button';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,10 +21,27 @@ const { width, height } = Dimensions.get('window');
 
 // The slides now only contain the images
 const slides = [
-  { id: '1', image: require('../../../assets/images/onboarding-1.png') },
-  { id: '2', image: require('../../../assets/images/onboarding-2.png') },
-  { id: '3', image: require('../../../assets/images/onboarding-3.png') },
+  {
+    id: '1',
+    image: require('../../../assets/images/onboarding-1.png'),
+    title: 'Welcome To Sproutbook',
+    subtitle: 'Easily capture everyday moments and turn them into shareable, lasting memories',
+  },
+  {
+    id: '2',
+    image: require('../../../assets/images/onboarding-2.png'),
+    title: 'AI Generated Shareable Recaps',
+    subtitle: 'Automatically turn your journal entries into weekly and monthly recaps to share with family',
+  },
+  {
+    id: '3',
+    image: require('../../../assets/images/onboarding-3.png'),
+    title: 'Easily Search for Important Memories',
+    subtitle: 'Quickly find specific entries, milestones, or photos with our powerful search feature',
+  },
 ];
+
+import { Animated } from 'react-native';
 
 const OnboardingScreen = () => {
   const { setViewedOnboarding } = useOnboarding();
@@ -32,11 +49,26 @@ const OnboardingScreen = () => {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const ref = useRef<FlatList>(null);
   const router = useRouter();
+  const textOpacity = useRef(new Animated.Value(1)).current;
 
   const updateCurrentSlideIndex = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = e.nativeEvent.contentOffset.x;
     const currentIndex = Math.round(contentOffsetX / width);
-    setCurrentSlideIndex(currentIndex);
+
+    if (currentIndex !== currentSlideIndex) {
+      Animated.timing(textOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentSlideIndex(currentIndex);
+        Animated.timing(textOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      });
+    }
   };
 
   const onGetStarted = () => {
@@ -90,18 +122,17 @@ const OnboardingScreen = () => {
           style={[styles.contentBox, { paddingBottom: bottom > 0 ? bottom : 20 }]}
         >
           <Pagination />
-          <Text style={styles.title}>Welcome To Sproutbook</Text>
-          <Text style={styles.subtitle}>
-            Easily capture everyday moments and turn them into shareable, lasting
-            memories
-          </Text>
+          <Animated.View style={{ opacity: textOpacity, alignItems: 'center' }}>
+            <Text style={styles.title}>{slides[currentSlideIndex].title}</Text>
+            <Text style={styles.subtitle}>{slides[currentSlideIndex].subtitle}</Text>
+          </Animated.View>
           <View style={styles.separator} />
-          <TouchableOpacity
-            style={styles.getStartedButton}
+          <Button 
+            title="Get Started" 
             onPress={onGetStarted}
-          >
-            <Text style={styles.getStartedButtonText}>Get Started</Text>
-          </TouchableOpacity>
+            variant="primary"
+            size="large"
+          />
         </LinearGradient>
       </View>
     </SafeAreaView>
@@ -151,7 +182,7 @@ const styles = StyleSheet.create({
     color: '#2F4858',
     fontWeight: 'bold',
     textAlign: 'center',
-    fontFamily: 'serif',
+    fontFamily: 'Poppins',
     marginBottom: 16,
   },
   subtitle: {
@@ -176,19 +207,6 @@ const styles = StyleSheet.create({
   },
   indicatorActive: {
     backgroundColor: '#5D9275',
-  },
-  getStartedButton: {
-    backgroundColor: '#5D9275',
-    paddingVertical: 18,
-    width: '100%',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  getStartedButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
   },
   separator: {
     height: 2,

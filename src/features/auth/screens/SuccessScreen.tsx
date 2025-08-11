@@ -1,6 +1,8 @@
 import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Image, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Colors } from '../../../theme/colors';
+import { Button } from '../../../components/Button';
 import ConfettiCannon from 'react-native-confetti-cannon';
 
 const SuccessScreen = () => {
@@ -13,7 +15,7 @@ const SuccessScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
       <ConfettiCannon
         count={300} // More confetti
         origin={{ x: -10, y: 30 }}
@@ -26,9 +28,12 @@ const SuccessScreen = () => {
         
         <Image source={require('../../../assets/images/Checked_BIG.png')} style={styles.successIcon} />
         <Text style={styles.title}>Account created successfully</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.replace('/(auth)/login')}>
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+        <Button 
+          title="Continue to Login" 
+          onPress={() => router.replace('/(auth)/login')}
+          variant="primary"
+          size="large"
+        />
       </View>
     </SafeAreaView>
   );
@@ -37,7 +42,7 @@ const SuccessScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     justifyContent: 'center',
   },
   content: {
@@ -52,23 +57,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2F4858',
+    color: Colors.black,
     textAlign: 'center',
     marginBottom: 100,
-    fontFamily: 'serif',
-  },
-  button: {
-    backgroundColor: '#5D9275',
-    paddingVertical: 18,
-    width: '100%',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins',
   },
 });
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useFonts } from 'expo-font';
+import { useFonts as useExpoFonts } from 'expo-font';
+import { useFonts, Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -58,17 +59,23 @@ const InitialLayout = () => {
 };
 
 const RootLayoutNav = () => {
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  const [loaded] = useExpoFonts({
+    // your existing fonts
+  });
+
+  const [fontsLoaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
   });
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded && fontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, fontsLoaded]);
 
-  if (!loaded) {
+    if (!loaded || !fontsLoaded) {
     return null;
   }
 

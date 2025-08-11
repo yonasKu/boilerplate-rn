@@ -10,6 +10,8 @@ import JournalEntryCard from '../components/JournalEntryCard';
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import JournalFilter from '../components/JournalFilter';
 import AgeFilterModal from '../components/modals/AgeFilterModal';
+import { TimelineOption } from '../components/TimelineDropdown';
+import { Colors } from '@/theme';
 
 
 interface Child {
@@ -34,6 +36,7 @@ const JournalScreen = () => {
     const [headerLeftLayout, setHeaderLeftLayout] = useState<{ x: number; y: number; width: number; height: number }>({ x: 16, y: 0, width: 200, height: 48 });
     const [children, setChildren] = useState<any[]>([]);
         const [selectedChild, setSelectedChild] = useState<Child | null>(null); // null means 'All Children'
+    const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
 
     // Fetch actual user profile from Firestore
         useEffect(() => {
@@ -101,6 +104,27 @@ const JournalScreen = () => {
             const filteredEntries = useMemo(() => {
         let filtered = entries;
 
+        // Filter by timeline (All, Weekly, Monthly)
+        if (activeTimeline !== 'All') {
+            const now = new Date();
+            let startDate: Date | null = null;
+
+            if (activeTimeline === 'Weekly') {
+                startDate = new Date(now);
+                startDate.setHours(0, 0, 0, 0);
+                startDate.setDate(startDate.getDate() - now.getDay());
+            } else if (activeTimeline === 'Monthly') {
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            }
+
+            if (startDate) {
+                filtered = filtered.filter(entry => {
+                    const created = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
+                    return created >= startDate!;
+                });
+            }
+        }
+
         // Filter by selected child
         if (selectedChild) {
             filtered = filtered.filter(entry => entry.childId === selectedChild.id);
@@ -128,7 +152,7 @@ const JournalScreen = () => {
             const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
             return dateB.getTime() - dateA.getTime();
         });
-        }, [entries, selectedChild, searchQuery, filterTags]);
+        }, [entries, selectedChild, searchQuery, filterTags, activeTimeline]);
 
     const handleLike = async (entryId: string) => {
         try {
@@ -274,6 +298,8 @@ const JournalScreen = () => {
             <WeekNavigator />
             <JournalFilter 
                 onAgePress={() => setShowAgeModal(true)} 
+                activeTimeline={activeTimeline}
+                onTimelineChange={setActiveTimeline}
                 onFilterChange={(filter) => {
                     if (filter === 'All') {
                         setFilterTags([]);
@@ -301,21 +327,21 @@ const JournalScreen = () => {
             
             {isLoading ? (
                 <View style={styles.centeredContent}>
-                    <ActivityIndicator size="large" color="#5D9278" />
+                    <ActivityIndicator size="large" color={Colors.primary} />
                 </View>
             ) : error ? (
                 <View style={styles.centeredContent}>
-                    <Image source={require('../../../assets/images/leaf_home.png')} style={styles.mainImage} />
+                    <Image source={require('../../../assets/images/Logo_Icon.png')} style={styles.mainImage} />
                     <Text style={styles.promptText}>
                         {searchQuery || filterTags.length > 0 ? 'No entries match your filters' : "Let's start your first memory"}
                     </Text>
-                    <Text style={[styles.promptText, { fontSize: 14, color: '#FF6B6B', marginTop: 8 }]}>
+                    <Text style={[styles.promptText, { fontSize: 14, color: Colors.error, marginTop: 8 }]}>
                         {error}
                     </Text>
                 </View>
             ) : filteredEntries.length === 0 ? (
                 <View style={styles.centeredContent}>
-                    <Image source={require('../../../assets/images/leaf_home.png')} style={styles.mainImage} />
+                    <Image source={require('../../../assets/images/Logo_Icon.png')} style={styles.mainImage} />
                     <Text style={styles.promptText}>
                         {searchQuery || filterTags.length > 0 ? 'No entries match your filters' : "Let's start your first memory"}
                     </Text>
@@ -326,8 +352,9 @@ const JournalScreen = () => {
                     renderItem={({ item }) => (
                         <JournalEntryCard 
                             entry={item} 
+                            onPress={() => router.push(`/journal/${item.id}` as any)}
                             onLike={() => handleLike(item.id)}
-                            onShare ={() => handleShare(item)}
+                            onShare={() => handleShare(item)}
                             onEdit={() => handleEdit(item)}
                             onDelete={() => handleDelete(item)}
                         />
@@ -351,11 +378,11 @@ const styles = StyleSheet.create({
     dropdownInlineContainer: {
         marginTop: 8,
         marginHorizontal: 16,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        shadowColor: '#000',
+        borderColor: Colors.lightGrey,
+        shadowColor: Colors.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -364,14 +391,14 @@ const styles = StyleSheet.create({
     },
     dropdownContainer: {
         position: 'absolute',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderRadius: 10,
         borderTopLeftRadius: 0,
         borderTopRightRadius: 0,
         borderWidth: 1,
         borderTopWidth: 0,
-        borderColor: '#EEF2F3',
-        shadowColor: '#000',
+        borderColor: Colors.lightGrey,
+        shadowColor: Colors.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
@@ -396,28 +423,28 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     dropdownItemSelected: {
-        backgroundColor: '#EAF3F0',
+        backgroundColor: Colors.accent,
     },
     dropdownItemText: {
         fontSize: 16,
-        color: '#2F4858',
+        color: Colors.black,
     },
     dropdownItemTextActive: {
-        color: '#2F4858',
+        color: Colors.black,
         fontWeight: 'bold',
     },
     dropdownItemTextInactive: {
-        color: '#6B7C85',
+        color: Colors.mediumGrey,
         fontWeight: '400',
     },
     separator: {
         height: 1,
-        backgroundColor: '#F0F0F0',
+        backgroundColor: Colors.offWhite,
         marginHorizontal: 16,
     },
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
     },
 
     header: {
@@ -427,7 +454,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
+        borderBottomColor: Colors.offWhite,
         gap: 16,
     },
     headerLeft: {
@@ -439,7 +466,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#2F4858',
+        color: Colors.black,
         //flex: 1, // Allow the title to take available space and shrink
         flexShrink: 1,
         marginHorizontal:6  
@@ -471,23 +498,23 @@ const styles = StyleSheet.create({
     promptText: {
         marginTop: 24,
         fontSize: 16,
-        color: '#A9A9A9',
+        color: Colors.lightGrey,
     },
     filterContainer: {
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: '#F8F8F8',
+        backgroundColor: Colors.background,
         borderBottomWidth: 1,
-        borderBottomColor: '#E0E0E0',
+        borderBottomColor: Colors.lightGrey,
     },
     searchInput: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderRadius: 20,
         paddingHorizontal: 16,
         paddingVertical: 10,
         fontSize: 16,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: Colors.lightGrey,
         marginBottom: 12,
     },
     filterTags: {
@@ -502,19 +529,19 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        backgroundColor: '#FFFFFF',
+        borderColor: Colors.lightGrey,
+        backgroundColor: Colors.white,
     },
     activeTag: {
-        backgroundColor: '#EAF3F0',
-        borderColor: '#5D9275',
+        backgroundColor: Colors.accent,
+        borderColor: Colors.primary,
     },
     tagText: {
         fontSize: 12,
-        color: '#666',
+        color: Colors.mediumGrey,
     },
     activeTagText: {
-        color: '#5D9275',
+        color: Colors.primary,
         fontWeight: '500',
     },
 });

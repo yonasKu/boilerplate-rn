@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useJournal } from '@/hooks/useJournal';
+import { Colors } from '@/theme';
 
 type DayStatus = 'checked' | 'filled' | 'empty';
 
@@ -157,9 +158,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: Colors.lightGrey,
   },
   dayContainer: {
     alignItems: 'center',
@@ -168,10 +169,10 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#A0AEC0',
+    color: Colors.mediumGrey,
   },
   todayText: {
-    color: '#5D9275',
+    color: Colors.primary,
   },
   statusCircle: {
     width: 24,
@@ -182,14 +183,14 @@ const styles = StyleSheet.create({
   },
   empty: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: Colors.white,
   },
   checked: {
     borderWidth: 1,
-    borderColor: '#5D9275',
+    borderColor: Colors.primary,
   },
   filled: {
-    backgroundColor: '#5D9275',
+    backgroundColor: Colors.primary,
   },
 });
 

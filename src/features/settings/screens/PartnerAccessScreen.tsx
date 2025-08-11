@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TextInput } from 'react-native';
+import { Button } from '../../../components/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 
@@ -13,7 +14,7 @@ const PartnerAccessScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.contentContainer}>
           <Image
-            source={require('../../../assets/images/Logo_Big.png')} // Assuming this is the logo path
+            source={require('../../../assets/images/Logo_Icon.png')} // Assuming this is the logo path
             style={styles.logo}
           />
           <Text style={styles.title}>Partner Access</Text>
@@ -32,9 +33,12 @@ const PartnerAccessScreen = () => {
             />
           </View>
 
-          <TouchableOpacity style={styles.button}>
-            <Text style={styles.buttonText}>Save Invite</Text>
-          </TouchableOpacity>
+          <Button 
+            title="Save Invite" 
+            onPress={() => {}}
+            variant="primary"
+            size="large"
+          />
         </View>
       </ScrollView>
     </View>

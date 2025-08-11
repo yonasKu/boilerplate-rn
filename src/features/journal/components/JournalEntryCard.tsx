@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Pressable, ActionSheetIOS, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../../theme/colors';
 
 interface JournalEntryCardProps {
   entry: {
@@ -21,24 +22,23 @@ interface JournalEntryCardProps {
   onShare?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPress?: () => void;
   isPreview?: boolean;
 }
 
 const formatDate = (date: any) => {
-  if (!date) return '';
+  if (!date) return { dayOfWeek: '', day: '', month: '' };
   const d = date.toDate ? date.toDate() : new Date(date);
-  return d.toLocaleDateString('en-US', {
-    weekday: 'long', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+  return {
+    dayOfWeek: d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+    day: d.getDate(),
+    month: d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+  };
 };
 
-const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onShare, onEdit, onDelete, isPreview = false }) => {
-  // Check if current user has liked this entry by looking at the likes object
-  // This requires the current user ID, but since we don't have it here, we'll use isFavorited
-  // The backend should sync isFavorited with the likes object for the current user
+const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onShare, onEdit, onDelete, onPress, isPreview = false }) => {
   const isLiked = entry.isFavorited;
+  const formattedDate = formatDate(entry.createdAt);
 
   const handleLongPress = () => {
     if (isPreview) return;
@@ -80,69 +80,85 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
   const renderMedia = () => {
     if (!entry.media || entry.media.length === 0) return null;
 
-    const mediaToDisplay = entry.media.slice(0, 2);
+    const media = entry.media;
+    const mediaCount = media.length;
 
-    if (mediaToDisplay.length === 1) {
-      const item = mediaToDisplay[0];
-      return (
-        <View style={styles.mediaContainerFullWidth}>
-          <Image source={{ uri: item.type === 'video' ? item.thumbnailUrl : item.url }} style={styles.mediaFullWidth} />
-          {item.type === 'video' && (
-            <View style={styles.videoOverlay}>
-              <Ionicons name="play-circle" size={48} color="white" />
-            </View>
-          )}
+    const renderImage = (item: any, style: any, key: any) => (
+      <View key={key} style={style}>
+        <Image source={{ uri: item.url }} style={styles.mediaImage} />
+      </View>
+    );
+
+    const rightColumnImages = media.slice(1, 5);
+
+    return (
+      <View style={styles.mediaGridContainer}>
+        {/* Left Column */}
+        <View style={styles.leftColumn}>
+          {renderImage(media[0], styles.fullHeightImage, 'left-img')}
         </View>
-      );
-    }
 
-    if (mediaToDisplay.length === 2) {
-      return (
-        <View style={styles.mediaContainerDouble}>
-          {mediaToDisplay.map((item, index) => (
-            <View key={index} style={styles.mediaHalfContainer}>
-              <Image source={{ uri: item.type === 'video' ? item.thumbnailUrl : item.url }} style={styles.mediaHalfWidth} />
-              {item.type === 'video' && (
-                <View style={styles.videoOverlay}>
-                  <Ionicons name="play-circle" size={32} color="white" />
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      );
-    }
-
-    return null;
+        {/* Right Column */}
+        {mediaCount > 1 && (
+          <View style={styles.rightColumn}>
+            {rightColumnImages.map((item, index) => {
+              if (mediaCount >= 5 && index === 3) {
+                return (
+                  <View key={`right-img-${index}`} style={styles.rightGridItem}>
+                    <Image source={{ uri: item.url }} style={styles.mediaImage} />
+                    <View style={styles.overlay}>
+                      <Text style={styles.overlayText}>+{mediaCount - 4}</Text>
+                    </View>
+                  </View>
+                );
+              }
+              return renderImage(item, styles.rightGridItem, `right-img-${index}`);
+            })}
+          </View>
+        )}
+      </View>
+    );
   };
 
   return (
-    <Pressable onLongPress={handleLongPress} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
-      <View style={styles.card}>
-        <View style={styles.header}>
-          <Text style={styles.dateText}>{formatDate(entry.createdAt)}</Text>
-          <View style={styles.actions}>
-            {onLike && (
-              <TouchableOpacity onPress={onLike} style={styles.actionButton}>
-                <Ionicons 
-                  name={isLiked ? 'heart' : 'heart-outline'} 
-                  size={24} 
-                  color={isLiked ? '#FF6B6B' : '#666'} 
-                />
-              </TouchableOpacity>
-            )}
-            {onShare && (
-              <TouchableOpacity onPress={onShare} style={styles.actionButton}>
-                <Image 
-                  source={require('@/assets/images/Share_icon.png')} 
-                  style={styles.shareIcon}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            )}
+        <Pressable onPress={onPress} onLongPress={handleLongPress} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
+              <View style={styles.card}>
+        <View style={styles.topSection}>
+
+          <View style={styles.contentContainer}>
+            <View style={styles.headerActions}>
+              {entry.isMilestone && (
+                <Ionicons name="trophy-outline" size={20} color={Colors.primary} style={styles.actionIcon} />
+              )}
+              {onLike && (
+                <TouchableOpacity onPress={onLike}>
+                  <Ionicons
+                    name={isLiked ? 'heart' : 'heart-outline'}
+                    size={22}
+                    color={isLiked ? Colors.error : Colors.mediumGrey}
+                    style={styles.actionIcon}
+                  />
+                </TouchableOpacity>
+              )}
+              {onShare && (
+                <TouchableOpacity onPress={onShare} style={styles.actionIcon}>
+                  <Image
+                    source={require('@/assets/images/Share_icon.png')}
+                    style={styles.shareIcon}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={{ flexDirection: 'row', flexShrink: 1, width: '100%' ,overflow:'hidden',alignItems:'center'}}>
+              <View style={styles.dateContainer}>
+                <Text style={styles.dateDayOfWeek}>{formattedDate.dayOfWeek}</Text>
+                <Text style={styles.dateDay}>{formattedDate.day}</Text>
+                <Text style={styles.dateMonth}>{formattedDate.month}</Text>
+              </View>
+              <Text style={styles.entryText} numberOfLines={5}>{entry.text}</Text>
+            </View>
           </View>
         </View>
-        <Text style={styles.entryText}>{entry.text}</Text>
         {renderMedia()}
       </View>
     </Pressable>
@@ -151,46 +167,103 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
+    backgroundColor: '#F8F6F4',
+    borderRadius: 16,
+    overflow: 'hidden',
   },
-  header: {
+  topSection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    padding: 16,
+    paddingBottom: 12,
   },
-  dateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'serif',
-    color: '#000',
+  dateContainer: {
+    alignItems: 'flex-end',
+    //justifyContent: 'center',
+    marginRight: 6,
+    paddingHorizontal: 8,
+    //width: 50,
+  },
+  dateDayOfWeek: {
+    fontSize: 12,
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins',
+    lineHeight: 14,
+  },
+  dateDay: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.black,
+    fontFamily: 'Poppins',
+    lineHeight: 24,
+  },
+  dateMonth: {
+    fontSize: 10,
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins',
+    lineHeight: 14,
+  },
+  contentContainer: {
+    flex: 1,
   },
   headerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginBottom: 4,
+  },
+  actionIcon: {
+    marginLeft: 12,
+  },
+  shareIcon: {
+    width: 22,
+    height: 22,
   },
   entryText: {
     fontSize: 14,
-    lineHeight: 18,
-    color: '#000000',
-    
-    marginBottom: 16,
+    lineHeight: 20,
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins',
   },
-  mediaContainerFullWidth: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
+  mediaGridContainer: {
+    flexDirection: 'row',
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#F0F0F0',
+    height: 220, // Set a fixed height for the container
   },
-  mediaFullWidth: {
+  leftColumn: {
+    flex: 1,
+    padding: 2,
+  },
+  rightColumn: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  fullHeightImage: {
     width: '100%',
     height: '100%',
+  },
+  rightGridItem: {
+    width: '50%',
+    height: '50%',
+    padding: 2,
+  },
+  mediaImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    marginVertical: 5,  
+    backgroundColor: 'rgba(46, 139, 87, 0.3)', // Green overlay
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  overlayText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   mediaContainerDouble: {
     flexDirection: 'row',
@@ -218,22 +291,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  moreButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  shareIcon: {
-    width: 24,
-    height: 24,
   },
 });
 

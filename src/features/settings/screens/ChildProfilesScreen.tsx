@@ -5,6 +5,7 @@ import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
 import { getUserChildren, Child } from '../../../services/childService';
+import { Colors } from '@/theme';
 
 type ChildProfile = {
   name: string;
@@ -99,13 +100,11 @@ const ChildProfilesScreen = () => {
               <View key={child.id} style={styles.profileRow}>
                 <View style={styles.childInfo}>
                   <Text style={styles.profileName}>{child.name}</Text>
-                  {child.dateOfBirth && (
-                    <Text style={styles.childDetails}>
-                      {formatDate(child.dateOfBirth)}
-                    </Text>
-                  )}
+                  <Text style={styles.childDetails}>
+                    {formatDate(child.dateOfBirth)}
+                  </Text>
                 </View>
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push(`/(main)/settings/child-profiles/${child.id}`)}>
                   <Image source={require('../../../assets/images/edit-2_icon.png')} style={styles.editIcon} />
                 </TouchableOpacity>
               </View>
@@ -128,7 +127,7 @@ const ChildProfilesScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   scrollView: {
     flex: 1,
@@ -136,8 +135,8 @@ const styles = StyleSheet.create({
   listContainer: {
     marginHorizontal: 20,
     marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+//    borderWidth: 1,
+//    borderColor: '#E0E0E0',
     borderRadius: 8,
     borderStyle: 'dotted',
   },
@@ -145,34 +144,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.offWhite,
+    marginTop: 16,
+//    borderBottomWidth: 1,
+//    borderBottomColor: '#F5F5F5',
   },
   profileName: {
     fontSize: 16,
-    color: '#2F4858',
+    color: Colors.black,
   },
   editIcon: {
     width: 20,
     height: 20,
-    tintColor: '#5D9275',
+    tintColor: Colors.primary,
   },
   buttonContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
     paddingTop: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   addButton: {
-    backgroundColor: '#5D9275',
+    backgroundColor: Colors.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: 'center',
+    marginTop: 20,
   },
   addButtonText: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -183,20 +187,20 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    color: '#2F4858',
+    color: Colors.black,
     marginBottom: 8,
     fontWeight: '600',
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666666',
+    color: Colors.mediumGrey,
   },
   childInfo: {
     flex: 1,
   },
   childDetails: {
     fontSize: 14,
-    color: '#666666',
+    color: Colors.mediumGrey,
     marginTop: 2,
   },
 });

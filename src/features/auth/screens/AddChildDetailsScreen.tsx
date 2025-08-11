@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, Platform, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
 import { addChild } from '../../../services/childService';
 import { uploadChildProfileImage } from '../../../services/userService';
 import * as ImagePicker from 'expo-image-picker';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../../lib/firebase/firebaseConfig';
+import { Colors } from '../../../theme/colors';
+import { Button } from '../../../components/Button';
 
 const AddChildDetailsScreen = () => {
     const router = useRouter();
@@ -13,7 +17,7 @@ const AddChildDetailsScreen = () => {
     const [childName, setChildName] = useState('');
     const [date, setDate] = useState(new Date());
     const [dueDate, setDueDate] = useState('');
-    const [gender, setGender] = useState("Don't know yet");
+    const [gender, setGender] = useState('');
     const [childImage, setChildImage] = useState<string | null>(null);
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -25,7 +29,7 @@ const AddChildDetailsScreen = () => {
     const lifestage = params.lifestage as string || 'Soon to be parent';
     const genderOptions = lifestage === 'Soon to be parent' 
         ? ['Boy', 'Girl', "Don't know yet"] 
-        : ['Boy', 'Girl'];
+        : ['Boy', 'Girl',"Prefer not to say"];
 
     const handleSelect = (option: string) => {
         setGender(option);
@@ -36,12 +40,25 @@ const AddChildDetailsScreen = () => {
         setShowDatePicker(Platform.OS === 'ios');
 
         if (selectedDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset time to start of day
+            
+            // Validate based on lifestage
+            if (lifestage === 'Parent' && selectedDate > today) {
+                Alert.alert('Invalid Date', 'Birth date cannot be in the future. Please select a valid birth date.');
+                return;
+            } else if (lifestage === 'Soon to be parent' && selectedDate < today) {
+                Alert.alert('Invalid Date', 'Due date cannot be in the past. Please select a valid due date.');
+                return;
+            }
+
             const formattedDate = selectedDate.toLocaleDateString('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
             });
             setDueDate(formattedDate);
+            setDate(selectedDate);
         }
     };
 
@@ -60,18 +77,38 @@ const AddChildDetailsScreen = () => {
         try {
             let profileImageUrl: string | undefined = undefined;
             
-            // Upload child image if selected
-            if (childImage) {
-                const childId = `temp_${Date.now()}`; // Temporary ID for upload
-                profileImageUrl = await uploadChildProfileImage(childId, childImage);
+            // Map UI gender values to Firestore rule values
+            let firestoreGender: 'Boy' | 'Girl' | "Don't know yet" | "Prefer not to say";
+            if (gender === 'Boy') {
+                firestoreGender = 'Boy';
+            } else if (gender === 'Girl') {
+                firestoreGender = 'Girl';
+            } else if (gender === "Prefer not to say") {
+                firestoreGender = "Prefer not to say";
+            } else {
+                firestoreGender = "Don't know yet";
             }
-
-            await addChild({
+            
+            // Create child document first
+            const childId = await addChild({
                 name: childName,
                 dateOfBirth: date,
-                gender: gender as 'male' | 'female' | 'prefer_not_to_say',
-                ...(profileImageUrl && { profileImageUrl })
+                gender: firestoreGender as any, // Cast to match ChildInput interface
             }, user.uid);
+
+            // Upload child image after child document is created
+            if (childImage) {
+                profileImageUrl = await uploadChildProfileImage(childId, childImage);
+                
+                // Update child document with profile image URL
+                if (profileImageUrl) {
+                    const childRef = doc(db, 'children', childId);
+                    await updateDoc(childRef, {
+                        profileImageUrl: profileImageUrl,
+                        updatedAt: new Date()
+                    });
+                }
+            }
 
             await refreshOnboardingStatus();
             console.log('Child added successfully');
@@ -111,7 +148,7 @@ const AddChildDetailsScreen = () => {
             }
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                mediaTypes: ['images'],
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.8,
@@ -132,11 +169,12 @@ const AddChildDetailsScreen = () => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.avatarContainer}>
                     {isUploadingImage ? (
                         <View style={[styles.avatar, styles.uploadingContainer]}>
-                            <ActivityIndicator size="large" color="#4A90E2" />
+                            <ActivityIndicator size="large" color={Colors.primary} />
                         </View>
                     ) : (
                         <View style={styles.avatar}>
@@ -156,28 +194,26 @@ const AddChildDetailsScreen = () => {
                     <Text style={styles.addPhotoText}>Add photo</Text>
                 </View>
 
-                <Text style={styles.label}>Child's Name<Text style={styles.asterisk}>*</Text></Text>
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder="child's name"
-                        placeholderTextColor="#A9A9A9"
+                        placeholder="child's name*"
+                        placeholderTextColor={Colors.mediumGrey}
                         value={childName}
                         onChangeText={setChildName}
+                        accessibilityLabel="Child's name"
                     />
                 </View>
 
-                <Text style={styles.label}>
-                    {lifestage === 'Soon to be parent' ? 'Due Date' : 'Birth Date'}<Text style={styles.asterisk}>*</Text>
-                </Text>
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder={`child's ${lifestage === 'Parent' ? 'birth date' : 'due date'}`}
-                        placeholderTextColor="#A9A9A9"
+                        placeholder={`${lifestage === 'Parent' ? "Child's birth date" : "Baby's due date"}*`}
+                        placeholderTextColor={Colors.mediumGrey}
                         value={dueDate}
                         onChangeText={setDueDate}
                         editable={false}
+                        accessibilityLabel={lifestage === 'Parent' ? "Child's birth date" : "Baby's due date"}
                     />
                     <TouchableOpacity onPress={openDatePicker}>
                         <Image source={require('../../../assets/images/calendar.png')} style={styles.calendarIcon} />
@@ -192,13 +228,16 @@ const AddChildDetailsScreen = () => {
                         is24Hour={true}
                         display="default"
                         onChange={onDateChange}
+                        minimumDate={lifestage === 'Soon to be parent' ? new Date() : undefined}
+                        maximumDate={lifestage === 'Parent' ? new Date() : undefined}
                     />
                 )}
 
-                <Text style={styles.label}>Gender<Text style={styles.asterisk}>*</Text></Text>
                 <View style={styles.pickerWrapper}>
                     <TouchableOpacity style={styles.inputContainer} onPress={() => setIsPickerOpen(!isPickerOpen)}>
-                        <Text style={styles.pickerText}>{gender}</Text>
+                        <Text style={[styles.pickerText, { color: gender ? Colors.black : Colors.mediumGrey }]}>
+                            {gender || `gender*`}
+                        </Text>
                         <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.arrowIcon} />
                     </TouchableOpacity>
                     {isPickerOpen && (
@@ -219,13 +258,13 @@ const AddChildDetailsScreen = () => {
                 </View>
 
                 <View style={styles.footer}>
-                  <TouchableOpacity 
-                    style={[styles.button, isLoading && styles.buttonDisabled]} 
+                  <Button
+                    title={isLoading ? 'Saving...' : 'Continue'}
                     onPress={handleContinue}
+                    loading={isLoading}
                     disabled={isLoading}
-                  >
-                      <Text style={styles.buttonText}>{isLoading ? 'Saving...' : 'Continue'}</Text>
-                  </TouchableOpacity>
+                    style={styles.continueButton}
+                  />
                 </View>
             </ScrollView>
 
@@ -233,21 +272,26 @@ const AddChildDetailsScreen = () => {
             {showSuccessModal && (
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>Child Profile Added!</Text>
-                        <Text style={styles.modalSubtitle}>What would you like to do next?</Text>
-                        
-                        <TouchableOpacity 
-                            style={[styles.modalButton, styles.secondaryButton]} 
-                            onPress={handleAddAnotherChild}
-                        >
-                            <Text style={styles.secondaryButtonText}>Add another child</Text>
-                        </TouchableOpacity>
-                        
+                        <View style={styles.successBadge}>
+                            <Text style={styles.successBadgeText}>✓</Text>
+                        </View>
+                        <Text style={styles.modalTitle}>Child Profile Added</Text>
+                        <Text style={styles.modalSubtitle}>Great! You can start journaling memories now or add another child.</Text>
+
                         <TouchableOpacity 
                             style={[styles.modalButton, styles.primaryButton]} 
                             onPress={handleStartJournaling}
+                            accessibilityLabel="Start journaling"
                         >
                             <Text style={styles.primaryButtonText}>Start journaling</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.modalButton, styles.secondaryButton]} 
+                            onPress={handleAddAnotherChild}
+                            accessibilityLabel="Add another child"
+                        >
+                            <Text style={styles.secondaryButtonText}>Add another child</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -259,7 +303,7 @@ const AddChildDetailsScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9F9F9',
+        backgroundColor: Colors.white,
     },
     scrollContainer: {
         flexGrow: 1,
@@ -273,7 +317,7 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: '#E0E0E0',
+        backgroundColor: Colors.lightGrey,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -284,7 +328,7 @@ const styles = StyleSheet.create({
     },
     editIconContainer: {
         position: 'absolute',
-        bottom: -15,
+        bottom: 15,
         right: '32%',
     },
     editIcon: {
@@ -292,94 +336,91 @@ const styles = StyleSheet.create({
         height: 50,
     },
     label: {
-        color: '#2F4858',
+        color: Colors.black,
         marginBottom: 8,
         fontSize: 16,
         fontWeight: '500',
     },
     asterisk: {
-        color: '#E58C8A',
+        color: Colors.secondary,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 12,
-        paddingHorizontal: 15,
-        height: 55,
-        marginBottom: 20,
+        borderColor: Colors.lightGrey,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 4,
+        marginBottom: 16,
     },
     input: {
         flex: 1,
         fontSize: 16,
-        color: '#2F4858',
+        color: Colors.black,
     },
     dateText: {
         flex: 1,
         fontSize: 16,
-        color: '#A9A9A9',
+        color: Colors.black,
     },
     pickerWrapper: {
         marginBottom: 20,
-        position: 'relative', // Needed for absolute positioning of options
+        position: 'relative',
+        width: '100%',
     },
     pickerText: {
         flex: 1,
         fontSize: 16,
-        color: '#2F4858',
+        color: Colors.black,
+        padding: 10,
+        width: '100%',
     },
     arrowIcon: {
         width: 20,
         height: 20,
-        tintColor: '#A9A9A9',
+        tintColor: Colors.mediumGrey,
     },
     optionsContainer: {
         position: 'absolute',
         top: '100%',
-        right: 0,
-        width: 200,
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        width: '100%',
+        backgroundColor: Colors.white,
+        borderRadius: 16,
         marginTop: 8,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        paddingVertical: 10,
+        borderColor: Colors.lightGrey,
+        padding: 8,
         zIndex: 1,
         elevation: 3,
-        shadowColor: '#000',
+        shadowColor: Colors.black,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
     },
     optionItem: {
-        paddingVertical: 5,
-        width: '100%',
-        alignItems: 'flex-end', // Align text to the left
-        justifyContent: 'center',
-        paddingHorizontal: 15, // Adjust padding
+        paddingVertical: 12,
+        paddingHorizontal: 16,
     },
     optionText: {
-        fontSize: 14,
-        color: '#A9A9A9',
-        paddingVertical: 10,
+        fontSize: 16,
+        fontFamily: 'Poppins',
+        color: Colors.darkGrey,
     },
     selectedOptionButton: {
-        backgroundColor: '#E6F3EE',
-        borderRadius: 16,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        alignSelf: 'flex-end',
+        backgroundColor: Colors.lightPink,
+        borderRadius: 12,
     },
     selectedOptionText: {
-        color: '#5D9275',
+        color: Colors.primary,
         fontWeight: '600',
+        padding: 12,
     },
     calendarIcon: {
         width: 24,
         height: 24,
-        tintColor: '#A9A9A9',
+        tintColor: Colors.mediumGrey,
     },
     footer: {
         flex: 1,
@@ -388,30 +429,34 @@ const styles = StyleSheet.create({
         marginTop: 20, // Add margin top to ensure it doesn't overlap
     },
     button: {
-        backgroundColor: '#5D9275',
+        backgroundColor: Colors.primary,
         paddingVertical: 18,
         borderRadius: 16,
         alignItems: 'center',
     },
     buttonDisabled: {
-        backgroundColor: '#A0A0A0',
+        backgroundColor: Colors.mediumGrey,
         opacity: 0.7,
     },
     buttonText: {
-        color: '#FFFFFF',
+        color: Colors.white,
         fontSize: 18,
         fontWeight: 'bold',
     },
+    continueButton: {
+        marginBottom   : 20,
+        width: '100%',
+    },
     addPhotoText: {
         fontSize: 14,
-        color: '#6A8A7A',
+        color: Colors.primary,
         fontWeight: '500',
         marginTop: 8,
     },
     uploadingContainer: {
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#E0E0E0',
+        backgroundColor: Colors.lightGrey,
     },
     modalOverlay: {
         position: 'absolute',
@@ -424,12 +469,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         borderRadius: 16,
         padding: 24,
         marginHorizontal: 20,
         alignItems: 'center',
-        shadowColor: '#000',
+        shadowColor: Colors.black,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -438,40 +483,56 @@ const styles = StyleSheet.create({
         shadowRadius: 3.84,
         elevation: 5,
     },
+    successBadge: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.primary + '20',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+    },
+    successBadgeText: {
+        color: Colors.primary,
+        fontSize: 28,
+        fontWeight: '700',
+        lineHeight: 32,
+    },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#2F4858',
+        color: Colors.black,
         marginBottom: 8,
     },
     modalSubtitle: {
         fontSize: 16,
-        color: '#666666',
+        color: Colors.mediumGrey,
         marginBottom: 24,
         textAlign: 'center',
     },
     modalButton: {
         width: '100%',
+        paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 8,
         marginBottom: 12,
         alignItems: 'center',
     },
     primaryButton: {
-        backgroundColor: '#4A90E2',
+        backgroundColor: Colors.primary,
     },
     secondaryButton: {
-        backgroundColor: '#F5F5F5',
+        backgroundColor: Colors.lightGrey,
         borderWidth: 1,
         borderColor: '#E0E0E0',
     },
     primaryButtonText: {
-        color: '#FFFFFF',
+        color: Colors.white,
         fontSize: 16,
         fontWeight: '600',
     },
     secondaryButtonText: {
-        color: '#2F4858',
+        color: Colors.black,
         fontSize: 16,
         fontWeight: '600',
     },

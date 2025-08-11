@@ -1,28 +1,39 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Image, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/theme';
+import { Button } from '../../../components/Button';
 
 const WelcomeScreen = () => {
     const router = useRouter();
 
+    const handleGetStarted = () => {
+        // router.push('/verify-email');
+        // router.push('/signup');
+        router.push('/login');
+    };
+
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+            <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
             <View style={styles.content}>
-                <Image 
-                    source={require('@/assets/images/Logo_Big.png')} 
+                <Image
+                    source={require('@/assets/images/Logo_Icon.png')}
                     style={styles.logo}
                 />
                 <Text style={styles.title}>
-                    Welcome To Sproutbook
+                    Welcome{'\n'} To Sproutbook
                 </Text>
                 <Text style={styles.subtitle}>
                     Easily capture everyday moments and turn them into shareable, lasting memories.
                 </Text>
                 <View style={styles.buttonContainer}>
-                    <TouchableOpacity style={styles.button} onPress={() => router.push('/signup')}>
-                        <Text style={styles.buttonText}>Get Started</Text>
-                    </TouchableOpacity>
+                    <Button
+                        title="Get Started"
+                        onPress={handleGetStarted}
+                        variant="primary"
+                        size="large"
+                    />
                 </View>
             </View>
         </SafeAreaView>
@@ -32,7 +43,7 @@ const WelcomeScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
         justifyContent: 'center', // Center the main content block
     },
     content: {
@@ -48,38 +59,21 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 32,
-        fontWeight: 'bold',
-        color: '#2F4858',
+        fontWeight: '500',
+        color: Colors.black,
         textAlign: 'center',
-        fontFamily: 'serif',
         marginBottom: 16,
     },
     subtitle: {
-        fontSize: 16,
-        color: '#597181',
+        fontSize: 14,
+        fontFamily: 'Poppins',
+        color: Colors.mediumGrey,
         textAlign: 'center',
         lineHeight: 24,
-        fontFamily: 'serif',
     },
     buttonContainer: {
         width: '100%',
         marginTop: 60, // Add space above the button
-    },
-    button: {
-        backgroundColor: '#5D9275',
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        elevation: 4,
-    },
-    buttonText: {
-        color: '#FFFFFF',
-        fontSize: 18,
-        fontWeight: 'bold',
     },
 });
 

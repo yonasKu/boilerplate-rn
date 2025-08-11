@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, where, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, updateDoc, arrayUnion, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase/firebaseConfig';
 
 export interface Child {
@@ -64,18 +64,40 @@ export const getUserChildren = async (parentId: string): Promise<Child[]> => {
   }
 };
 
-export const getChildById = async (childId: string): Promise<Child | null> => {
+export const getChild = async (childId: string): Promise<Child | null> => {
   try {
-    const childDoc = await getDocs(query(collection(db, 'children'), where('__name__', '==', childId)));
-    if (childDoc.empty) return null;
-    
-    const doc = childDoc.docs[0];
-    return {
-      id: doc.id,
-      ...doc.data()
-    } as Child;
+    const childRef = doc(db, 'children', childId);
+    const childSnap = await getDoc(childRef);
+
+    if (childSnap.exists()) {
+      const data = childSnap.data();
+      return {
+        id: childSnap.id,
+        ...data,
+        dateOfBirth: data.dateOfBirth?.toDate ? data.dateOfBirth.toDate() : new Date(data.dateOfBirth),
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt)
+      } as Child;
+    } else {
+      console.log("No such document!");
+      return null;
+    }
   } catch (error) {
     console.error('Error fetching child by ID:', error);
+    throw error;
+  }
+};
+
+export const updateChild = async (childId: string, dataToUpdate: Partial<ChildInput>): Promise<void> => {
+  try {
+    const childRef = doc(db, 'children', childId);
+    await updateDoc(childRef, {
+      ...dataToUpdate,
+      updatedAt: new Date()
+    });
+    console.log('Child updated successfully');
+  } catch (error) {
+    console.error('Error updating child:', error);
     throw error;
   }
 };

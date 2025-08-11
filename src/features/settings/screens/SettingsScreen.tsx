@@ -5,6 +5,7 @@ import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'expo-router';
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
+import { Colors } from '../../../theme/colors';
 
 type SettingsOption = {
   icon: any;
@@ -12,12 +13,12 @@ type SettingsOption = {
 };
 
 const settingsOptions: SettingsOption[] = [
-  { icon: require('../../../assets/images/people_icon.png'), text: 'Child Profiles' },
-  { icon: require('../../../assets/images/user.png'), text: 'Partner access' },
-  { icon: require('../../../assets/images/heart.png'), text: 'Refer a friend' },
-  { icon: require('../../../assets/images/profile_Icon.png'), text: 'Account settings' },
-  { icon: require('../../../assets/images/receipt-discount_icon.png'), text: 'Gift cards' },
-  { icon: require('../../../assets/images/Share_icon.png'), text: 'Family sharing' },
+  { icon: require('../../../assets/images/tabler_mood-kid_icon.png'), text: 'Child Profiles' },
+  { icon: require('../../../assets/images/link_icon.png'), text: 'Partner access' },
+  { icon: require('../../../assets/images/refer_icon.png'), text: 'Refer a friend' },
+  { icon: require('../../../assets/images/settings_icon.png'), text: 'Account settings' },
+  { icon: require('../../../assets/images/gift_icon.png'), text: 'Gift cards' },
+  { icon: require('../../../assets/images/people_icon.png'), text: 'Family sharing' },
 ];
 
 const SettingsScreen = () => {
@@ -56,7 +57,7 @@ const SettingsScreen = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
       <ScreenHeader title="Settings" />
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
 
@@ -112,7 +113,7 @@ const SettingsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -131,33 +132,33 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 40,
     borderWidth: 2,
-    borderColor: '#E8F5E9',
+    borderColor: Colors.accent,
   },
   editIconContainer: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: '#5D9275',
+    backgroundColor: Colors.primary,
     borderRadius: 12,
     padding: 4,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: Colors.white,
   },
   editIcon: {
     width: 14,
     height: 14,
-    tintColor: '#FFFFFF',
+    tintColor: Colors.white,
     resizeMode: 'contain',
   },
   profileName: {
     marginTop: 16,
     fontSize: 18,
     fontWeight: '600',
-    color: '#2F4858',
+    color: Colors.darkGrey,
   },
   optionsContainer: {
     marginHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   optionRow: {
     flexDirection: 'row',
@@ -165,13 +166,13 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    borderBottomColor: Colors.offWhite,
   },
   iconBackground: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: Colors.lightPink,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -179,18 +180,18 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 16,
     fontSize: 16,
-    color: '#2F4858',
+    color: Colors.darkGrey,
     fontWeight: '400',
   },
   optionIcon: {
     width: 20,
     height: 20,
-    tintColor: '#5D9275',
+    tintColor: Colors.darkGrey,
   },
   chevronIcon: {
     width: 16,
     height: 16,
-    tintColor: '#2F4858',
+    tintColor: Colors.black,
     transform: [{ rotate: '-90deg' }],
   },
   logoutButton: {
@@ -198,14 +199,14 @@ const styles = StyleSheet.create({
     marginTop: 40,
     marginBottom: 32,
     paddingVertical: 16,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: Colors.lightPink,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#FFE5E5',
+    borderColor: Colors.lightPink,
   },
   logoutButtonText: {
-    color: '#E53E3E',
+    color: Colors.error,
     fontSize: 16,
     fontWeight: '600',
   },

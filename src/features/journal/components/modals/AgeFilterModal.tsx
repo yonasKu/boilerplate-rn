@@ -1,52 +1,104 @@
-import React, { useState } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+type TimeUnit = 'Weeks' | 'Months' | 'Years';
 
 interface AgeFilterModalProps {
   visible: boolean;
   onClose: () => void;
-  onSave: (ageRange: { min: number; max: number; unit: string }) => void;
+  onSave: (ageRange: { value: number; unit: TimeUnit }) => void;
 }
 
 const AgeFilterModal: React.FC<AgeFilterModalProps> = ({ visible, onClose, onSave }) => {
-  const ageRanges = [
-    { label: 'Newborn (0-3 months)', min: 0, max: 3, unit: 'Months' },
-    { label: 'Infant (3-12 months)', min: 3, max: 12, unit: 'Months' },
-    { label: 'Toddler (1-3 years)', min: 12, max: 36, unit: 'Months' },
-    { label: 'Preschool (3-5 years)', min: 36, max: 60, unit: 'Months' },
-    { label: 'School Age (5-12 years)', min: 60, max: 144, unit: 'Months' },
-    { label: 'Teen (12-18 years)', min: 144, max: 216, unit: 'Months' },
-  ];
+  const [selectedValue, setSelectedValue] = useState(1);
+  const [selectedUnit, setSelectedUnit] = useState<TimeUnit>('Weeks');
 
-  const handleAgeSelection = (ageRange: { min: number; max: number; unit: string }) => {
-    onSave(ageRange);
+  const numbers = useMemo(() => {
+    let max = 52;
+    if (selectedUnit === 'Weeks') {
+      max = 52;
+    } else if (selectedUnit === 'Months') {
+      max = 12;
+    } else if (selectedUnit === 'Years') {
+      max = 18;
+    }
+    return Array.from({ length: max }, (_, i) => i + 1);
+  }, [selectedUnit]);
+
+  useEffect(() => {
+    const max = numbers.length;
+    if (selectedValue > max) {
+      setSelectedValue(1);
+    }
+  }, [numbers, selectedValue]);
+
+  const units: TimeUnit[] = ['Weeks', 'Months', 'Years'];
+
+  const handleSave = () => {
+    onSave({ value: selectedValue, unit: selectedUnit });
     onClose();
   };
 
+  const renderNumberItem = ({ item }: { item: number }) => (
+    <TouchableOpacity onPress={() => setSelectedValue(item)}>
+      <Text style={[styles.pickerItem, selectedValue === item && styles.selectedPickerItem]}>
+        {String(item).padStart(2, '0')}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const renderUnitItem = ({ item }: { item: TimeUnit }) => (
+    <TouchableOpacity onPress={() => setSelectedUnit(item)}>
+      <Text style={[styles.pickerItem, styles.unitPickerItem, selectedUnit === item && styles.selectedPickerItem]}>
+        {item}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <Modal transparent={true} visible={visible} animationType="fade">
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>✕</Text>
-          </TouchableOpacity>
-          
-          <Text style={styles.title}>Select Age Range</Text>
-          
-          <ScrollView style={styles.scrollView}>
-            {ageRanges.map((range, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.ageButton}
-                onPress={() => handleAgeSelection(range)}
-              >
-                <Text style={styles.ageButtonText}>{range.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          
-          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.centeredView}>
+        <View style={styles.modalView}>
+          <View style={styles.header}>
+            <Text style={styles.modalTitle}>Select Time</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.pickerContainer}>
+            <FlatList
+              data={numbers}
+              renderItem={renderNumberItem}
+              keyExtractor={(item) => item.toString()}
+              showsVerticalScrollIndicator={false}
+              style={styles.pickerColumn}
+              contentContainerStyle={styles.pickerContentContainer}
+            />
+            <FlatList
+              data={units}
+              renderItem={renderUnitItem}
+              keyExtractor={(item) => item}
+              showsVerticalScrollIndicator={false}
+              style={styles.datepickerColumn}
+              contentContainerStyle={styles.datepickerContentContainer}
+            />
+          </View>
+
+          <View style={styles.footer}>
+            {/* <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity> */}
+            <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -54,64 +106,114 @@ const AgeFilterModal: React.FC<AgeFilterModalProps> = ({ visible, onClose, onSav
 };
 
 const styles = StyleSheet.create({
-  overlay: {
+  centeredView: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    //paddingVertical: 20,
   },
-  modalContainer: {
+  modalView: {
+    margin: 20,
     backgroundColor: 'white',
     borderRadius: 20,
-    padding: 20,
-    width: Dimensions.get('window').width - 40,
-    maxWidth: 340,
-    maxHeight: Dimensions.get('window').height * 0.8,
+    padding: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '85%',
+    marginVertical: 20,
+    maxHeight: '85%',
   },
-  closeButton: {
-    position: 'absolute',
-    top: 15,
-    right: 15,
-    zIndex: 1,
-  },
-  closeButtonText: {
-    fontSize: 24,
-    color: '#666',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
+  header: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
-    marginTop: 10,
   },
-  scrollView: {
-    maxHeight: 300,
-  },
-  ageButton: {
-    backgroundColor: '#f8f9fa',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-  },
-  ageButtonText: {
-    fontSize: 16,
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
-    textAlign: 'center',
   },
-  cancelButton: {
-    marginTop: 15,
-    paddingVertical: 12,
-    backgroundColor: '#6c757d',
-    borderRadius: 10,
+  pickerContainer: {
+    flexDirection: 'row',
+    height: 150,
+    marginBottom: 30,
+  },
+  pickerColumn: {
+    flex: 1,
+  },
+  pickerContentContainer: {
     alignItems: 'center',
   },
+  datepickerContainer: {
+    flexDirection: 'row',
+    height: 150,
+    marginBottom: 30,
+  },
+  datepickerColumn: {
+    flex: 1,
+    margin: 16,
+  },
+  datepickerContentContainer: {
+    alignItems: 'center',
+  },
+  pickerItem: {
+    fontSize: 18,
+    paddingVertical: 8,
+    color: '#A0A0A0',
+  },
+  unitPickerItem: {
+    textAlign: 'left',
+    width: 100,
+  },
+  selectedPickerItem: {
+    color: '#333',
+    fontWeight: 'bold',
+    fontSize: 22,
+  },
+  footer: {
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 10,
+  },
+  button: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    paddingHorizontal: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  cancelButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: 10,
+  },
+  saveButton: {
+    backgroundColor: '#6D9C74',
+  },
   cancelButtonText: {
+    color: '#333',
+    fontWeight: '500',
     fontSize: 16,
+  },
+  saveButtonText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 

@@ -19,7 +19,7 @@ const ReferAFriendScreen = () => {
       <ScreenHeader title="Refer a Friend" showShareIcon onSharePress={handleShare} />
       <ReferFriendModal visible={isModalVisible} onClose={() => setModalVisible(false)} />
       <View style={styles.content}>
-        <Image source={require('../../../assets/images/Logo_Big.png')} style={styles.logo} />
+        <Image source={require('../../../assets/images/Logo_Icon.png')} style={styles.logo} />
         <Text style={styles.title}>Invite Friends</Text>
         <Text style={styles.subtitle}>
           Do you know someone who might like Sproutbook? Give them a free month!
