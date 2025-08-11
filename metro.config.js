@@ -18,4 +18,10 @@ config.resolver.sourceExts.push('mjs');
 config.resolver.sourceExts.push('cjs');
 config.resolver.unstable_enablePackageExports = false;
 
+// Add the reanimated plugin for animation libraries
+config.plugins = [
+    ...(config.plugins || []),
+    'react-native-reanimated/plugin',
+];
+
 module.exports = config;

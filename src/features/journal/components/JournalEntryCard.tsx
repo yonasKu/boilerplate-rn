@@ -155,7 +155,7 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
                 <Text style={styles.dateDay}>{formattedDate.day}</Text>
                 <Text style={styles.dateMonth}>{formattedDate.month}</Text>
               </View>
-              <Text style={styles.entryText} numberOfLines={5}>{entry.text}</Text>
+              <Text style={styles.entryText} numberOfLines={4}>{entry.text}</Text>
             </View>
           </View>
         </View>
@@ -177,6 +177,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   dateContainer: {
+    alignSelf:'flex-start',
     alignItems: 'flex-end',
     //justifyContent: 'center',
     marginRight: 6,
