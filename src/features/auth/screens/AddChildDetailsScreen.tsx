@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, Platform, Alert, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, Platform, Alert, ActivityIndicator, StatusBar, Linking } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
@@ -141,20 +141,30 @@ const AddChildDetailsScreen = () => {
 
     const pickChildImage = async () => {
         try {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission Required', 'Please allow access to your photos to upload a child picture.');
+            // Request media library permissions
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            
+            if (permissionResult.status !== 'granted') {
+                Alert.alert(
+                    'Permission Required',
+                    'Please allow access to your photos to upload a child picture. You can enable this in Settings > Privacy > Photos > SproutBook.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Platform.OS === 'ios' && Linking.openURL('app-settings:') }
+                    ]
+                );
                 return;
             }
 
             const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'],
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.8,
+                base64: false,
             });
 
-            if (!result.canceled) {
+            if (!result.canceled && result.assets && result.assets.length > 0) {
                 setIsUploadingImage(true);
                 const imageUri = result.assets[0].uri;
                 setChildImage(imageUri);

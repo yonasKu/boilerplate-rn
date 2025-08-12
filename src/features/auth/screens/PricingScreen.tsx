@@ -12,7 +12,7 @@ const PricingScreen = () => {
   const handlePayment = () => {
     // Stub function for payment processing
     console.log(`${Platform.OS === 'ios' ? 'Apple Pay' : 'Google Pay'} payment initiated`);
-    router.push('/(auth)/checkout');
+    router.push('/(auth)/login');
   };
 
   const Feature = ({ text }: { text: string }) => (

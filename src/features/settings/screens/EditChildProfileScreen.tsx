@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, StatusBar, Platform, Image, Linking } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -186,20 +186,42 @@ const EditChildProfileScreen = () => {
     };
 
     const pickChildImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 1,
-        });
-
-        if (!result.canceled && result.assets && result.assets[0].uri && typeof childId === 'string') {
-            setIsUploadingImage(true);
-            const newImageUrl = await uploadChildProfileImage(result.assets[0].uri, childId);
-            if (newImageUrl) {
-                setChildImage(newImageUrl);
-                await updateChild(childId, { avatar: newImageUrl });
+        try {
+            // Request media library permissions
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            
+            if (permissionResult.status !== 'granted') {
+                Alert.alert(
+                    'Permission Required',
+                    'Please allow access to your photos to upload a child picture. You can enable this in Settings > Privacy > Photos > SproutBook.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Platform.OS === 'ios' && Linking.openURL('app-settings:') }
+                    ]
+                );
+                return;
             }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+                base64: false,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0 && typeof childId === 'string') {
+                setIsUploadingImage(true);
+                const newImageUrl = await uploadChildProfileImage(result.assets[0].uri, childId);
+                if (newImageUrl) {
+                    setChildImage(newImageUrl);
+                    await updateChild(childId, { avatar: newImageUrl });
+                }
+                setIsUploadingImage(false);
+            }
+        } catch (error) {
+            console.error('Error picking child image:', error);
+            Alert.alert('Error', 'Failed to select child image. Please try again.');
             setIsUploadingImage(false);
         }
     };

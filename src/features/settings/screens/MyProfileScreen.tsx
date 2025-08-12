@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, StatusBar, Alert, ActivityIndicator, Platform, Linking } from 'react-native';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { getAuth, updateProfile } from 'firebase/auth';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,9 +30,18 @@ const MyProfileScreen = () => {
 
     const pickProfileImage = async () => {
         try {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-                Alert.alert('Permission Required', 'Please allow access to your photos to upload a profile picture.');
+            // Request media library permissions
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            
+            if (permissionResult.status !== 'granted') {
+                Alert.alert(
+                    'Permission Required',
+                    'Please allow access to your photos to upload a profile picture. You can enable this in Settings > Privacy > Photos > SproutBook.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Open Settings', onPress: () => Platform.OS === 'ios' && Linking.openURL('app-settings:') }
+                    ]
+                );
                 return;
             }
 
@@ -41,9 +50,10 @@ const MyProfileScreen = () => {
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.8,
+                base64: false,
             });
 
-            if (!result.canceled) {
+            if (!result.canceled && result.assets && result.assets.length > 0) {
                 setIsUploadingImage(true);
                 const imageUri = result.assets[0].uri;
                 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, ActivityIndicator, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -81,41 +81,77 @@ const NewEntryScreen = () => {
   }, [isEditMode, entryId, entries]);
 
   const pickMedia = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      quality: 1,
-    });
+    try {
+      // Request media library permissions
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (permissionResult.status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your photos to upload images. You can enable this in Settings > Privacy > Photos > SproutBook.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Platform.OS === 'ios' && Linking.openURL('app-settings:') }
+          ]
+        );
+        return;
+      }
 
-    if (!result.canceled) {
-      const newMedia = result.assets.map(asset => ({
-        uri: asset.uri,
-        type: 'image' as 'image'
-      }));
-      setMedia(prevMedia => [...prevMedia, ...newMedia]);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        base64: false,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newMedia = result.assets.map(asset => ({
+          uri: asset.uri,
+          type: 'image' as 'image'
+        }));
+        setMedia(prevMedia => [...prevMedia, ...newMedia]);
+      }
+    } catch (error) {
+      console.error('Error picking media:', error);
+      Alert.alert('Error', 'Failed to select images. Please try again.');
     }
   };
 
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-      return;
-    }
+    try {
+      // Request camera permissions
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (permissionResult.status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your camera to take photos. You can enable this in Settings > Privacy > Camera > SproutBook.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Platform.OS === 'ios' && Linking.openURL('app-settings:') }
+          ]
+        );
+        return;
+      }
 
-    let result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 1,
-    });
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        base64: false,
+      });
 
-    if (!result.canceled) {
-      const newMediaItem = {
-        uri: result.assets[0].uri,
-        type: 'image' as 'image' | 'video',
-      };
-      setMedia(prevMedia => [...prevMedia, newMediaItem]);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const newMediaItem = {
+          uri: result.assets[0].uri,
+          type: 'image' as 'image' | 'video',
+        };
+        setMedia(prevMedia => [...prevMedia, newMediaItem]);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
 

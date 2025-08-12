@@ -13,7 +13,12 @@
       "backgroundColor": "#2E7E78"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "SproutBook needs access to your photo library to upload child profile pictures.",
+        "NSPhotoLibraryAddUsageDescription": "SproutBook needs access to save child profile pictures to your photo library.",
+        "NSCameraUsageDescription": "SproutBook needs access to your camera to take child profile pictures."
+      }
     },
     "android": {
       "adaptiveIcon": {
