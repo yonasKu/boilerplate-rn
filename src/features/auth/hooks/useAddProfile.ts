@@ -12,12 +12,12 @@ export const useAddProfile = () => {
     const { user, refreshOnboardingStatus } = useAuth();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [lifestage, setLifestage] = useState('Soon to be parent');
+    const [lifestage, setLifestage] = useState('Lifestage');
     const [profileImage, setProfileImage] = useState<string | null>(null);
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
-    const lifestageOptions = ['Soon to be parent', 'Parent'];
+    const lifestageOptions = ['Parent', 'Soon-to-be parent'];
 
     useEffect(() => {
         const loadUserData = async () => {
@@ -27,7 +27,7 @@ export const useAddProfile = () => {
                     const userData = userDoc.data();
                     setName(userData.name || '');
                     setEmail(userData.email || user.email || '');
-                    setLifestage(userData.lifestage || 'Soon to be parent');
+                    setLifestage(userData.lifestage || 'Select your lifestage');
                 }
             }
         };

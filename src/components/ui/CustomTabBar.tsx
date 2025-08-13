@@ -3,13 +3,15 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
+import { useJournal } from '@/hooks/useJournal';
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { bottom } = useSafeAreaInsets();
   const router = useRouter();
-  const [showCreateHint, setShowCreateHint] = useState(false);
-  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const { entries } = useJournal();
 
   const getIcon = (routeName: string): keyof typeof Feather.glyphMap => {
     switch (routeName) {
@@ -24,91 +26,130 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
     }
   };
 
-      const visibleRoutes = ['journal', 'recaps', 'search'];
+  const visibleRoutes = ['journal', 'recaps', 'search'];
 
-  // Animation for new entry hint
+
+
+  // Animation for new entry hint - glowing orb effect
   useEffect(() => {
-    // Start bounce animation when component mounts
-    setTimeout(() => {
+    // Show glow if no entries exist
+    const shouldShowGlow = entries.length === 0;
+
+    if (shouldShowGlow) {
+      // Create glowing orb animation
       Animated.loop(
         Animated.sequence([
-          Animated.timing(bounceAnim, {
+          Animated.timing(glowAnim, {
             toValue: 1,
-            duration: 400,
+            duration: 2000,
             useNativeDriver: true,
           }),
-          Animated.timing(bounceAnim, {
+          Animated.timing(glowAnim, {
             toValue: 0,
-            duration: 400,
+            duration: 2000,
             useNativeDriver: true,
           }),
-        ]),
-        { iterations: 3 }
+        ])
       ).start();
-    }, 1500); // Start after 1.5 seconds of app opening
-  }, []);
 
-    return (
+      // Subtle scale pulse
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleAnim, {
+            toValue: 1.1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [entries.length]);
+
+  const handleNewEntryPress = () => {
+    router.push('/new-entry');
+  };
+
+  return (
     <View style={[styles.container, { paddingBottom: bottom }]}>
       <View style={styles.mainContainer}>
         <View style={styles.tabBar}>
-            {state.routes.filter(r => visibleRoutes.includes(r.name)).map((route, index) => {
-              const { options } = descriptors[route.key];
-              const label = options.title !== undefined ? options.title : route.name;
-              const isFocused = state.index === index;
+          {state.routes.filter(r => visibleRoutes.includes(r.name)).map((route, index) => {
+            const { options } = descriptors[route.key];
+            const label = options.title !== undefined ? options.title : route.name;
+            const isFocused = state.index === index;
 
-              const onPress = () => {
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                });
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
 
-                if (!isFocused && !event.defaultPrevented) {
-                  navigation.navigate(route.name, route.params);
-                }
-              };
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
+            };
 
-              return (
-                <TouchableOpacity
-                  key={route.key}
-                  onPress={onPress}
-                  style={styles.tabButton}
-                >
-                  <Feather name={getIcon(route.name)} size={20} color={isFocused ? '#5D9275' : '#888'} />
-                  <Text style={[styles.label, { color: isFocused ? '#5D9275' : '#888' }]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            return (
+              <TouchableOpacity
+                key={route.key}
+                onPress={onPress}
+                style={styles.tabButton}
+              >
+                <Feather name={getIcon(route.name)} size={20} color={isFocused ? '#5D9275' : '#888'} />
+                <Text style={[styles.label, { color: isFocused ? '#5D9275' : '#888' }]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-          <View style={styles.newButtonContainer}>
+        <View style={styles.newButtonContainer}>
+          {entries.length === 0 && (
             <Animated.View
               style={[
-                styles.newButton,
+                styles.glowOrb,
                 {
+                  opacity: glowAnim,
                   transform: [
                     {
-                      translateY: bounceAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -12]
+                      scale: scaleAnim.interpolate({
+                        inputRange: [0.8, 1],
+                        outputRange: [1.2, 1.5]
                       })
                     }
                   ]
                 }
               ]}
+            />
+          )}
+          <Animated.View
+            style={[
+              styles.newButton,
+              entries.length === 0 && {
+                transform: [
+                  {
+                    scale: scaleAnim
+                  }
+                ]
+              }
+            ]}
+          >
+            <TouchableOpacity
+              onPress={handleNewEntryPress}
+              style={styles.newButton}
             >
-              <TouchableOpacity
-                onPress={() => router.push('/new-entry')}
-                style={styles.newButton}
-              >
-                <Feather name="edit" size={20} color="#fff" />
-                <Text style={styles.newButtonText}>New</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
+              <Feather name="edit" size={20} color="#fff" />
+              <Text style={styles.newButtonText}>New</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
       </View>
     </View>
   );
@@ -199,6 +240,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     textTransform: 'capitalize',
+  },
+  glowOrb: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#5D9275',
+    opacity: 0.3,
+    zIndex: -1,
   },
 });
 

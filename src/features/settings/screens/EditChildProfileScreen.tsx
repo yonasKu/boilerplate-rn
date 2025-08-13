@@ -445,6 +445,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: Colors.black,
+        paddingVertical: 10
     },
     pickerWrapper: {
         marginBottom: 20,

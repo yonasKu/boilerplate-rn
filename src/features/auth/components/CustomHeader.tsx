@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '@/theme';
 
 interface CustomHeaderProps {
   title?: string;
@@ -99,8 +100,8 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2F4858',
+    fontFamily: 'Poppins-Medium',
+    color: Colors.darkGrey,
     position: 'absolute',
     left: 0,
     right: 0,
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     padding: 5,
   },
   backButtonContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -142,7 +143,7 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2F4858',
+    color: Colors.darkGrey,
     marginRight: 4,
   },
 });

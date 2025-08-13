@@ -17,15 +17,15 @@ const PricingScreen = () => {
 
   const Feature = ({ text }: { text: string }) => (
     <View style={styles.featureItem}>
-      <Feather name="check" size={16} color={Colors.darkGrey} />
+      <Feather name="check" size={16} color={Colors.primary} />
       <Text style={styles.featureText}>{text}</Text>
     </View>
   );
 
   const PlanOption = ({ id, price, billing, popular, saved, selected, onPress }: { id: string; price: string; billing: string; popular: boolean; saved: string | boolean; selected: boolean; onPress: () => void }) => (
     <TouchableOpacity onPress={onPress} style={[styles.planOption, selected && styles.planOptionSelected]}>
-      <View style={styles.planRadio}>
-        {selected && <View style={styles.planRadioSelected} />}
+      <View style={[styles.planRadio, { borderColor: selected ? Colors.primary : Colors.grey }]}>
+        {selected && <Feather name="check" size={16} color={Colors.primary} />}
       </View>
       <View style={styles.planDetails}>
         <Text style={styles.planPrice}>{price}</Text>
@@ -42,9 +42,8 @@ const PricingScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.contentContainer}>
           <Text style={styles.title}>Start with 10 days free</Text>
-          <Text style={styles.subtitle}>Capture your baby's journey today with:</Text>
-
           <View style={styles.featuresContainer}>
+            <Text style={styles.subtitle}>Capture your baby's journey today with:</Text>
             <Feature text="Effortless photo & memory journaling" />
             <Feature text="AI powered, shareable recaps" />
             <Feature text="Automatic, secure family sharing & more" />
@@ -53,12 +52,10 @@ const PricingScreen = () => {
           <View style={styles.testimonialCard}>
             <View style={styles.testimonialHeader}>
               <View style={styles.starsContainer}>
-                {[...Array(5)].map((_, i) => (
-                  <Feather key={i} name="star" size={16} color="#FFC700" style={{ marginRight: 2 }} />
-                ))}
+                <Image source={require('@/assets/images/5_stars.png')} style={styles.starsImage} />
               </View>
               <View style={styles.authorContainer}>
-                <Text style={styles.authorName}>Alexandria W.</Text>
+                <Text style={styles.authorName}>Alexandra W.</Text>
                 <Image source={require('@/assets/images/sampleProfile.png')} style={styles.authorImage} />
               </View>
             </View>
@@ -73,7 +70,6 @@ const PricingScreen = () => {
               <Text style={styles.billingText}>(billed $40/year)</Text>
             </View>
           )}
-
 
           {showPlans && (
             <View style={styles.planSelectorContainer}>
@@ -98,7 +94,9 @@ const PricingScreen = () => {
             </View>
           )}
           <TouchableOpacity onPress={() => setShowPlans(!showPlans)}>
-            <Text style={styles.seePlansText}>{showPlans ? 'Hide plans' : 'See all plans'}</Text>
+            <Text style={[styles.seePlansText, { color: showPlans ? Colors.grey : Colors.primary }]}>
+              {showPlans ? 'Hide plans' : 'See all plans'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.paymentButton} onPress={handlePayment}>
@@ -106,7 +104,7 @@ const PricingScreen = () => {
               <Text style={styles.paymentButtonText}>Subscribe with </Text>
               <Image
                 source={Platform.OS === 'ios'
-                  ? require('@/assets/images/apple_logo.png')
+                  ? require('@/assets/images/apple_logo_white.png')
                   : require('@/assets/images/google_logo.png')
                 }
                 style={styles.paymentLogo}
@@ -164,20 +162,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.darkGrey,
     //textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 26,
 
   },
   subtitle: {
     fontSize: 16,
     color: Colors.mediumGrey,
-    textAlign: 'center',
     marginBottom: 16,
     fontFamily: 'Poppins',
   },
   featuresContainer: {
+    paddingLeft: 12,  
     alignSelf: 'flex-start',
     marginBottom: 14,
-    marginLeft: '10%'
+    //marginLeft: 24
+    marginLeft: "10%"
   },
   featureItem: {
     flexDirection: 'row',
@@ -191,11 +190,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins',
   },
   testimonialCard: {
-    backgroundColor: Colors.lightPink,
+    backgroundColor: "#F9F6F4",
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
+    marginBottom: 24,
     width: '90%',
-    marginBottom: 32,
     alignSelf: 'center',
   },
   testimonialHeader: {
@@ -213,7 +212,6 @@ const styles = StyleSheet.create({
   },
   authorName: {
     fontSize: 14,
-    fontWeight: '500',
     color: Colors.darkGrey,
     marginRight: 8,
     fontFamily: 'Poppins',
@@ -223,9 +221,14 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
   },
+  starsImage: {
+    width: 90,
+    height: 16,
+    resizeMode: 'contain',
+  },
   testimonialText: {
     fontSize: 14,
-    fontWeight: '500',
+    paddingHorizontal: 10,
     color: Colors.darkGrey,
     lineHeight: 22,
     fontFamily: 'Poppins',
@@ -233,14 +236,14 @@ const styles = StyleSheet.create({
   pricingInfoContainer: {
     alignItems: 'center',
     marginBottom: 12,
-    marginVertical: 25,
+    marginVertical: 20,
     gap: 4,
   },
   priceText: {
     fontSize: 14,
     fontWeight: '500',
     color: Colors.darkGrey,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins-semibold',
   },
   billingText: {
     fontSize: 14,
@@ -250,11 +253,10 @@ const styles = StyleSheet.create({
   },
   seePlansText: {
     fontSize: 15,
-    fontWeight: '500',
-    color: Colors.darkGrey,
-    textDecorationLine: 'underline',
     marginBottom: 24,
     fontFamily: 'Poppins',
+    fontWeight: '500',
+    textDecorationLine: 'underline',
   },
   paymentButton: {
     backgroundColor: Colors.primary,
@@ -273,8 +275,8 @@ const styles = StyleSheet.create({
   paymentButtonText: {
     color: Colors.white,
     fontSize: 18,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins',
+    fontWeight: '500',
+    fontFamily: 'Poppins-semibold',
     marginHorizontal: -8,
   },
   paymentLogo: {
@@ -284,9 +286,7 @@ const styles = StyleSheet.create({
   },
   moreWaysText: {
     fontSize: 15,
-    fontWeight: '500',
     color: Colors.darkGrey,
-    textDecorationLine: 'underline',
     marginBottom: 24,
     fontFamily: 'Poppins',
   },
@@ -308,14 +308,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins',
   },
   redeemText: {
-    fontWeight: 'bold',
     color: Colors.darkGrey,
     textDecorationLine: 'underline',
     fontFamily: 'Poppins',
   },
   planSelectorContainer: {
     width: '95%',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: Colors.primary,
     borderRadius: 20,
     marginBottom: 24,
@@ -333,7 +332,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
     width: '100%',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: 'transparent',
   },
   planOptionSelected: {
@@ -344,32 +343,28 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
   },
-  planRadioSelected: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-  },
+
   planDetails: {
     flex: 1,
   },
   planPrice: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '500',
     color: Colors.darkGrey,
     fontFamily: 'Poppins',
   },
   planBilling: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.mediumGrey,
     fontFamily: 'Poppins',
+    marginTop: 4,
   },
   popularBadge: {
+    marginLeft: 28,
     backgroundColor: Colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 6,

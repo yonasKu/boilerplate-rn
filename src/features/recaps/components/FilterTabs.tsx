@@ -1,3 +1,4 @@
+import { Colors } from '@/theme';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#5D9275',
   },
   tabText: {
-    color: '#2F4858',
+    color: Colors.darkGrey,
     fontWeight: '600',
   },
   activeTabText: {
@@ -117,7 +118,7 @@ const styles = StyleSheet.create({
   },
   modalOptionText: {
     fontSize: 16,
-    color: '#2F4858',
+    color: Colors.darkGrey,
   },
   activeModalOption: {
     backgroundColor: '#CDE4D2',

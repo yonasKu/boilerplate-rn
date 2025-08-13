@@ -10,14 +10,18 @@
     "splash": {
       "image": "./src/assets/images/splash_logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2E7E78"
+      "backgroundColor": "#2E7E78",
+      "imageWidth": 180,
+      "imageHeight": 180
     },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "SproutBook needs access to your photo library to upload child profile pictures.",
         "NSPhotoLibraryAddUsageDescription": "SproutBook needs access to save child profile pictures to your photo library.",
-        "NSCameraUsageDescription": "SproutBook needs access to your camera to take child profile pictures."
+        "NSCameraUsageDescription": "SproutBook needs access to your camera to take child profile pictures and journal entries.",
+        "UIViewControllerBasedStatusBarAppearance": false,
+        "UIRequiresFullScreen": true
       }
     },
     "android": {

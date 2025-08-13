@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'expo-router';
@@ -17,8 +18,9 @@ const settingsOptions: SettingsOption[] = [
   { icon: require('../../../assets/images/link_icon.png'), text: 'Partner access' },
   { icon: require('../../../assets/images/refer_icon.png'), text: 'Refer a friend' },
   { icon: require('../../../assets/images/settings_icon.png'), text: 'Account settings' },
-  { icon: require('../../../assets/images/gift_icon.png'), text: 'Gift cards' },
+  { icon: require('../../../assets/images/gift_icon.png'), text: 'Gift a free year' },
   { icon: require('../../../assets/images/people_icon.png'), text: 'Family sharing' },
+  { icon: 'log-out', text: 'Logout' }, // Using correct Feather icon name
 ];
 
 const SettingsScreen = () => {
@@ -70,7 +72,7 @@ const SettingsScreen = () => {
               textSize={32}
             />
             <TouchableOpacity style={styles.editIconContainer} onPress={() => router.push('/profile')}>
-              <Image source={require('../../../assets/images/edit-2_icon.png')} style={styles.editIcon} />
+              <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
             </TouchableOpacity>
           </View>
           <Text style={styles.profileName}>
@@ -91,20 +93,22 @@ const SettingsScreen = () => {
                   router.push('/refer-a-friend');
                 } else if (option.text === 'Family sharing') {
                   router.push('/family-sharing');
+                } else if (option.text === 'Logout') {
+                  signOut();
                 }
               }}>
               <View style={styles.iconBackground}>
-                <Image source={option.icon} style={styles.optionIcon} />
+                {typeof option.icon === 'string' ? (
+                  <Feather name={option.icon as any} size={20} color={Colors.grey} />
+                ) : (
+                  <Image source={option.icon} style={styles.optionIcon} />
+                )}
               </View>
               <Text style={styles.optionText}>{option.text}</Text>
               <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.chevronIcon} />
             </TouchableOpacity>
           ))}
         </View>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={signOut}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -138,11 +142,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -2,
     right: -2,
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
+    // backgroundColor: Colors.primary,
+    // borderRadius: 12,
     padding: 4,
-    borderWidth: 2,
-    borderColor: Colors.white,
+    // borderWidth: 2,
+    // borderColor: Colors.white,
   },
   editIcon: {
     width: 14,
@@ -163,15 +167,14 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 18,
+    paddingVertical: 12,
     paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.offWhite,
   },
   iconBackground: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    padding: 4,
     backgroundColor: Colors.lightPink,
     justifyContent: 'center',
     alignItems: 'center',
@@ -186,7 +189,8 @@ const styles = StyleSheet.create({
   optionIcon: {
     width: 20,
     height: 20,
-    tintColor: Colors.darkGrey,
+    tintColor: Colors.grey,
+    resizeMode: 'contain',
   },
   chevronIcon: {
     width: 16,
@@ -194,22 +198,7 @@ const styles = StyleSheet.create({
     tintColor: Colors.black,
     transform: [{ rotate: '-90deg' }],
   },
-  logoutButton: {
-    marginHorizontal: 20,
-    marginTop: 40,
-    marginBottom: 32,
-    paddingVertical: 16,
-    backgroundColor: Colors.lightPink,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.lightPink,
-  },
-  logoutButtonText: {
-    color: Colors.error,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+
 });
 
 export default SettingsScreen;

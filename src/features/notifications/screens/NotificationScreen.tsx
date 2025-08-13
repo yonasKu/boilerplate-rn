@@ -1,77 +1,111 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, Image, StatusBar } from 'react-native';
+import { View, StyleSheet, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import ScreenHeader from '../../../components/ui/ScreenHeader';
+import { Colors } from '@/theme';
+import ScreenHeader from '@/components/ui/ScreenHeader';
 
-type Notification = {
+interface User {
+  name: string;
+  avatar?: any;
+}
+
+interface Notification {
   id: string;
-  title: string;
-  description: string;
-  time: string;
-};
+  type: 'recap_love' | 'comment' | 'reminder' | 'streak';
+  users?: User[];
+  recap?: string;
+  comment?: string;
+  date: string;
+  isRead: boolean;
+}
+import ReminderNotification from '../components/ReminderNotification';
+import StreakNotification from '../components/StreakNotification';
+import CommentNotification from '../components/CommentNotification';
+import RecapLoveNotification from '../components/RecapLoveNotification';
 
-const notifications: Notification[] = [
+// NOTE: Using placeholder images. Replace with actual paths or URIs if they differ.
+const notificationsData: Notification[] = [
   {
     id: '1',
-    title: 'Grandma loved your post',
-    description: 'Your recent memory entry got 3...',
-    time: '2:55 PM',
+    type: 'recap_love',
+    users: [{ name: 'Susan', avatar: require('@/assets/images/sample.png') }],
+    recap: 'Week of July 15th, 2025',
+    date: 'July 22, 2025',
+    isRead: false,
   },
   {
     id: '2',
-    title: 'Auntie Sarah commented',
-    description: '"Such a sweet smile! Growing so f...',
-    time: '7:48 AM',
+    type: 'comment',
+    users: [{ name: 'Susan', avatar: require('@/assets/images/sample.png') }],
+    comment: '“Wow, look at her go!”',
+    date: 'July 16, 2025',
+    isRead: false,
   },
   {
     id: '3',
-    title: 'Journal reminder',
-    description: 'Looks like you missed a day this w...',
-    time: '10:30 AM',
+    type: 'comment',
+    users: [{ name: 'Sarah', avatar: require('@/assets/images/sample.png') }],
+    comment: '“Such a sweet smile! She’s growing so fast”',
+    date: 'July 15, 2025',
+    isRead: true,
   },
   {
     id: '4',
-    title: 'New memory added',
-    description: 'You added 5 new photos to "First...',
-    time: '9:15 AM',
+    type: 'recap_love',
+    users: [
+      { name: 'Susan', avatar: require('@/assets/images/sample.png') },
+      { name: 'Dave', avatar: require('@/assets/images/sample2.png') },
+    ],
+    recap: 'Week of July 8th, 2025',
+    date: 'July 15, 2025',
+    isRead: true,
   },
   {
     id: '5',
-    title: "Don't forget today's entry",
-    description: "Let's keep the streak going! Write...",
-    time: '6:00 PM',
+    type: 'recap_love',
+    users: [{ name: 'Sarah', avatar: require('@/assets/images/sample.png') }, { name: 'Dave', avatar: require('@/assets/images/sample2.png') }, { name: 'others' }],
+    recap: 'Week of July 1st, 2025',
+    date: 'July 8, 2025',
+    isRead: true,
   },
   {
     id: '6',
-    title: 'Dad liked your post',
-    description: 'Your entry "First Tooth!" got a ❤️',
-    time: '11:20 AM',
+    type: 'reminder',
+    date: 'June 30, 2025',
+    isRead: true,
+  },
+  {
+    id: '7',
+    type: 'streak',
+    date: 'June 29, 2025',
+    isRead: true,
   },
 ];
+
+const renderNotificationItem = ({ item }: { item: Notification }) => {
+  switch (item.type) {
+    case 'recap_love':
+      return <RecapLoveNotification item={item} />;
+    case 'comment':
+      return <CommentNotification item={item} />;
+    case 'reminder':
+      return <ReminderNotification item={item} />;
+    case 'streak':
+      return <StreakNotification item={item} />;
+    default:
+      return null;
+  }
+};
 
 const NotificationScreen = () => {
   const insets = useSafeAreaInsets();
 
-  const renderItem = ({ item }: { item: Notification }) => (
-    <View style={styles.notificationItem}>
-      <View style={styles.iconBackground}>
-        <Image source={require('../../../assets/images/profile-2user.png')} style={styles.notificationIcon} />
-      </View>
-      <View style={styles.notificationTextContainer}>
-        <Text style={styles.notificationTitle}>{item.title}</Text>
-        <Text style={styles.notificationDescription}>{item.description}</Text>
-      </View>
-      <Text style={styles.notificationTime}>{item.time}</Text>
-    </View>
-  );
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      <ScreenHeader title="Notification" />
+      <ScreenHeader title="Notifications" showBackButton={true} />
       <FlatList
-        data={notifications}
-        renderItem={renderItem}
+        data={notificationsData}
+        renderItem={renderNotificationItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
       />
@@ -82,31 +116,10 @@ const NotificationScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
   },
   listContainer: {
-    paddingHorizontal: 20,
-  },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  iconBackground: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  notificationIcon: {
-    width: 22,
-    height: 22,
-    tintColor: '#5D9275',
+    paddingVertical: 8,
   },
   notificationTextContainer: {
     flex: 1,

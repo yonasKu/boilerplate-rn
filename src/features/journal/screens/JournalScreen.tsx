@@ -127,7 +127,9 @@ const JournalScreen = () => {
 
         // Filter by selected child
         if (selectedChild) {
-            filtered = filtered.filter(entry => entry.childId === selectedChild.id);
+            filtered = filtered.filter(entry => 
+                entry.childIds && Array.isArray(entry.childIds) && entry.childIds.includes(selectedChild.id)
+            );
         }
 
         // Filter by search query
@@ -295,7 +297,7 @@ const JournalScreen = () => {
                     </View>
                 )}
             </View>
-            <WeekNavigator />
+            {entries.length > 0 && <WeekNavigator />}
             <JournalFilter 
                 onAgePress={() => setShowAgeModal(true)} 
                 activeTimeline={activeTimeline}
@@ -482,10 +484,11 @@ const styles = StyleSheet.create({
     },
     centeredContent: {
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center',
         padding: 20,
         backgroundColor: Colors.white,
+        paddingTop: '45%', // Move content up from center
     },
     listContentContainer: {
         paddingHorizontal: 16,
@@ -493,14 +496,14 @@ const styles = StyleSheet.create({
         paddingBottom: 100, // Ensure space for floating action button if any
     },
     mainImage: {
-        width: 150,
-        height: 150,
+        width: 80,
+        height: 80,
         resizeMode: 'contain',
     },
     promptText: {
         marginTop: 24,
         fontSize: 16,
-        color: Colors.lightGrey,
+        color: Colors.darkGrey,
     },
     filterContainer: {
         paddingHorizontal: 16,

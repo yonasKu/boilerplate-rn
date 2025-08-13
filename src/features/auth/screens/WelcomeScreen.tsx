@@ -8,7 +8,7 @@ const WelcomeScreen = () => {
     const router = useRouter();
 
     const handleGetStarted = () => {
-        // router.push('/verify-email');
+        // router.push('/add-profile');
         // router.push('/signup');
         router.push('/login');
     };

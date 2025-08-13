@@ -7,7 +7,7 @@ import { DocumentData } from 'firebase/firestore';
 export interface JournalEntry extends DocumentData {
   id: string;
   userId: string;
-  childId: string;
+  childIds: string[]; // Multi-child support only
   text: string;
   media: Array<{
     type: 'image' | 'video';
@@ -44,7 +44,7 @@ export const useJournal = () => {
     media: Array<{ uri: string; type: 'image' | 'video' }>;
     isFavorited: boolean; 
     isMilestone: boolean;
-    childId: string;
+    childIds: string[];
     childAgeAtEntry: string;
   }) => {
     if (!user) throw new Error('User not authenticated');
@@ -87,6 +87,8 @@ export const useJournal = () => {
     }>;
     isFavorited?: boolean;
     isMilestone?: boolean;
+    childIds?: string[];
+    childAgeAtEntry?: string;
   }) => {
     if (!user) throw new Error('User not authenticated');
     setIsLoading(true);

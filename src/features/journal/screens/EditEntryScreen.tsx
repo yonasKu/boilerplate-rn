@@ -22,7 +22,7 @@ const EditEntryScreen = () => {
   const [media, setMedia] = useState<Array<{ uri: string; type: 'image' | 'video'; url?: string }>>([]);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isMilestone, setIsMilestone] = useState(false);
-  const [childId, setChildId] = useState<string>('');
+  const [selectedChildren, setSelectedChildren] = useState<string[]>([]);
   const [children, setChildren] = useState<Array<{ id: string; name: string; dateOfBirth: Date }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [originalEntry, setOriginalEntry] = useState<{
@@ -31,7 +31,7 @@ const EditEntryScreen = () => {
     media: Array<{ type: 'image' | 'video'; url: string }>;
     isFavorited: boolean;
     isMilestone: boolean;
-    childId: string;
+    childIds: string[];
     createdAt: any;
   } | null>(null);
 
@@ -68,7 +68,7 @@ const EditEntryScreen = () => {
           setMedia(existingEntry.media?.map(m => ({ ...m, uri: m.url })) || []);
           setIsFavorited(existingEntry.isFavorited || false);
           setIsMilestone(existingEntry.isMilestone || false);
-          setChildId(existingEntry.childId || '');
+          setSelectedChildren(existingEntry.childIds || []);
         } else {
           Alert.alert('Error', 'Entry not found');
           router.back();
@@ -108,30 +108,28 @@ const EditEntryScreen = () => {
       Alert.alert('Empty Entry', 'Please write something before saving.');
       return;
     }
-    if (!childId) {
-      Alert.alert('Select Child', 'Please select a child for this entry.');
+    if (selectedChildren.length === 0) {
+      Alert.alert('Select Child', 'Please select at least one child for this entry.');
       return;
     }
 
     setIsLoading(true);
     
     try {
-      const selectedChild = children.find(c => c.id === childId);
-      if (!selectedChild) {
-        Alert.alert('Error', 'Could not find child information.');
-        return;
-      }
-
-      const childAgeAtEntry = journalService.calculateChildAgeAtDate(
-        selectedChild.dateOfBirth,
-        new Date()
-      );
+      const childAgeAtEntry = selectedChildren.length > 0 
+        ? selectedChildren.map(childId => {
+            const child = children.find(c => c.id === childId);
+            return child ? `${child.name}: ${journalService.calculateChildAgeAtDate(child.dateOfBirth, new Date())}` : '';
+          }).filter(Boolean).join(', ')
+        : '';
 
       await updateEntry(typeof entryId === 'string' ? entryId : entryId[0], {
         text: entryText,
         media: media.map(m => ({ type: m.type, url: m.uri })),
         isFavorited,
-        isMilestone
+        isMilestone,
+        childIds: selectedChildren,
+        childAgeAtEntry: childAgeAtEntry
       });
 
       router.back();
@@ -152,15 +150,21 @@ const EditEntryScreen = () => {
       <ScreenHeader title="Edit Entry" />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.label}>Child</Text>
+        <Text style={styles.label}>Children</Text>
         <View style={styles.childSelector}>
           {children.map(child => (
             <TouchableOpacity
               key={child.id}
-              style={[styles.childOption, childId === child.id && styles.selectedChild]}
-              onPress={() => setChildId(child.id)}
+              style={[styles.childOption, selectedChildren.includes(child.id) && styles.selectedChild]}
+              onPress={() => {
+                setSelectedChildren(prev => 
+                  prev.includes(child.id) 
+                    ? prev.filter(id => id !== child.id)
+                    : [...prev, child.id]
+                );
+              }}
             >
-              <Text style={[styles.childText, childId === child.id && styles.selectedChildText]}>
+              <Text style={[styles.childText, selectedChildren.includes(child.id) && styles.selectedChildText]}>
                 {child.name}
               </Text>
             </TouchableOpacity>

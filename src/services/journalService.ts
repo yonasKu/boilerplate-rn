@@ -37,7 +37,7 @@ export const uploadMedia = async (uri: string, type: 'image' | 'video'): Promise
 // 2. Saves a new journal entry to Firestore
 export const createJournalEntry = async (entryData: {
   userId: string;
-  childId: string;
+  childIds: string[]; // Multi-child support only
   text: string;
   media: Array<{
     type: 'image' | 'video';
@@ -52,17 +52,18 @@ export const createJournalEntry = async (entryData: {
   try {
     console.log('Creating journal entry with data:', {
       userId: entryData.userId,
-      childId: entryData.childId,
+      childIds: entryData.childIds,
       textLength: entryData.text.length,
       mediaCount: entryData.media.length,
       isFavorited: entryData.isFavorited,
       isMilestone: entryData.isMilestone,
-      childAgeAtEntry: entryData.childAgeAtEntry
     });
     
     const docRef = await addDoc(collection(db, 'journalEntries'), {
       ...entryData,
+      childIds: entryData.childIds,
       likes: entryData.likes || {},
+      childAgeAtEntry: entryData.childAgeAtEntry,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
@@ -73,11 +74,12 @@ export const createJournalEntry = async (entryData: {
     console.error('Error creating journal entry:', error);
     console.error('Entry data that failed:', {
       userId: entryData.userId,
-      childId: entryData.childId,
+      childIds: entryData.childIds,
       textLength: entryData.text.length,
       mediaCount: entryData.media.length,
       hasMedia: entryData.media.length > 0,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      isFavorited: entryData.isFavorited,
+      isMilestone: entryData.isMilestone,
     });
     throw error;
   }

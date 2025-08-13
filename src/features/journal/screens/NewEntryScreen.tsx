@@ -34,7 +34,7 @@ const NewEntryScreen = () => {
   const [media, setMedia] = useState<Media[]>([]);
   const [isFavorited, setIsFavorited] = useState(false);
   const [isMilestone, setIsMilestone] = useState(false);
-  const [childId, setChildId] = useState<string>('');
+  const [selectedChildren, setSelectedChildren] = useState<string[]>([]);
   const [children, setChildren] = useState<Array<{ id: string; name: string; dateOfBirth: Date; profileImageUrl?: string }>>([]);
   const [isPreview, setIsPreview] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
@@ -67,10 +67,12 @@ const NewEntryScreen = () => {
             setMedia(existingEntry.media.map(m => ({ uri: m.url, type: m.type })));
             setIsFavorited(existingEntry.isFavorited);
             setIsMilestone(existingEntry.isMilestone);
-            setChildId(existingEntry.childId);
+            setSelectedChildren(existingEntry.childIds || []);
           }
-        } else if (childrenData.length > 0) {
-          setChildId(childrenData[0].id);
+        } else if (childrenData.length === 1) {
+          setSelectedChildren([childrenData[0].id]);
+        } else if (childrenData.length > 1) {
+          setSelectedChildren([]);
         }
       } catch (error) {
         console.error('Error loading children:', error);
@@ -164,22 +166,25 @@ const NewEntryScreen = () => {
       Alert.alert('Empty Entry', 'Please write something before saving.');
       return;
     }
-    if (!childId) {
-      Alert.alert('Select Child', 'This is a fallback, ideally UI ensures a child is always selected.');
+    if (selectedChildren.length === 0) {
+      Alert.alert('Select Child', 'Please select at least one child');
       return;
     }
 
     try {
-      const selectedChild = children.find(c => c.id === childId);
-      if (!selectedChild) {
+      const selectedChildData = children.filter(c => selectedChildren.includes(c.id));
+      if (selectedChildData.length === 0) {
         Alert.alert('Error', 'Could not find child information.');
         return;
       }
 
-      const childAgeAtEntry = journalService.calculateChildAgeAtDate(
-        selectedChild.dateOfBirth,
-        new Date()
-      );
+      // Use first child's age for age calculation, or handle multiple ages if needed
+      const childAgeAtEntry = selectedChildren.length > 0 
+        ? selectedChildren.map(childId => {
+            const child = children.find(c => c.id === childId);
+            return child ? `${child.name}: ${journalService.calculateChildAgeAtDate(new Date(child.dateOfBirth), new Date())}` : '';
+          }).filter(Boolean).join(', ')
+        : '';
 
       const uploadedMedia = await Promise.all(
         media.filter(item => !item.uri.startsWith('http')).map(async (item) => {
@@ -206,7 +211,7 @@ const NewEntryScreen = () => {
           media: media,
           isFavorited,
           isMilestone,
-          childId,
+          childIds: selectedChildren,
           childAgeAtEntry
         });
       }
@@ -237,7 +242,7 @@ const NewEntryScreen = () => {
       return <ActivityIndicator color="#5D9275" />;
     }
 
-    const isDisabled = !entryText.trim() || !childId;
+    const isDisabled = !entryText.trim() || selectedChildren.length === 0;
 
     return (
       <View style={styles.headerRightContainer}>
@@ -321,27 +326,42 @@ const NewEntryScreen = () => {
           </View>
         ) : (
           <>
-            <View style={styles.childSelectorContainer}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.childSelector}>
-                {children.map(child => (
-                  <TouchableOpacity
-                    key={child.id}
-                    style={[styles.childOption, childId === child.id && styles.selectedChild]}
-                    onPress={() => setChildId(child.id)}
-                  >
-                    <ProfileAvatar 
-                      imageUrl={child.profileImageUrl}
-                      name={child.name} 
-                      size={32} 
-                    />
-                    <Text style={[styles.childName, childId === child.id && styles.selectedChildName]}>{child.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+            {children.length > 1 && (
+          <View style={styles.childSelectorContainer}>
+            {children.map((child) => (
+              <TouchableOpacity
+                key={child.id}
+                style={[
+                  styles.childOption,
+                  selectedChildren.includes(child.id) && styles.selectedChild,
+                ]}
+                onPress={() => {
+                  setSelectedChildren(prev => 
+                    prev.includes(child.id) 
+                      ? prev.filter(id => id !== child.id)
+                      : [...prev, child.id]
+                  );
+                }}
+              >
+                <ProfileAvatar
+                  imageUrl={child.profileImageUrl}
+                  name={child.name}
+                  size={20}
+                  textSize={10}
+                />
+                <Text style={[
+                  styles.childName,
+                  selectedChildren.includes(child.id) && styles.selectedChildName,
+                ]}>
+                  {child.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
             <TextInput
               style={styles.textInput}
-              placeholder={`What did ${children.find(c => c.id === childId)?.name || 'your child'} do today?`}
+              placeholder={`What did ${children.find(c => selectedChildren.includes(c.id))?.name || 'your child'} do today?`}
               placeholderTextColor="#A09D94"
               value={entryText}
               onChangeText={setEntryText}
@@ -406,16 +426,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: Colors.lightPink,
-    marginRight: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: Colors.grey,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
   },
   selectedChild: {
-    borderWidth: .5,
     borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '15',
   },
   selectedChildName: {
     color: Colors.primary,
@@ -423,10 +444,10 @@ const styles = StyleSheet.create({
   },
   childName: {
     fontSize: 14,
-    color: Colors.mediumGrey,
+    color: Colors.darkGrey,
   },
   selectedChildText: {
-    color: 'white',
+    color: Colors.primary,
     fontWeight: '600',
   },
   textInput: {

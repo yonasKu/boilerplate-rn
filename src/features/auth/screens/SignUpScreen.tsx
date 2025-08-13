@@ -81,7 +81,7 @@ const SignUpScreen = () => {
                     )}
 
                     <Button
-                        title="Sign Up"
+                        title="Continue"
                         onPress={handleSignUp}
                         loading={isLoading}
                         disabled={isLoading}
@@ -112,14 +112,15 @@ const SignUpScreen = () => {
                             Already have an account? <Text style={styles.linkText}>Sign In</Text>
                         </Text>
                     </TouchableOpacity>
+                    <View style={styles.footerTextContainer}>
+                        <Text style={styles.termsText}>By clicking continue you agree to our</Text>
+                        <Text style={styles.termsText}>
+                            <Text style={styles.linkText}>Terms of Use</Text> and <Text style={styles.linkText}>Privacy Policy</Text>
+                        </Text>
+                    </View>
                 </ScrollView>
             </KeyboardAvoidingView>
-            <View style={styles.footerTextContainer}>
-                <Text style={styles.termsText}>By clicking continue you agree to our</Text>
-                <Text style={styles.termsText}>
-                    <Text style={styles.linkText}>Terms of Use</Text> and <Text style={styles.linkText}>Privacy Policy</Text>
-                </Text>
-            </View>
+
         </SafeAreaView>
     );
 };
@@ -249,11 +250,10 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.white,
         borderWidth: 1,
         borderColor: Colors.lightGrey,
-        borderRadius: 16,
+        borderRadius: 24,
         paddingHorizontal: 16,
         paddingVertical: 2,
         marginBottom: 16,
-
     },
     inputIcon: {
         width: 20,
@@ -268,10 +268,7 @@ const styles = StyleSheet.create({
     },
 
     footerTextContainer: {
-        position: 'absolute',
-        bottom: 30,
-        left: 0,
-        right: 0,
+        marginVertical: 50,
         alignItems: 'center',
         paddingHorizontal: 20,
     },

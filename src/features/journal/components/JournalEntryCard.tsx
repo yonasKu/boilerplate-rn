@@ -121,12 +121,12 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
   };
 
   return (
-        <Pressable onPress={onPress} onLongPress={handleLongPress} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
-              <View style={styles.card}>
+    <Pressable onPress={onPress} onLongPress={handleLongPress} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
+      <View style={styles.card}>
         <View style={styles.topSection}>
 
           <View style={styles.contentContainer}>
-            <View style={{ flexDirection: 'row', flexShrink: 1, width: '100%' ,overflow:'hidden',alignItems:'center'}}>
+            <View style={{ flexDirection: 'row', flexShrink: 1, width: '100%', overflow: 'hidden', alignItems: 'center' }}>
               <View style={styles.dateContainer}>
                 <Text style={styles.dateDayOfWeek}>{formattedDate.dayOfWeek}</Text>
                 <Text style={styles.dateDay}>{formattedDate.day}</Text>
@@ -138,23 +138,27 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
         </View>
         {renderMedia()}
         <View style={styles.footerActions}>
-              <View style={styles.ageContainer}>
+          <View style={styles.ageContainer}>
             <Text style={styles.childAge}>{entry.childAgeAtEntry}</Text>
           </View>
           <View style={styles.actionButtons}>
-            {entry.isMilestone && (
-              <Ionicons name="trophy-outline" size={20} color={Colors.primary} style={styles.actionIcon} />
-            )}
+
             {onLike && (
               <TouchableOpacity onPress={onLike}>
                 <Ionicons
                   name={isLiked ? 'heart' : 'heart-outline'}
                   size={22}
-                  color={isLiked ? Colors.error : Colors.mediumGrey}
+                  color={isLiked ? Colors.error : Colors.lightGrey}
                   style={styles.actionIcon}
                 />
               </TouchableOpacity>
             )}
+            <Ionicons
+              name="trophy-outline"
+              size={19}
+              color={entry.isMilestone ? Colors.primary : Colors.lightGrey}
+              style={[styles.actionIcon, entry.isMilestone && styles.milestoneGlow]}
+            />
             {onShare && (
               <TouchableOpacity onPress={onShare} style={styles.actionIcon}>
                 <Image
@@ -184,7 +188,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 1.41,
     elevation: 2,
-   
+
   },
   topSection: {
     flexDirection: 'row',
@@ -192,7 +196,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   dateContainer: {
-    alignSelf:'center',
+    alignSelf: 'center',
     alignItems: 'flex-end',
     //justifyContent: 'center',
     marginRight: 6,
@@ -234,6 +238,7 @@ const styles = StyleSheet.create({
   shareIcon: {
     width: 22,
     height: 22,
+    tintColor: Colors.lightGrey,
   },
   ageContainer: {
     flex: 1,
@@ -242,8 +247,8 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 14,
     color: Colors.lightGrey,
-    fontFamily: 'Poppins',
-    fontWeight: '400',
+    fontFamily: 'Poppins-SemiBold',
+    fontWeight: '600',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -282,7 +287,6 @@ const styles = StyleSheet.create({
   mediaImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -290,7 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(46, 139, 87, 0.3)', // Green overlay
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
+
   },
   overlayText: {
     color: 'white',
@@ -302,11 +306,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     height: 150,
+    gap: 4, // Add horizontal spacing between images
   },
   mediaHalfContainer: {
-    width: '49%',
+    width: '48%', // Decrease width to accommodate spacing
     height: '100%',
-    borderRadius: 12,
     overflow: 'hidden',
     backgroundColor: '#F0F0F0',
   },
@@ -323,6 +327,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  milestoneGlow: {
+    // Add subtle glow effect when milestone is active
+    textShadowColor: Colors.primary,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 2,
   },
 });
 

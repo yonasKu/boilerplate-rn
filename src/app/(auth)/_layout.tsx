@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import React from 'react';
-import CustomHeader from '../../features/auth/components/CustomHeader';
+import CustomHeader from '@/features/auth/components/CustomHeader';
+import LoginHeader from '@/features/auth/components/LoginHeader';
 
 export default function AuthLayout() {
   return (
@@ -13,7 +14,7 @@ export default function AuthLayout() {
       <Stack.Screen 
         name="signup" 
         options={{
-          header: () => <CustomHeader title="Sign Up" />,
+          header: () => <CustomHeader title="" />,
         }}
       />
       <Stack.Screen 
@@ -25,7 +26,7 @@ export default function AuthLayout() {
       <Stack.Screen 
         name="pricing" 
         options={{
-          header: () => <CustomHeader title="Pricing" />,
+          header: () => <CustomHeader />,
         }}
       />
       <Stack.Screen 
@@ -35,9 +36,9 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen 
-        name="login" 
+        name="login"
         options={{
-          header: () => <CustomHeader title="Login" />,
+          header: (props) => <LoginHeader title="Log in" {...props} />,
         }}
       />
        <Stack.Screen 
@@ -55,7 +56,7 @@ export default function AuthLayout() {
         <Stack.Screen 
         name="verify-email" 
         options={{
-          header: () => <CustomHeader title="Verify Email" />,
+          header: () => <CustomHeader title="" />,
         }}
       />
     </Stack>

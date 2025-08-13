@@ -14,8 +14,8 @@ import { Button } from '../../../components/Button';
 const AddChildDetailsScreen = () => {
     const router = useRouter();
     const { user, refreshOnboardingStatus } = useAuth();
-    const [childName, setChildName] = useState('');
     const [date, setDate] = useState(new Date());
+    const [childName, setChildName] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [gender, setGender] = useState('');
     const [childImage, setChildImage] = useState<string | null>(null);
@@ -24,12 +24,12 @@ const AddChildDetailsScreen = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    
+
     const params = useLocalSearchParams();
     const lifestage = params.lifestage as string || 'Soon to be parent';
-    const genderOptions = lifestage === 'Soon to be parent' 
-        ? ['Boy', 'Girl', "Don't know yet"] 
-        : ['Boy', 'Girl',"Prefer not to say"];
+    const genderOptions = lifestage === 'Soon to be parent'
+        ? ['Boy', 'Girl', "Don't know yet"]
+        : ['Boy', 'Girl', "Prefer not to say"];
 
     const handleSelect = (option: string) => {
         setGender(option);
@@ -37,28 +37,41 @@ const AddChildDetailsScreen = () => {
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
-        setShowDatePicker(Platform.OS === 'ios');
+        // Always hide picker on Android, keep open on iOS until user confirms
+        if (Platform.OS === 'android') {
+            setShowDatePicker(false);
+        }
 
         if (selectedDate) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); // Reset time to start of day
-            
-            // Validate based on lifestage
-            if (lifestage === 'Parent' && selectedDate > today) {
-                Alert.alert('Invalid Date', 'Birth date cannot be in the future. Please select a valid birth date.');
-                return;
-            } else if (lifestage === 'Soon to be parent' && selectedDate < today) {
-                Alert.alert('Invalid Date', 'Due date cannot be in the past. Please select a valid due date.');
-                return;
-            }
+            try {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Reset time to start of day
 
-            const formattedDate = selectedDate.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-            });
-            setDueDate(formattedDate);
-            setDate(selectedDate);
+                // Validate based on lifestage
+                if (lifestage === 'Parent' && selectedDate > today) {
+                    Alert.alert('Invalid Date', 'Birth date cannot be in the future. Please select a valid birth date.');
+                    return;
+                } else if (lifestage === 'Soon to be parent' && selectedDate < today) {
+                    Alert.alert('Invalid Date', 'Due date cannot be in the past. Please select a valid due date.');
+                    return;
+                }
+
+                const formattedDate = selectedDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                });
+                setDueDate(formattedDate);
+                setDate(selectedDate);
+            } catch (error) {
+                console.error('Error handling date change:', error);
+                Alert.alert('Error', 'Failed to process date selection. Please try again.');
+            }
+        }
+
+        // On iOS, only hide if user cancelled
+        if (Platform.OS === 'ios' && event && event.type === 'dismissed') {
+            setShowDatePicker(false);
         }
     };
 
@@ -76,7 +89,7 @@ const AddChildDetailsScreen = () => {
         setIsLoading(true);
         try {
             let profileImageUrl: string | undefined = undefined;
-            
+
             // Map UI gender values to Firestore rule values
             let firestoreGender: 'Boy' | 'Girl' | "Don't know yet" | "Prefer not to say";
             if (gender === 'Boy') {
@@ -88,7 +101,7 @@ const AddChildDetailsScreen = () => {
             } else {
                 firestoreGender = "Don't know yet";
             }
-            
+
             // Create child document first
             const childId = await addChild({
                 name: childName,
@@ -99,7 +112,7 @@ const AddChildDetailsScreen = () => {
             // Upload child image after child document is created
             if (childImage) {
                 profileImageUrl = await uploadChildProfileImage(childId, childImage);
-                
+
                 // Update child document with profile image URL
                 if (profileImageUrl) {
                     const childRef = doc(db, 'children', childId);
@@ -143,7 +156,7 @@ const AddChildDetailsScreen = () => {
         try {
             // Request media library permissions
             const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            
+
             if (permissionResult.status !== 'granted') {
                 Alert.alert(
                     'Permission Required',
@@ -182,26 +195,31 @@ const AddChildDetailsScreen = () => {
             <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
             <ScrollView contentContainerStyle={styles.scrollContainer}>
                 <View style={styles.avatarContainer}>
-                    {isUploadingImage ? (
-                        <View style={[styles.avatar, styles.uploadingContainer]}>
-                            <ActivityIndicator size="large" color={Colors.primary} />
-                        </View>
-                    ) : (
-                        <View style={styles.avatar}>
-                            <Image 
-                                source={childImage ? { uri: childImage } : require('../../../assets/images/placeholder profile.png')} 
-                                style={styles.avatarImage} 
-                            />
-                        </View>
-                    )}
-                    <TouchableOpacity 
-                        style={styles.editIconContainer}
-                        onPress={pickChildImage}
-                        disabled={isUploadingImage}
-                    >
-                        <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
+                    <TouchableOpacity onPress={pickChildImage} disabled={isUploadingImage}>
+                        {isUploadingImage ? (
+                            <View style={[styles.avatar, styles.uploadingContainer]}>
+                                <ActivityIndicator size="large" color="#4A90E2" />
+                            </View>
+                        ) : (
+                            <View style={styles.avatar}>
+                                <Image
+                                    source={childImage ? { uri: childImage } : require('../../../assets/images/placeholder profile.png')}
+                                    style={styles.avatarImage}
+                                />
+                            </View>
+                        )}
                     </TouchableOpacity>
-                    <Text style={styles.addPhotoText}>Add photo</Text>
+                    {childImage ? (
+                        <TouchableOpacity
+                            style={styles.editIconContainer}
+                            onPress={pickChildImage}
+                            disabled={isUploadingImage}
+                        >
+                            <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
+                        </TouchableOpacity>
+                    ) : (
+                        <Text style={styles.addPhotoText}>Add photo</Text>
+                    )}
                 </View>
 
                 <View style={styles.inputContainer}>
@@ -218,12 +236,12 @@ const AddChildDetailsScreen = () => {
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder={`${lifestage === 'Parent' ? "Child's birth date" : "Baby's due date"}*`}
+                        placeholder={`${lifestage === 'Parent' ? "Child's birthday" : "Baby's due date"}*`}
                         placeholderTextColor={Colors.mediumGrey}
                         value={dueDate}
                         onChangeText={setDueDate}
                         editable={false}
-                        accessibilityLabel={lifestage === 'Parent' ? "Child's birth date" : "Baby's due date"}
+                        accessibilityLabel={lifestage === 'Parent' ? "Child's birthday" : "Baby's due date"}
                     />
                     <TouchableOpacity onPress={openDatePicker}>
                         <Image source={require('../../../assets/images/calendar.png')} style={styles.calendarIcon} />
@@ -236,10 +254,11 @@ const AddChildDetailsScreen = () => {
                         value={date}
                         mode={'date'}
                         is24Hour={true}
-                        display="default"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                         onChange={onDateChange}
                         minimumDate={lifestage === 'Soon to be parent' ? new Date() : undefined}
                         maximumDate={lifestage === 'Parent' ? new Date() : undefined}
+                        style={Platform.OS === 'ios' ? { backgroundColor: Colors.white } : undefined}
                     />
                 )}
 
@@ -268,13 +287,13 @@ const AddChildDetailsScreen = () => {
                 </View>
 
                 <View style={styles.footer}>
-                  <Button
-                    title={isLoading ? 'Saving...' : 'Continue'}
-                    onPress={handleContinue}
-                    loading={isLoading}
-                    disabled={isLoading}
-                    style={styles.continueButton}
-                  />
+                    <Button
+                        title={isLoading ? 'Saving...' : 'Continue'}
+                        onPress={handleContinue}
+                        loading={isLoading}
+                        disabled={isLoading}
+                        style={styles.continueButton}
+                    />
                 </View>
             </ScrollView>
 
@@ -285,15 +304,14 @@ const AddChildDetailsScreen = () => {
                         <View style={styles.successBadge}>
                             <Text style={styles.successBadgeText}>✓</Text>
                         </View>
-                        <Text style={styles.modalTitle}>Child Profile Added</Text>
-                        <Text style={styles.modalSubtitle}>Great! You can start journaling memories now or add another child.</Text>
+                        <Text style={styles.modalTitle}>Child profile added</Text>
 
                         <TouchableOpacity 
                             style={[styles.modalButton, styles.primaryButton]} 
                             onPress={handleStartJournaling}
                             accessibilityLabel="Start journaling"
                         >
-                            <Text style={styles.primaryButtonText}>Start journaling</Text>
+                            <Text style={styles.primaryButtonText}>Start Journaling</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity 
@@ -301,7 +319,7 @@ const AddChildDetailsScreen = () => {
                             onPress={handleAddAnotherChild}
                             accessibilityLabel="Add another child"
                         >
-                            <Text style={styles.secondaryButtonText}>Add another child</Text>
+                            <Text style={styles.secondaryButtonText}>Add Another Child</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -322,12 +340,13 @@ const styles = StyleSheet.create({
     avatarContainer: {
         alignItems: 'center',
         marginVertical: 40,
+
     },
     avatar: {
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: Colors.lightGrey,
+        backgroundColor: Colors.white,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -369,6 +388,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 16,
         color: Colors.black,
+        paddingVertical: 10
     },
     dateText: {
         flex: 1,
@@ -454,7 +474,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     continueButton: {
-        marginBottom   : 20,
+        marginBottom: 20,
         width: '100%',
     },
     addPhotoText: {
@@ -506,35 +526,29 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontSize: 28,
         fontWeight: '700',
-        lineHeight: 32,
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: 'bold',
-        color: Colors.black,
-        marginBottom: 8,
-    },
-    modalSubtitle: {
-        fontSize: 16,
-        color: Colors.mediumGrey,
+        color: Colors.darkGrey,
+        marginTop: 16,
         marginBottom: 24,
         textAlign: 'center',
     },
     modalButton: {
         width: '100%',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
-        borderRadius: 8,
-        marginBottom: 12,
+        paddingVertical: 18,
+        borderRadius: 30, // Pill shape
         alignItems: 'center',
+        marginBottom: 12,
     },
     primaryButton: {
         backgroundColor: Colors.primary,
     },
     secondaryButton: {
-        backgroundColor: Colors.lightGrey,
+        backgroundColor: Colors.white,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
+        borderColor: Colors.lightGrey,
     },
     primaryButtonText: {
         color: Colors.white,

@@ -205,6 +205,9 @@ const JournalEntryViewScreen = () => {
                 imageIndex={currentImageIndex}
                 visible={showFullScreenGallery}
                 onRequestClose={() => setShowFullScreenGallery(false)}
+                presentationStyle="fullScreen"
+                animationType="fade"
+                doubleTapToZoomEnabled={true}
                 HeaderComponent={() => (
                     <TouchableOpacity
                         style={[styles.fullScreenCloseButton, { top: insets.top + 10 }]}
@@ -216,6 +219,10 @@ const JournalEntryViewScreen = () => {
                         />
                     </TouchableOpacity>
                 )}
+                FooterComponent={() => (
+                    <View style={{ height: insets.bottom }} />
+                )}
+                backgroundColor="black"
             />
         </View>
     );

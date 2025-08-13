@@ -31,26 +31,31 @@ const AddProfileScreen = () => {
 
 
                 <View style={styles.avatarContainer}>
-                    {isUploadingImage ? (
-                        <View style={[styles.avatar, styles.uploadingContainer]}>
-                            <ActivityIndicator size="large" color="#4A90E2" />
-                        </View>
-                    ) : (
-                        <View style={styles.avatar}>
-                            <Image
-                                source={profileImage ? { uri: profileImage } : require('../../../assets/images/placeholder profile.png')}
-                                style={styles.avatarImage}
-                            />
-                        </View>
-                    )}
-                    <TouchableOpacity 
-                        style={styles.editIconContainer}
-                        onPress={pickProfileImage}
-                        disabled={isUploadingImage}
-                    >
-                        <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
+                    <TouchableOpacity onPress={pickProfileImage} disabled={isUploadingImage}>
+                        {isUploadingImage ? (
+                            <View style={[styles.avatar, styles.uploadingContainer]}>
+                                <ActivityIndicator size="large" color="#4A90E2" />
+                            </View>
+                        ) : (
+                            <View style={styles.avatar}>
+                                <Image
+                                    source={profileImage ? { uri: profileImage } : require('../../../assets/images/placeholder profile.png')}
+                                    style={styles.avatarImage}
+                                />
+                            </View>
+                        )}
                     </TouchableOpacity>
-                    <Text style={styles.addPhotoText}>Add photo</Text>
+                    {profileImage ? (
+                        <TouchableOpacity 
+                            style={styles.editIconContainer}
+                            onPress={pickProfileImage}
+                            disabled={isUploadingImage}
+                        >
+                            <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
+                        </TouchableOpacity>
+                    ) : (
+                        <Text style={styles.addPhotoText}>Add photo</Text>
+                    )}
                 </View>
 
                 <View style={styles.inputContainer}>
@@ -79,8 +84,8 @@ const AddProfileScreen = () => {
 
                 <View style={styles.pickerWrapper}>
                     <TouchableOpacity style={styles.inputContainer} onPress={() => setIsPickerOpen(!isPickerOpen)}>
-                        <Text style={[styles.pickerText, { color: lifestage !== 'Select your lifestage' ? Colors.black : Colors.mediumGrey }]}>
-                            {lifestage !== 'Select your lifestage' ? lifestage : 'lifestage*'}
+                        <Text style={[styles.pickerText, { color: lifestage !== 'Lifestage' ? Colors.black : Colors.mediumGrey }]}>
+                            {lifestage !== 'Lifestage' ? lifestage : 'Lifestage'}
                         </Text>
                         <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.arrowIcon} />
                     </TouchableOpacity>
@@ -133,14 +138,14 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: Colors.lightGrey,
+        backgroundColor: Colors.white,
         justifyContent: 'center',
         alignItems: 'center',
     },
     avatarImage: {
         width: 110,
         height: 110,
-        borderRadius: 55,
+      
     },
     editIconContainer: {
         position: 'absolute',

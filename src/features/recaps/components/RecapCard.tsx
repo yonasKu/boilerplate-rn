@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Colors } from '../../../theme/colors';
 
 interface RecapCardProps {
   id: string;
-  image: any; // Or a more specific type like ImageSourcePropType
+  image: any; 
   title: string;
   date: string;
 }
@@ -14,69 +14,60 @@ const RecapCard: React.FC<RecapCardProps> = ({ id, image, title, date }) => {
   const router = useRouter();
 
   return (
-    <TouchableOpacity onPress={() => router.push({ pathname: '/(main)/recaps/[id]', params: { id } })} style={styles.cardContainer}>
-      <ImageBackground source={image} style={styles.imageBackground} imageStyle={styles.imageStyle} resizeMode="cover">
-        <Text style={styles.cardTitle}>{title}</Text>
+    <TouchableOpacity 
+      onPress={() => router.push({ pathname: '/(main)/recaps/[id]', params: { id } })} 
+      style={styles.card}
+    >
+      <ImageBackground source={image} style={styles.imageBackground} imageStyle={styles.image} resizeMode="cover">
+        <View style={styles.overlay}>
+          <Text style={styles.cardTitle}>{title}</Text>
+        </View>
       </ImageBackground>
       <View style={styles.cardFooter}>
         <Text style={styles.cardDate}>{date}</Text>
-        <View style={styles.cardActions}>
-          <TouchableOpacity>
-            <Ionicons name="heart-outline" size={24} color="#A9A9A9" />
-          </TouchableOpacity>
-          <TouchableOpacity>
-            <Ionicons name="share-outline" size={24} color="#A9A9A9" />
-          </TouchableOpacity>
-        </View>
       </View>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    backgroundColor: '#FFFFFF',
+  card: {
+    backgroundColor: Colors.white,
     borderRadius: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
     marginBottom: 20,
-    elevation: 1.5, // Android
-    shadowColor: '#000', // iOS & Android
-    shadowOffset: { width: 0, height: 1 }, // iOS
-    shadowOpacity: 0.05, // iOS
-    shadowRadius: 2, // iOS
+    shadowColor: Colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.41,
+    elevation: 2,
   },
   imageBackground: {
     height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  image: {
+    borderRadius: 15, // Match card's border radius, with 1px inset
+  },
+  overlay: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
     padding: 16,
   },
-  imageStyle: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
   cardTitle: {
-    color: '#FFFFFF',
+    color: Colors.white,
     fontSize: 22,
+    fontFamily: 'Poppins-Bold',
     fontWeight: 'bold',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
   },
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 16,
   },
   cardDate: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 16,
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins-SemiBold',
   },
 });
 

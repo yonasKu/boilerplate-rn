@@ -66,7 +66,7 @@ const styles = StyleSheet.create({
   mediaImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 12,
+    borderRadius: 6,
   },
 });
 

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Image, ActivityIndicator, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { useLogin } from '../hooks/useLogin';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { Colors } from '../../../theme/colors';
 import { Button } from '../../../components/Button';
 
@@ -37,7 +37,13 @@ export default function LoginScreen() {
         toggleBiometricSwitch
     } = useLogin();
 
+    const navigation = useNavigation();
 
+    useEffect(() => {
+        navigation.setOptions({
+            onRightPress: handleBiometricLogin,
+        });
+    }, [navigation, handleBiometricLogin]);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -128,11 +134,11 @@ export default function LoginScreen() {
                     <View style={styles.socialContainer}>
                         <TouchableOpacity style={styles.socialButton} onPress={handleGoogleSignIn}>
                             <Image source={require('../../../assets/images/google_logo.png')} style={styles.socialIcon} />
-                            <Text style={styles.socialButtonText}>Google</Text>
+                            <Text style={styles.socialButtonText}>Continue with Google</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.socialButton}>
                             <Image source={require('../../../assets/images/apple_logo.png')} style={styles.socialIcon} />
-                            <Text style={styles.socialButtonText}>Apple</Text>
+                            <Text style={styles.socialButtonText}>Continue with Apple</Text>
                         </TouchableOpacity>
                     </View>
 
@@ -251,7 +257,7 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.white,
         borderWidth: 1,
         borderColor: Colors.lightGrey,
-        borderRadius: 16,
+        borderRadius: 24,
         paddingHorizontal: 16,
         paddingVertical: 2,
         marginBottom: 16,
@@ -358,6 +364,7 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         marginRight: 10,
+        resizeMode: 'contain',
     },
     socialIcona: {
         width: 20,

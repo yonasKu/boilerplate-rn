@@ -98,8 +98,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.offWhite,
   },
   chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
     borderColor: Colors.offWhite,
@@ -108,15 +108,15 @@ const styles = StyleSheet.create({
     alignItems: 'center', // Center text horizontally
   },
   activeChip: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+    backgroundColor: Colors.white,
+    borderColor: Colors.grey,
   },
   chipText: {
-    color: Colors.darkGrey,
+    color: Colors.grey,
     fontWeight: '500',
   },
   activeChipText: {
-    color: Colors.white,
+    color: Colors.grey,
   },
   chipContent: {
     flexDirection: 'row',
