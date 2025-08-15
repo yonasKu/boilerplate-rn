@@ -1,0 +1,210 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isEmailVerified() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+
+    // ========== USERS COLLECTION ==========
+    match /users/{userId} {
+      // Allow create if the user is creating their own document and passes validation
+      allow create: if isOwner(userId)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.email.matches('.*@.*\\..*')
+        && request.resource.data.onboarded == false
+        && request.resource.data.lifestage == null
+        && request.resource.data.subscription is map
+        && request.resource.data.subscription.plan is string
+        && request.resource.data.subscription.status is string
+        && request.resource.data.subscription.startDate is timestamp
+        && request.resource.data.children is list
+        && request.resource.data.children.size() == 0
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.onboarded is bool;
+
+      // Only the owner can read, update, or delete their own document
+      allow read, update, delete: if isOwner(userId);
+    }
+
+    // ========== CHILDREN COLLECTION ==========
+    match /children/{childId} {
+      // Users can read children documents they own
+      allow read: if request.auth != null && request.auth.uid == resource.data.parentId;
+
+      // Users can create children documents for themselves
+      allow create: if request.auth != null 
+        && request.resource.data.parentId == request.auth.uid
+        && request.resource.data.keys().hasAll(['parentId', 'name', 'dateOfBirth', 'gender', 'createdAt', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && (request.resource.data.dateOfBirth is timestamp || request.resource.data.dateOfBirth is string)
+        && request.resource.data.gender is string
+        && (request.resource.data.gender in ['Boy', 'Girl', "Don't know yet", 'male', 'female', 'prefer_not_to_say'])
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      // Users can update or delete children documents they own
+      allow update, delete: if isAuthenticated() && 
+        (isOwner(resource.data.parentId) || isOwner(request.resource.data.parentId));
+    }
+
+    // ========== JOURNAL ENTRIES COLLECTION ==========
+    match /journalEntries/{entryId} {
+      // A user can create an entry if they are logged in and the entry's `userId` field matches their own ID.
+      allow create: if isOwner(request.resource.data.userId)
+        && request.resource.data.keys().hasAll(['userId', 'text', 'childIds', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.childIds is list
+        && request.resource.data.childIds.size() > 0
+        && (request.resource.data.media == null || request.resource.data.media is list)
+        && (request.resource.data.isFavorited == null || request.resource.data.isFavorited is bool)
+        && (request.resource.data.isMilestone == null || request.resource.data.isMilestone is bool)
+        && (request.resource.data.childAgeAtEntry == null || request.resource.data.childAgeAtEntry is string)
+        && (request.resource.data.likes == null || request.resource.data.likes is map)
+        && request.resource.data.createdAt is timestamp;
+      
+      // A user can read entries they own
+      allow read: if isOwner(resource.data.userId);
+      
+      // A user can update their own entry's content and tags
+      allow update: if isOwner(resource.data.userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes']);
+      
+      // A user can update likes and isFavorited on any entry (for like functionality)
+      allow update: if isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited']) &&
+        (request.resource.data.likes[request.auth.uid] == true || 
+         (request.resource.data.likes[request.auth.uid] == null && resource.data.likes[request.auth.uid] == true)) &&
+        (request.resource.data.isFavorited == true || request.resource.data.isFavorited == false);
+      
+      // A user can delete their own entry
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // match /subscriptions/{subscriptionId} {
+    //   allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+    //   allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    //   allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+    // }
+  }
+}
+
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isEmailVerified() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+
+    // ========== USERS COLLECTION ==========
+    match /users/{userId} {
+      // Allow create if the user is creating their own document and passes validation
+      allow create: if isOwner(userId)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.email.matches('.*@.*\\..*')
+        && request.resource.data.onboarded == false
+        && request.resource.data.lifestage == null
+        && request.resource.data.subscription is map
+        && request.resource.data.subscription.plan is string
+        && request.resource.data.subscription.status is string
+        && request.resource.data.subscription.startDate is timestamp
+        && request.resource.data.children is list
+        && request.resource.data.children.size() == 0
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.onboarded is bool;
+
+      // Only the owner can read, update, or delete their own document
+      allow read, update, delete: if isOwner(userId);
+    }
+
+    // ========== CHILDREN COLLECTION ==========
+    match /children/{childId} {
+      // Users can read children documents they own
+      allow read: if request.auth != null && request.auth.uid == resource.data.parentId;
+
+      // Users can create children documents for themselves
+      allow create: if request.auth != null 
+        && request.resource.data.parentId == request.auth.uid
+        && request.resource.data.keys().hasAll(['parentId', 'name', 'dateOfBirth', 'gender', 'createdAt', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && (request.resource.data.dateOfBirth is timestamp || request.resource.data.dateOfBirth is string)
+        && request.resource.data.gender is string
+        && (request.resource.data.gender in ['Boy', 'Girl', "Don't know yet", 'male', 'female', 'prefer_not_to_say'])
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      // Users can update or delete children documents they own
+      allow update, delete: if isAuthenticated() && 
+        (isOwner(resource.data.parentId) || isOwner(request.resource.data.parentId));
+    }
+
+    // ========== JOURNAL ENTRIES COLLECTION ==========
+    match /journalEntries/{entryId} {
+      // A user can create an entry if they are logged in and the entry's `userId` field matches their own ID.
+      allow create: if isOwner(request.resource.data.userId)
+        && request.resource.data.keys().hasAll(['userId', 'text', 'childIds', 'createdAt'])
+        && request.resource.data.text is string
+        && request.resource.data.childIds is list
+        && request.resource.data.childIds.size() > 0
+        && (request.resource.data.media == null || request.resource.data.media is list)
+        && (request.resource.data.isFavorited == null || request.resource.data.isFavorited is bool)
+        && (request.resource.data.isMilestone == null || request.resource.data.isMilestone is bool)
+        && (request.resource.data.childAgeAtEntry == null || request.resource.data.childAgeAtEntry is string)
+        && (request.resource.data.likes == null || request.resource.data.likes is map)
+        && request.resource.data.createdAt is timestamp;
+      
+      // A user can read entries they own
+      allow read: if isOwner(resource.data.userId);
+      
+      // A user can update their own entry's content and tags
+      allow update: if isOwner(resource.data.userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes']);
+      
+      // A user can update likes and isFavorited on any entry (for like functionality)
+      allow update: if isAuthenticated() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited']) &&
+        (request.resource.data.likes[request.auth.uid] == true || 
+         (request.resource.data.likes[request.auth.uid] == null && resource.data.likes[request.auth.uid] == true)) &&
+        (request.resource.data.isFavorited == true || request.resource.data.isFavorited == false);
+      
+      // A user can delete their own entry
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // match /subscriptions/{subscriptionId} {
+    //   allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+    //   allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    //   allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+    // }
+  }
+}

@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.local
+.env.example
+.env.test
+.env.recap
+.env.recap.local
+.env.recap.example
+.env.recap.test
+.env.recap.recap
+    
