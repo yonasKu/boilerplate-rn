@@ -12,6 +12,7 @@ import JournalFilter from '../components/JournalFilter';
 import AgeFilterModal from '../components/modals/AgeFilterModal';
 import { TimelineOption } from '../components/TimelineDropdown';
 import { Colors } from '@/theme';
+import { getInitials, generateAvatarColor } from '@/utils/avatarUtils';
 
 
 interface Child {
@@ -35,48 +36,124 @@ const JournalScreen = () => {
     const [showChildDropdown, setShowChildDropdown] = useState(false);
     const [headerLeftLayout, setHeaderLeftLayout] = useState<{ x: number; y: number; width: number; height: number }>({ x: 16, y: 0, width: 200, height: 48 });
     const [children, setChildren] = useState<any[]>([]);
-        const [selectedChild, setSelectedChild] = useState<Child | null>(null); // Will always be set to first child or user profile
+    const [selectedChild, setSelectedChild] = useState<Child | null>(null); // Will always be set to first child or user profile
+    const [unreadNotifications, setUnreadNotifications] = useState(0);
     const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
 
-    // Fetch actual user profile from Firestore and set first child as default
-        useEffect(() => {
-        const fetchChildren = async () => {
-            if (user) {
-                try {
-                    const { collection, query, where, getDocs } = await import('firebase/firestore');
-                    const { db } = await import('@/lib/firebase/firebaseConfig');
-                    const childrenQuery = query(collection(db, 'children'), where('parentId', '==', user.uid));
-                    const querySnapshot = await getDocs(childrenQuery);
-                    const childrenData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setChildren(childrenData);
-                    
-                    // Always select first child, or use user profile if no children
-                    if (childrenData.length > 0) {
-                        const firstChild = childrenData[0];
-                        setSelectedChild({
-                            id: firstChild.id,
-                            name: (firstChild as any).name || (firstChild as any).displayName || 'Unnamed',
-                            profileImageUrl: (firstChild as any).profileImageUrl || (firstChild as any).photoURL || (firstChild as any).photoUrl || (firstChild as any).avatarUrl
-                        });
-                    } else {
-                        setSelectedChild(null); // Will use user profile
-                    }
-                } catch (err) {
-                    console.error('Error fetching children:', err);
+    const fetchUserProfile = async () => {
+        if (user) {
+            try {
+                const { doc, getDoc } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase/firebaseConfig');
+                
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDoc = await getDoc(userDocRef);
+                
+                if (userDoc.exists()) {
+                    setUserProfile(userDoc.data());
                 }
+                setLoadingProfile(false);
+            } catch (error) {
+                console.error('Error fetching user profile:', error);
+                setLoadingProfile(false);
             }
-        };
+        } else {
+            setLoadingProfile(false);
+        }
+    };
+
+    const fetchChildren = async () => {
+        if (!user?.uid) return;
+        
+        try {
+            const { collection, query, where, getDocs } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase/firebaseConfig');
+            
+            const childrenSnapshot = await getDocs(
+                query(collection(db, 'children'), where('parentId', '==', user.uid))
+            );
+            
+            const childrenData = childrenSnapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data() 
+            }));
+            
+            setChildren(childrenData);
+            
+            if (childrenData.length > 0) {
+                const child = childrenData[0];
+                setSelectedChild({
+                    id: child.id,
+                    name: (child as any).name || (child as any).displayName || 'Unnamed',
+                    profileImageUrl: (child as any).profileImageUrl || (child as any).photoURL || (child as any).photoUrl || (child as any).avatarUrl || null
+                });
+            } else {
+                setSelectedChild(null); // Will use user profile
+            }
+        } catch (err) {
+            console.error('Error fetching children:', err);
+        }
+    };
+
+    useEffect(() => {
+        fetchUserProfile();
         fetchChildren();
     }, [user]);
 
+    useEffect(() => {
+        if (!user?.uid) return;
+
+        const fetchUnreadNotifications = async () => {
+            try {
+                const { collection, query, where, getDocs } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase/firebaseConfig');
+                const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+                const unreadQuery = query(notificationsRef, where('read', '==', false));
+                const querySnapshot = await getDocs(unreadQuery);
+                setUnreadNotifications(querySnapshot.size);
+            } catch (error) {
+                console.error('Error fetching unread notifications:', error);
+            }
+        };
+
+        fetchUnreadNotifications();
+
+        // Set up real-time listener for unread notifications
+        let unsubscribe: (() => void) | undefined;
+        
+        const setupListener = async () => {
+            const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase/firebaseConfig');
+            const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+            const unreadQuery = query(notificationsRef, where('read', '==', false));
+            
+            unsubscribe = onSnapshot(unreadQuery, (snapshot) => {
+                setUnreadNotifications(snapshot.size);
+            });
+        };
+
+        setupListener();
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [user]);
+
+
     // Helpers: ensure consistent avatar/name resolution
     const getItemName = (item: any | null) => {
-        if (!item) return userProfile?.name || 'Profile';
+        if (!item) return userProfile?.name || userProfile?.displayName || 'Profile';
         return item.name || item.displayName || 'Unnamed';
     };
 
     const getItemAvatar = (item: any | null) => {
-        if (!item) return userProfile?.profileImageUrl || userProfile?.photoURL || userProfile?.avatarUrl || null;
+        if (!item) {
+            return userProfile?.profileImageUrl || 
+                   userProfile?.photoURL || 
+                   userProfile?.avatarUrl || 
+                   userProfile?.photoUrl ||
+                   null;
+        }
         return (
             item.profileImageUrl ||
             item.photoURL ||
@@ -87,31 +164,6 @@ const JournalScreen = () => {
         );
     };
 
-    useEffect(() => {
-        const fetchUserProfile = async () => {
-            if (user) {
-                try {
-                    const { doc, getDoc } = await import('firebase/firestore');
-                    const { db } = await import('@/lib/firebase/firebaseConfig');
-                    
-                    const userDocRef = doc(db, 'users', user.uid);
-                    const userDoc = await getDoc(userDocRef);
-                    
-                    if (userDoc.exists()) {
-                        setUserProfile(userDoc.data());
-                    }
-                    setLoadingProfile(false);
-                } catch (error) {
-                    console.error('Error fetching user profile:', error);
-                    setLoadingProfile(false);
-                }
-            } else {
-                setLoadingProfile(false);
-            }
-        };
-
-        fetchUserProfile();
-    }, [user]);
 
             const filteredEntries = useMemo(() => {
         let filtered = entries;
@@ -257,7 +309,16 @@ const JournalScreen = () => {
                     </TouchableOpacity>
                     <View style={styles.headerRight}>
                         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
-                            <Ionicons name="notifications-outline" size={24} color="#2F4858" />
+                            <View style={styles.notificationContainer}>
+                                <Ionicons name="notifications-outline" size={24} color="#2F4858" />
+                                {unreadNotifications > 0 && (
+                                    <View style={styles.notificationBadge}>
+                                        <Text style={styles.notificationCount}>
+                                            {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
                             <Ionicons name="settings-outline" size={24} color="#2F4858" />
@@ -560,10 +621,32 @@ const styles = StyleSheet.create({
         color: Colors.mediumGrey,
     },
     activeTagText: {
-        color: Colors.primary,
-        fontWeight: '500',
+        color: '#fff',
+        fontWeight: '600',
+    },
+    notificationContainer: {
+        position: 'relative',
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        backgroundColor: '#FF3B30',
+        borderRadius: 8,
+        minWidth: 16,
+        height: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 3,
+        borderWidth: 1,
+        borderColor: '#fff',
+    },
+    notificationCount: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
+        lineHeight: 12,
     },
 });
 
 export default JournalScreen;
-

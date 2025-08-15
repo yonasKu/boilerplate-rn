@@ -1,8 +1,10 @@
-import React from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, ActivityIndicator, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/theme';
 import ScreenHeader from '@/components/ui/ScreenHeader';
+import { useAuth } from '../../../context/AuthContext';
+import { getFirestore, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
 interface User {
   name: string;
@@ -17,70 +19,16 @@ interface Notification {
   comment?: string;
   date: string;
   isRead: boolean;
+  createdAt: any;
 }
 import ReminderNotification from '../components/ReminderNotification';
 import StreakNotification from '../components/StreakNotification';
 import CommentNotification from '../components/CommentNotification';
 import RecapLoveNotification from '../components/RecapLoveNotification';
 
-// NOTE: Using placeholder images. Replace with actual paths or URIs if they differ.
-const notificationsData: Notification[] = [
-  {
-    id: '1',
-    type: 'recap_love',
-    users: [{ name: 'Susan', avatar: require('@/assets/images/sample.png') }],
-    recap: 'Week of July 15th, 2025',
-    date: 'July 22, 2025',
-    isRead: false,
-  },
-  {
-    id: '2',
-    type: 'comment',
-    users: [{ name: 'Susan', avatar: require('@/assets/images/sample.png') }],
-    comment: '“Wow, look at her go!”',
-    date: 'July 16, 2025',
-    isRead: false,
-  },
-  {
-    id: '3',
-    type: 'comment',
-    users: [{ name: 'Sarah', avatar: require('@/assets/images/sample.png') }],
-    comment: '“Such a sweet smile! She’s growing so fast”',
-    date: 'July 15, 2025',
-    isRead: true,
-  },
-  {
-    id: '4',
-    type: 'recap_love',
-    users: [
-      { name: 'Susan', avatar: require('@/assets/images/sample.png') },
-      { name: 'Dave', avatar: require('@/assets/images/sample2.png') },
-    ],
-    recap: 'Week of July 8th, 2025',
-    date: 'July 15, 2025',
-    isRead: true,
-  },
-  {
-    id: '5',
-    type: 'recap_love',
-    users: [{ name: 'Sarah', avatar: require('@/assets/images/sample.png') }, { name: 'Dave', avatar: require('@/assets/images/sample2.png') }, { name: 'others' }],
-    recap: 'Week of July 1st, 2025',
-    date: 'July 8, 2025',
-    isRead: true,
-  },
-  {
-    id: '6',
-    type: 'reminder',
-    date: 'June 30, 2025',
-    isRead: true,
-  },
-  {
-    id: '7',
-    type: 'streak',
-    date: 'June 29, 2025',
-    isRead: true,
-  },
-];
+const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
 const renderNotificationItem = ({ item }: { item: Notification }) => {
   switch (item.type) {
@@ -99,15 +47,64 @@ const renderNotificationItem = ({ item }: { item: Notification }) => {
 
 const NotificationScreen = () => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const db = getFirestore();
+    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+    const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(50));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notificationsData: Notification[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        notificationsData.push({
+          id: doc.id,
+          type: data.type || 'comment',
+          users: data.users || [],
+          recap: data.recap,
+          comment: data.comment,
+          date: data.date || new Date(data.createdAt?.toDate()).toLocaleDateString(),
+          isRead: data.isRead || false,
+          createdAt: data.createdAt,
+        });
+      });
+      setNotifications(notificationsData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching notifications:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScreenHeader title="Notifications" showBackButton={true} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScreenHeader title="Notifications" showBackButton={true} />
       <FlatList
-        data={notificationsData}
+        data={notifications}
         renderItem={renderNotificationItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No notifications yet</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -120,6 +117,22 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingVertical: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.mediumGrey,
+    fontFamily: 'Poppins-Regular',
   },
   notificationTextContainer: {
     flex: 1,

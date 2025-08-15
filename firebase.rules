@@ -59,6 +59,26 @@ service cloud.firestore {
       
       // Only the owner can delete their own document
       allow delete: if isOwner(userId);
+
+      // --- Sub-collection for device tokens for push notifications ---
+      match /devices/{deviceToken} {
+        // Only the owner of the user document can manage their own device tokens.
+        allow read, write: if isOwner(userId);
+      }
+
+      // --- Sub-collection for user's notification preferences ---
+      match /notificationPreferences/{prefId} {
+        // Only the owner can manage their notification preferences.
+        allow read, write: if isOwner(userId);
+      }
+      
+      // --- Sub-collection for in-app notifications ---
+      match /notifications/{notificationId} {
+        // Owner can read and update (e.g., mark as read) their notifications.
+        allow read, update: if isOwner(userId);
+        // Notifications should only be created by the backend, not the client.
+        allow create, delete: if false;
+      }
     }
 
     // ========== CHILDREN COLLECTION ==========

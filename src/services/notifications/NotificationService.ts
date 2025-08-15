@@ -63,31 +63,9 @@ export class NotificationService {
   }
 
   /**
-   * Schedule daily reminder notification
-   * @param hour - Hour (0-23)
-   * @param minute - Minute (0-59)
+   * Backend handles all reminder scheduling via Firebase Functions
+   * Client only manages preferences and tokens
    */
-  static async scheduleDailyReminder(hour: number, minute: number): Promise<void> {
-    try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Daily Journal Reminder',
-          body: 'Time to capture today\'s memories!',
-          data: { screen: '/journal' },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour,
-          minute,
-          repeats: true
-        } as Notifications.NotificationTriggerInput
-      });
-    } catch (error) {
-      console.error('Schedule reminder error:', error);
-    }
-  }
 
   /**
    * Get user notification preferences from Firestore
@@ -101,7 +79,19 @@ export class NotificationService {
       const docRef = doc(getFirestore(), 'users', userId, 'notifications', 'preferences');
       const docSnap = await getDoc(docRef);
       
-      return docSnap.exists() ? docSnap.data() : null;
+      if (docSnap.exists()) {
+        return docSnap.data();
+      }
+      
+      // Return default preferences if none exist
+      return {
+        pushNotifications: { enabled: false },
+        dailyEntries: { enabled: true, push: true, email: false },
+        comments: { enabled: false, push: true, email: false },
+        likes: { enabled: true, push: true, email: false },
+        weeklyRecaps: { enabled: true, push: true, email: true },
+        monthlyRecaps: { enabled: true, push: true, email: true },
+      };
     } catch (error) {
       console.error('Get preferences error:', error);
       return null;
@@ -126,6 +116,31 @@ export class NotificationService {
       console.error('Update preferences error:', error);
     }
   }
+
+  /**
+   * Update specific notification preference
+   * @param userId - Firebase user ID
+   * @param key - Preference key (dailyEntries, comments, likes, etc.)
+   * @param enabled - Whether the preference is enabled
+   */
+  static async updatePreference(userId: string, key: string, enabled: boolean): Promise<void> {
+    try {
+      const { getFirestore } = await import('firebase/firestore');
+      const { doc, setDoc } = await import('firebase/firestore');
+      
+      await setDoc(doc(getFirestore(), 'users', userId, 'notifications', 'preferences'), {
+        [key]: { enabled, push: true, email: false },
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Update preference error:', error);
+    }
+  }
+
+  /**
+   * Backend handles all reminder scheduling via Firebase Functions
+   * Client only manages preferences and tokens
+   */
 
   /**
    * Remove push token from Firestore

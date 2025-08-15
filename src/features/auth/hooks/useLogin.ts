@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { signInWithEmail, useGoogleSignIn, resetPassword } from '@/lib/firebase/auth';
 import { biometricService } from '@/services/biometricService';
 import { AppleAuthService } from '@/features/auth/services/appleAuthService';
+import { NotificationService } from '@/services/notifications/NotificationService';
 
 export const useLogin = () => {
     const router = useRouter();
@@ -20,6 +21,20 @@ export const useLogin = () => {
     const [biometricType, setBiometricType] = useState<string>('Face ID');
     const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
     const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+
+    const registerForPushNotifications = async (userId: string) => {
+        try {
+            const hasPermission = await NotificationService.requestPermissions();
+            if (hasPermission) {
+                const token = await NotificationService.getPushToken();
+                if (token) {
+                    await NotificationService.saveTokenToFirestore(userId, token);
+                }
+            }
+        } catch (error) {
+            console.error('Error registering for push notifications:', error);
+        }
+    };
 
     useEffect(() => {
         checkBiometricAvailability();
@@ -62,7 +77,10 @@ export const useLogin = () => {
 
         setIsLoading(true);
         try {
-            await signInWithEmail(email, password);
+            const userCredential = await signInWithEmail(email, password);
+            if (userCredential.user) {
+                await registerForPushNotifications(userCredential.user.uid);
+            }
             
             // Check if we should prompt for biometric setup
             const available = await biometricService.isAvailable();
@@ -172,6 +190,9 @@ export const useLogin = () => {
         setIsLoading(true);
         try {
             const result = await AppleAuthService.signInWithApple();
+            if (result.success && result.user) {
+                await registerForPushNotifications(result.user.uid);
+            }
             if (result.success) {
                 // Check onboarding status after Apple login
                 const { checkOnboardingStatus } = await import('../../../services/userService');
@@ -224,6 +245,9 @@ export const useLogin = () => {
 
             // Small delay to ensure auth state is updated
             setTimeout(async () => {
+                if (auth.currentUser) {
+                    await registerForPushNotifications(auth.currentUser.uid);
+                }
                 const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
                 console.log('Post-Google-login onboarding status:', status);
                 console.log('User UID:', auth.currentUser?.uid);
