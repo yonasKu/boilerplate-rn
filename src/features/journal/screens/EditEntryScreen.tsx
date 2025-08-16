@@ -32,6 +32,7 @@ const EditEntryScreen = () => {
     isFavorited: boolean;
     isMilestone: boolean;
     childIds: string[];
+    childAgeAtEntry: Record<string, string>;
     createdAt: any;
   } | null>(null);
 
@@ -116,12 +117,15 @@ const EditEntryScreen = () => {
     setIsLoading(true);
     
     try {
-      const childAgeAtEntry = selectedChildren.length > 0 
-        ? selectedChildren.map(childId => {
-            const child = children.find(c => c.id === childId);
-            return child ? `${child.name}: ${journalService.calculateChildAgeAtDate(child.dateOfBirth, new Date())}` : '';
-          }).filter(Boolean).join(', ')
-        : '';
+      // Calculate age for each selected child
+      const childAgeAtEntry: Record<string, string> = {};
+      selectedChildren.forEach(childId => {
+        const child = children.find(c => c.id === childId);
+        if (child) {
+          const age = journalService.calculateChildAgeAtDate(child.dateOfBirth, new Date());
+          childAgeAtEntry[childId] = age;
+        }
+      });
 
       await updateEntry(typeof entryId === 'string' ? entryId : entryId[0], {
         text: entryText,

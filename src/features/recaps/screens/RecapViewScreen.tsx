@@ -125,22 +125,97 @@ const RecapViewScreen = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: Colors.white },
-    scrollView: { flex: 1 },
-    imageCarouselContainer: { width: '100%', height: heroHeight, position: 'relative' },
-    carouselImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-    headerButtons: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 15, position: 'absolute', left: 0, right: 0 },
-    iconButton: { padding: 8, borderRadius: 25, backgroundColor: 'rgba(0, 0, 0, 0.3)' },
-    contentContainer: { padding: 20, backgroundColor: Colors.white, marginTop: -30, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-    title: { fontSize: 20, fontWeight: 'bold', color: Colors.black, marginBottom: 10 },
-    description: { fontSize: 14, lineHeight: 22, color: Colors.darkGrey, marginBottom: 20 },
-    mediaGridContainer: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -2 },
-    gridItem: { width: '33.333%', aspectRatio: 1, padding: 2 },
-    mediaImage: { width: '100%', height: '100%', borderRadius: 8 },
-    footer: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.lightGrey, backgroundColor: Colors.white, paddingBottom: 20 },
-    footerButton: { padding: 10 },
-    commentsButton: { paddingVertical: 10, paddingHorizontal: 20, borderWidth: 1, borderColor: Colors.lightGrey, borderRadius: 20 },
-    commentsText: { fontSize: 14, fontWeight: '600', color: Colors.darkGrey },
+    container: {
+        flex: 1,
+        backgroundColor: Colors.white,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    imageCarouselContainer: {
+        width: '100%',
+        height: 350,
+        position: 'relative',
+        marginBottom: 8,
+    },
+    carouselImage: {
+        width: '100%',
+        height: 350,
+        resizeMode: 'cover',
+        borderRadius: 0,
+    },
+    headerButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        position: 'absolute',
+        left: 0,
+        right: 0,
+    },
+    iconButton: {
+        padding: 8,
+        borderRadius: 25,
+        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    },
+    contentContainer: {
+        padding: 12,
+        backgroundColor: Colors.white,
+        marginTop: -30,
+    },
+    title: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: Colors.black,
+        marginBottom: 10,
+    },
+    description: {
+        fontSize: 14,
+        lineHeight: 22,
+        color: Colors.darkGrey,
+        marginBottom: 20,
+    },
+    mediaGridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginHorizontal: -2,
+        marginTop: 20,
+    },
+    gridItem: {
+        width: '33.333%',
+        aspectRatio: 1,
+        padding: 2,
+    },
+    mediaImage: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 0,
+    },
+    footer: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderTopColor: Colors.lightGrey,
+        backgroundColor: Colors.white,
+        paddingBottom: 20,
+    },
+    footerButton: {
+        padding: 10,
+    },
+    commentsButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+        borderWidth: 1,
+        borderColor: Colors.lightGrey,
+        borderRadius: 20,
+    },
+    commentsText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.darkGrey,
+    },
 });
 
 export default RecapViewScreen;

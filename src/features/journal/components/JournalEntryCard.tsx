@@ -15,14 +15,16 @@ interface JournalEntryCardProps {
     }>;
     isFavorited: boolean;
     isMilestone: boolean;
-    childAgeAtEntry: string;
+    childAgeAtEntry: Record<string, string>;
     likes: Record<string, boolean>;
     createdAt: any;
   };
+  selectedChildId: string;
   onLike?: () => void;
   onShare?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onToggleMilestone?: () => void;
   onPress?: () => void;
   isPreview?: boolean;
 }
@@ -37,9 +39,14 @@ const formatDate = (date: any) => {
   };
 };
 
-const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onShare, onEdit, onDelete, onPress, isPreview = false }) => {
+const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, selectedChildId, onLike, onShare, onEdit, onDelete, onToggleMilestone, onPress, isPreview = false }) => {
   const isLiked = entry.isFavorited;
   const formattedDate = formatDate(entry.createdAt);
+  
+  // Display age for the selected child
+  const childAge = selectedChildId && entry.childAgeAtEntry && entry.childAgeAtEntry[selectedChildId] 
+    ? entry.childAgeAtEntry[selectedChildId] 
+    : '';
 
   const handleLongPress = () => {
     if (isPreview) return;
@@ -99,7 +106,7 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
         <MediaGrid media={entry.media} />
         <View style={styles.footerActions}>
           <View style={styles.ageContainer}>
-            <Text style={styles.childAge}>{entry.childAgeAtEntry}</Text>
+            <Text style={styles.childAge}>{childAge}</Text>
           </View>
           <View style={styles.actionButtons}>
 
@@ -113,12 +120,14 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
                 />
               </TouchableOpacity>
             )}
-            <Ionicons
-              name="trophy-outline"
-              size={19}
-              color={entry.isMilestone ? Colors.primary : Colors.lightGrey}
-              style={[styles.actionIcon, entry.isMilestone && styles.milestoneGlow]}
-            />
+            <TouchableOpacity onPress={onToggleMilestone}>
+              <Ionicons
+                name={entry.isMilestone ? 'trophy' : 'trophy-outline'}
+                size={19}
+                color={entry.isMilestone ? Colors.golden : Colors.lightGrey}
+                style={[styles.actionIcon, entry.isMilestone && styles.milestoneGlow]}
+              />
+            </TouchableOpacity>
             {onShare && (
               <TouchableOpacity onPress={onShare} style={styles.actionIcon}>
                 <Image
@@ -232,7 +241,7 @@ const styles = StyleSheet.create({
   },
   milestoneGlow: {
     // Add subtle glow effect when milestone is active
-    textShadowColor: Colors.primary,
+    textShadowColor: Colors.golden,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 2,
   },

@@ -11,6 +11,7 @@ import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import JournalFilter from '../components/JournalFilter';
 import AgeFilterModal from '../components/modals/AgeFilterModal';
 import { TimelineOption } from '../components/TimelineDropdown';
+import ShareBottomSheet from '../components/ShareBottomSheet';
 import { Colors } from '@/theme';
 import { getInitials, generateAvatarColor } from '@/utils/avatarUtils';
 
@@ -228,12 +229,41 @@ const JournalScreen = () => {
         }
     };
 
-    const handleShare = async (entry: any) => {
+    const handleToggleMilestone = async (entryId: string) => {
         try {
-            await Share.share({
-                message: `Check out this memory from SproutBook: ${entry.text}`,
-                // You can also add a URL to share, e.g., a web link to the entry
-            });
+            const entry = entries.find(e => e.id === entryId);
+            if (entry) {
+                await updateEntry(entryId, { 
+                    isMilestone: !entry.isMilestone 
+                });
+            }
+        } catch (error) {
+            console.error('Error toggling milestone:', error);
+        }
+    };
+
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareEntry, setShareEntry] = useState<any>(null);
+
+    const handleShare = (entry: any) => {
+        setShareEntry(entry);
+        setShowShareModal(true);
+    };
+
+    const handleShareAction = async (platform: 'copy' | 'system') => {
+        if (!shareEntry) return;
+        
+        try {
+            if (platform === 'copy') {
+                await Share.share({
+                    message: `Check out this memory from SproutBook: ${shareEntry.text}`,
+                });
+            } else {
+                await Share.share({
+                    message: `Check out this memory from SproutBook: ${shareEntry.text}`,
+                });
+            }
+            setShowShareModal(false);
         } catch (error) {
             console.error('Error sharing entry:', error);
         }
@@ -400,6 +430,12 @@ const JournalScreen = () => {
                 }}
             />
 
+            <ShareBottomSheet
+                isVisible={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                onShare={handleShareAction}
+            />
+
                         
             
             {isLoading ? (
@@ -429,11 +465,13 @@ const JournalScreen = () => {
                     renderItem={({ item }) => (
                         <JournalEntryCard 
                             entry={item} 
+                            selectedChildId={selectedChild?.id || ''}
                             onPress={() => router.push(`/journal/${item.id}` as any)}
                             onLike={() => handleLike(item.id)}
                             onShare={() => handleShare(item)}
                             onEdit={() => handleEdit(item)}
                             onDelete={() => handleDelete(item)}
+                            onToggleMilestone={() => handleToggleMilestone(item.id)}
                         />
                     )}
                     keyExtractor={(item) => item.id}
@@ -559,11 +597,11 @@ const styles = StyleSheet.create({
     },
     centeredContent: {
         flex: 1,
-        justifyContent: 'flex-start',
+        justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
         backgroundColor: Colors.white,
-        paddingTop: '50%', // Move content up from center
+        paddingTop: 0, // Remove top padding to center properly
     },
     listContentContainer: {
         paddingHorizontal: 16,
@@ -571,9 +609,10 @@ const styles = StyleSheet.create({
         paddingBottom: 100, // Ensure space for floating action button if any
     },
     mainImage: {
-        width: 80,
-        height: 80,
+        width: 100,
+        height: 100,
         resizeMode: 'contain',
+        marginBottom: 16, // Add spacing below logo
     },
     promptText: {
         marginTop: 24,

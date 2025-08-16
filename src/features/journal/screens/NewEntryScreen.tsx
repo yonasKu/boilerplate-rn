@@ -195,19 +195,15 @@ const NewEntryScreen = () => {
         return;
       }
 
-      // Use first child's age for age calculation, or handle multiple ages if needed
-      const childAgeAtEntry = selectedChildren.length > 0 
-        ? selectedChildren.map(childId => {
-            const child = children.find(c => c.id === childId);
-            if (!child) {
-              console.warn(`⚠️ Child ${childId} not found in children array`);
-              return '';
-            }
-            const age = journalService.calculateChildAgeAtDate(new Date(child.dateOfBirth), new Date());
-            console.log(`📊 Child ${child.name} age: ${age}`);
-            return `${child.name}: ${age}`;
-          }).filter(Boolean).join(', ')
-        : '';
+      // Calculate age for each selected child
+      const childAgeAtEntry: Record<string, string> = {};
+      selectedChildren.forEach(childId => {
+        const child = children.find(c => c.id === childId);
+        if (child) {
+          const age = journalService.calculateChildAgeAtDate(new Date(child.dateOfBirth), new Date());
+          childAgeAtEntry[childId] = age;
+        }
+      });
       console.log('📊 Child age at entry:', childAgeAtEntry);
 
       console.log('📸 Processing media...');
@@ -243,6 +239,7 @@ const NewEntryScreen = () => {
           isMilestone
         });
         console.log('✅ Entry updated successfully');
+        console.log('🎯 Navigating back to journal...');
       } else {
         console.log('📝 Creating new entry...');
         const entryData = {
@@ -263,9 +260,18 @@ const NewEntryScreen = () => {
     } catch (error) {
       console.error('❌ Save failed with error:', error);
       console.error('❌ Error stack:', (error as Error).stack);
+      
+      let errorMessage = 'Could not save your entry. Please try again.';
+      if ((error as any).code === 'permission-denied') {
+        errorMessage = 'You don\'t have permission to post this entry. Please check your account status or contact support.';
+      } else if ((error as any).code === 'unavailable') {
+        errorMessage = 'Service is temporarily unavailable. Please check your internet connection and try again.';
+      }
+      
       Alert.alert(
-        'Save Failed',
-        `Could not save your entry: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
+        'Cannot Post Entry',
+        errorMessage,
+        [{ text: 'OK', style: 'default' }]
       );
     } finally {
       console.log('🏁 Save process completed, setting isSaving to false');

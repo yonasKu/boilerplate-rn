@@ -12,6 +12,7 @@ export default function MainLayout() {
       <Stack.Screen name="partner-access" />
       <Stack.Screen name="refer-a-friend" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="notification-test" />
     </Stack>
   );
 }

@@ -30,6 +30,15 @@ const SettingsScreen = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.replace('/(auth)/welcome');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   // Fetch actual user profile from Firestore
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -83,18 +92,22 @@ const SettingsScreen = () => {
         <View style={styles.optionsContainer}>
           {settingsOptions.map((option, index) => (
             <TouchableOpacity key={index} style={styles.optionRow} onPress={() => {
-                if (option.text === 'Child Profiles') {
+                if (option.text === 'Logout') {
+                  handleLogout();
+                } else if (option.text === 'Child Profiles') {
                   router.push('/child-profiles');
-                } else if (option.text === 'Account settings') {
-                  router.push('/account-settings');
                 } else if (option.text === 'Partner access') {
                   router.push('/partner-access');
                 } else if (option.text === 'Refer a friend') {
                   router.push('/refer-a-friend');
+                } else if (option.text === 'Account settings') {
+                  router.push('/account-settings');
                 } else if (option.text === 'Family sharing') {
                   router.push('/family-sharing');
-                } else if (option.text === 'Logout') {
-                  signOut();
+                } else if (option.text === 'Test Notifications') {
+                  router.push('/notification-test');
+                } else {
+                  console.log('Navigate to:', option.text);
                 }
               }}>
               <View style={styles.iconBackground}>

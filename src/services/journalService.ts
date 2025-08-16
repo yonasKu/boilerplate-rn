@@ -46,7 +46,7 @@ export const createJournalEntry = async (entryData: {
   }>;
   isFavorited: boolean;
   isMilestone: boolean;
-  childAgeAtEntry: string;
+  childAgeAtEntry: Record<string, string>;
   likes?: Record<string, boolean>;
 }) => {
   try {

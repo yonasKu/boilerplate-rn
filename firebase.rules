@@ -113,11 +113,15 @@ service cloud.firestore {
         && (request.resource.data.media == null || request.resource.data.media is list)
         && (request.resource.data.isFavorited == null || request.resource.data.isFavorited is bool)
         && (request.resource.data.isMilestone == null || request.resource.data.isMilestone is bool)
-        && (request.resource.data.childAgeAtEntry == null || request.resource.data.childAgeAtEntry is string)
+        && (request.resource.data.childAgeAtEntry == null || request.resource.data.childAgeAtEntry is map)
         && (request.resource.data.likes == null || request.resource.data.likes is map)
       
       // A user can read entries they own or that are shared with them as a family member
-      allow read: if isFamilyMember(resource.data.userId);
+      allow read: if isOwner(resource.data.userId) || 
+                     (request.auth != null && 
+                      (request.auth.uid == resource.data.userId || 
+                       request.auth.uid in resource.data.sharedWith ||
+                       resource.data.userId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.sharedWith));
       
       // A user can update their own entry's content and tags.
       // Family members can also update likes and favorites.

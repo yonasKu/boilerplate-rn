@@ -169,7 +169,7 @@ const JournalEntryViewScreen = () => {
                                 style={styles.actionButton}
                                 onPress={handleToggleMilestone}
                             >
-                                <Image source={require('../../../assets/images/Trophy_icon.png')} style={[styles.actionIcon, { tintColor: entry.isMilestone ? Colors.primary : Colors.mediumGrey }]} />
+                                <Ionicons name={entry.isMilestone ? 'trophy' : 'trophy-outline'} size={22} color={entry.isMilestone ? Colors.golden : Colors.mediumGrey} />
                             </TouchableOpacity>
                         </View>
                     </View>

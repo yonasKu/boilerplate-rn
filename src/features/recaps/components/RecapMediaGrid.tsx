@@ -8,7 +8,7 @@ interface MediaItem {
   thumbnailUrl?: string;
 }
 
-interface MediaGridProps {
+interface RecapMediaGridProps {
   media: MediaItem[];
   dateOverlay?: {
     line1: string;
@@ -18,7 +18,7 @@ interface MediaGridProps {
   };
 }
 
-const renderImageWithOverlay = (item: any, style: any, key: any, overlayCount?: number, dateOverlay?: MediaGridProps['dateOverlay']) => (
+const renderImageWithOverlay = (item: any, style: any, key: any, overlayCount?: number, dateOverlay?: RecapMediaGridProps['dateOverlay']) => (
     <View key={key} style={style}>
         <Image source={{ uri: item.url }} style={styles.mediaImage} />
         {overlayCount && overlayCount > 0 && (
@@ -38,7 +38,7 @@ const renderImageWithOverlay = (item: any, style: any, key: any, overlayCount?: 
     </View>
 );
 
-const MediaGrid: React.FC<MediaGridProps> = ({ media, dateOverlay }) => {
+const RecapMediaGrid: React.FC<RecapMediaGridProps> = ({ media, dateOverlay }) => {
   if (!media || media.length === 0) return null;
 
   const mediaCount = media.length;
@@ -114,10 +114,10 @@ const MediaGrid: React.FC<MediaGridProps> = ({ media, dateOverlay }) => {
 const styles = StyleSheet.create({
   mediaGridContainer: {
     flexDirection: 'row',
-    borderRadius: 0,
+    borderRadius: 12,
     overflow: 'hidden',
     height: 180,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: Colors.offWhite,
   },
   fullWidthImage: {
       flex: 1,
@@ -134,6 +134,7 @@ const styles = StyleSheet.create({
     padding: 1,
   },
   rightColumn: {
+    gap:3,
     flex: 0.5,
     flexDirection: 'column',
   },
@@ -167,6 +168,7 @@ const styles = StyleSheet.create({
   mediaImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 8,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -182,7 +184,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   dateOverlayText: {
-    color: 'white',
+    color: Colors.white,
     fontWeight: 'bold',
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
@@ -194,10 +196,10 @@ const styles = StyleSheet.create({
     lineHeight: 40,
   },
   overlayText: {
-    color: 'white',
+    color: Colors.white,
     fontSize: 24,
     fontWeight: 'bold',
   },
 });
 
-export default MediaGrid;
+export default RecapMediaGrid;

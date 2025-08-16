@@ -1,3 +1,4 @@
+import { Colors } from '@/theme';
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 
@@ -58,7 +59,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E8F5E9', // Light green background
+    backgroundColor: Colors.lightPink, // Light green background
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,

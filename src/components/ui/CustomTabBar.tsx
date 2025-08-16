@@ -1,10 +1,11 @@
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Image } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { useJournal } from '@/hooks/useJournal';
+import { Colors } from '@/theme';
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { bottom } = useSafeAreaInsets();
@@ -13,16 +14,22 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const { entries } = useJournal();
 
-  const getIcon = (routeName: string): keyof typeof Feather.glyphMap => {
+  const getIcon = (routeName: string, isActive: boolean) => {
     switch (routeName) {
       case 'journal':
-        return 'home';
+        return isActive
+          ? require('@/assets/images/journal_icon_active.png')
+          : require('@/assets/images/journal_icon.png');
       case 'recaps':
-        return 'book-open';
+        return isActive
+          ? require('@/assets/images/recaps_icon_active.png')
+          : require('@/assets/images/recaps_icon.png');
       case 'search':
-        return 'search';
+        return isActive
+          ? require('@/assets/images/search_icon_active.png')
+          : require('@/assets/images/search_icon.png');
       default:
-        return 'home';
+        return require('@/assets/images/journal_icon.png');
     }
   };
 
@@ -101,8 +108,22 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
                 onPress={onPress}
                 style={styles.tabButton}
               >
-                <Feather name={getIcon(route.name)} size={20} color={isFocused ? '#5D9275' : '#888'} />
-                <Text style={[styles.label, { color: isFocused ? '#5D9275' : '#888' }]}>
+                <Image
+                  source={getIcon(route.name, isFocused)}
+                  style={
+                    route.name === 'journal'
+                      ? (isFocused ? styles.journalIconActive : styles.journalIcon)
+                      : route.name === 'recaps'
+                        ? (isFocused ? styles.recapsIconActive : styles.recapsIcon)
+                        : (isFocused ? styles.searchIconActive : styles.searchIcon)
+                  }
+                  resizeMode="contain"
+                />
+                <Text style={[
+                  styles.label,
+                  { color: isFocused ? Colors.primary : Colors.mediumGrey },
+                  route.name === 'recaps' && styles.recapLabel
+                ]}>
                   {label}
                 </Text>
               </TouchableOpacity>
@@ -170,13 +191,13 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 30,
     paddingVertical: 10,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'space-around',
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
@@ -186,8 +207,39 @@ const styles = StyleSheet.create({
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    gap: 5,
+    paddingHorizontal: 12,
+    gap: 4,
+  },
+  journalIcon: {
+    width: 22,
+    height: 22,
+    opacity: 0.7,
+  },
+  journalIconActive: {
+    width: 22,
+    height: 22,
+    opacity: 1,
+  },
+  recapsIcon: {
+    width: 38,
+    height: 30,
+    opacity: 0.7,
+    marginBottom: -1
+  },
+  recapsIconActive: {
+    width: 30,
+    height: 30,
+    opacity: 1,
+  },
+  searchIcon: {
+    width: 22,
+    height: 22,
+    opacity: 0.7,
+  },
+  searchIconActive: {
+    width: 22,
+    height: 22,
+    opacity: 1,
   },
   iconContainer: {
     width: 40,
@@ -198,7 +250,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   activeIconContainer: {
-    backgroundColor: '#5D9275',
+    backgroundColor: Colors.primary,
   },
   newButtonContainer: {
     alignItems: 'center',
@@ -208,10 +260,10 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#5D9275',
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
@@ -219,7 +271,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   newButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
@@ -241,14 +293,20 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textTransform: 'capitalize',
   },
+  recapLabel: {
+    fontSize: 12,
+    marginTop: 0,
+    textTransform: 'capitalize',
+  },
   glowOrb: {
     position: 'absolute',
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#5D9275',
+    backgroundColor: Colors.primary,
     opacity: 0.3,
-    shadowColor: '#5D9275',
+    shadowColor: Colors.primary,
+
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 8,

@@ -5,9 +5,13 @@ import { useFonts, Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } fr
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { AuthProvider, useAuth } from '../context/AuthContext';
-import { OnboardingProvider, useOnboarding } from '../context/OnboardingContext';
+import { View } from 'react-native';
+import { AuthProvider } from '../context/AuthContext';
+import { OnboardingProvider } from '../context/OnboardingContext';
 import { useRouter, useSegments } from 'expo-router';
+import { NotificationContainer } from '../components/ui/NotificationContainer';
+import { useAuth } from '../context/AuthContext';
+import { useOnboarding } from '../context/OnboardingContext';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -83,6 +87,7 @@ const RootLayoutNav = () => {
   return (
     <AuthProvider>
       <OnboardingProvider>
+        <NotificationContainer />
         <InitialLayout />
         <StatusBar style="auto" />
       </OnboardingProvider>

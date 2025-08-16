@@ -16,7 +16,7 @@ export interface JournalEntry extends DocumentData {
   }>;
   isFavorited: boolean;
   isMilestone: boolean;
-  childAgeAtEntry: string;
+  childAgeAtEntry: Record<string, string>; // Map of childId to age string
   likes: Record<string, boolean>;
   createdAt: any; // Firestore timestamp
   updatedAt: any; // Firestore timestamp
@@ -39,13 +39,13 @@ export const useJournal = () => {
   }, [user]);
 
   // Function to add a new entry
-  const addEntry = async (entryData: { 
-    text: string; 
+  const addEntry = async (entryData: {
+    text: string;
     media: Array<{ uri: string; type: 'image' | 'video' }>;
-    isFavorited: boolean; 
+    isFavorited: boolean;
     isMilestone: boolean;
     childIds: string[];
-    childAgeAtEntry: string;
+    childAgeAtEntry: Record<string, string>;
   }) => {
     if (!user) throw new Error('User not authenticated');
     setIsLoading(true);
@@ -80,29 +80,28 @@ export const useJournal = () => {
   // Function to update an existing entry
   const updateEntry = async (entryId: string, updates: {
     text?: string;
-    media?: Array<{
-      type: 'image' | 'video';
-      url: string;
-      thumbnailUrl?: string;
-    }>;
+    media?: Array<{ type: 'image' | 'video'; url: string; thumbnailUrl?: string }>;
     isFavorited?: boolean;
     isMilestone?: boolean;
     childIds?: string[];
-    childAgeAtEntry?: string;
+    childAgeAtEntry?: Record<string, string>;
   }) => {
     if (!user) throw new Error('User not authenticated');
-    setIsLoading(true);
     try {
       await journalService.updateJournalEntry(entryId, updates);
       
-      // Refresh local state
-      const updatedEntries = await journalService.fetchUserJournalEntries(user.uid);
-      setEntries(updatedEntries);
+      // Optimistically update local state without full reload
+      setEntries(prevEntries => 
+        prevEntries.map(entry => 
+          entry.id === entryId 
+            ? { ...entry, ...updates, updatedAt: new Date() }
+            : entry
+        )
+      );
     } catch (e) {
       setError('Failed to update entry.');
+      // Revert optimistic update on error
       throw e;
-    } finally {
-      setIsLoading(false);
     }
   };
 

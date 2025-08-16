@@ -26,10 +26,6 @@ import StreakNotification from '../components/StreakNotification';
 import CommentNotification from '../components/CommentNotification';
 import RecapLoveNotification from '../components/RecapLoveNotification';
 
-const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-
 const renderNotificationItem = ({ item }: { item: Notification }) => {
   switch (item.type) {
     case 'recap_love':
@@ -48,6 +44,8 @@ const renderNotificationItem = ({ item }: { item: Notification }) => {
 const NotificationScreen = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.uid) return;
