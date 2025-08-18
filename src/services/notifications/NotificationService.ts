@@ -53,10 +53,16 @@ export class NotificationService {
       const { getFirestore } = await import('firebase/firestore');
       const { doc, setDoc } = await import('firebase/firestore');
       
-      await setDoc(doc(getFirestore(), 'users', userId), {
-        pushToken: token,
+      console.log('Saving device token:', { userId, token, platform: Platform.OS });
+      
+      await setDoc(doc(getFirestore(), 'users', userId, 'devices', token), {
+        token: token,
+        platform: Platform.OS,
+        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      });
+      
+      console.log('Device token saved successfully to devices collection');
     } catch (error) {
       console.error('Error saving token to Firestore:', error);
     }

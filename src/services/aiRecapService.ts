@@ -11,11 +11,13 @@ export interface Recap {
     endDate: Date;
   };
   aiGenerated: {
-    title: string;
-    summary: string;
-    keyMoments: string[];
+    title?: string;
+    summary?: string;
+    keyMoments?: string[];
+    recapText?: string;
+    tone?: string;
   };
-  media: {
+  media?: {
     highlightPhotos: string[];
   };
   status: 'generating' | 'completed' | 'failed';

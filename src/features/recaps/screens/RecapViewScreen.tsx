@@ -1,46 +1,127 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ImageBackground, Dimensions, Modal, TouchableWithoutFeedback, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors } from '@/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Carousel from 'react-native-reanimated-carousel';
 import ImageViewing from 'react-native-image-viewing';
+import CommentsSection from '../components/comments/CommentsSection';
+import ShareBottomSheet from '../../journal/components/ShareBottomSheet';
+import { useRecap } from '../hooks/useRecap';
+import { recapInteractionService } from '../services/recapInteractionService';
+import { auth } from '@/lib/firebase/firebaseConfig';
 
-const { width } = Dimensions.get('window');
-const heroHeight = width * 1.1;
-
-const sampleRecap = {
-    id: '1',
-    title: '✨ Week of July 15, 2025',
-    description: 'Zoe has been practicing saying “hi” and “bye” and waving all day today! She also has been practicing throwing– it’s so funny! Tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur',
-    media: [
-        { url: 'https://i.imgur.com/S8W7O4g.jpeg' },
-        { url: 'https://i.imgur.com/AD3G415.jpeg' },
-        { url: 'https://i.imgur.com/2MD3O5y.jpeg' },
-        { url: 'https://i.imgur.com/TzP1E9A.jpeg' },
-        { url: 'https://i.imgur.com/WbA4W5t.jpeg' },
-        { url: 'https://i.imgur.com/S8W7O4g.jpeg' },
-    ],
-};
 
 const RecapViewScreen = () => {
     const router = useRouter();
-    const { recapId } = useLocalSearchParams<{ recapId: string }>();
+    const { recapId, openComments } = useLocalSearchParams<{ recapId: string, openComments?: string }>();
     const insets = useSafeAreaInsets();
     const [showFullScreenGallery, setShowFullScreenGallery] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [isCommentsVisible, setCommentsVisible] = useState(false);
+    const [isShareSheetVisible, setShareSheetVisible] = useState(false);
 
-    const recap = sampleRecap; // Using sample data
-    const imagesForViewer = recap.media.map(item => ({ uri: item.url }));
+    const { recap, loading, error } = useRecap(recapId);
+    const [isLiked, setIsLiked] = useState(false);
+    const [likesCount, setLikesCount] = useState(0);
 
+    const formatRecapTitle = (recap: any) => {
+        if (!recap?.type || !recap.period?.startDate) {
+            return 'Recap';
+        }
+
+        const startDate = new Date(recap.period.startDate.seconds * 1000);
+
+        const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+        switch (recap.type) {
+            case 'daily':
+                return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+            case 'weekly':
+                return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+            case 'monthly':
+                return `${capitalize(recap.type)} of ${startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+            case 'yearly':
+                return `${capitalize(recap.type)} of ${startDate.toLocaleDateString('en-US', { year: 'numeric' })}`;
+            default:
+                return 'Recap';
+        }
+    };
+
+    useEffect(() => {
+        if (!recap || !auth.currentUser?.uid) return;
+        
+        const loadInteractionData = async () => {
+            try {
+                const [liked, count] = await Promise.all([
+                    recapInteractionService.isLikedByUser(recap.id!, auth.currentUser!.uid),
+                    recapInteractionService.getLikesCount(recap.id!)
+                ]);
+                setIsLiked(liked);
+                setLikesCount(count);
+            } catch (error) {
+                console.error('Error loading interaction data:', error);
+            }
+        };
+        
+        loadInteractionData();
+        
+        // Auto-open comments if requested
+        if (openComments === 'true') {
+            setCommentsVisible(true);
+        }
+    }, [recap, openComments]);
+
+    const imagesForViewer = recap?.media?.highlightPhotos?.map((url: string) => ({ uri: url })) ?? [];
+    const media = recap?.media?.highlightPhotos ?? [];
+    
     const handleImagePress = (index: number) => {
         setCurrentImageIndex(index);
         setShowFullScreenGallery(true);
     };
 
+    const handleSharePress = () => {
+        setShareSheetVisible(true);
+    };
+
+    const handleShareOption = (platform: 'copy' | 'system') => {
+        setShareSheetVisible(false);
+        Alert.alert('Sharing', `Shared via ${platform}`);
+    };
+
+    const handleLikePress = async () => {
+        if (!recap || !auth.currentUser?.uid) return;
+        
+        try {
+            const newLikeStatus = await recapInteractionService.toggleLike(recap.id!, auth.currentUser.uid);
+            setIsLiked(newLikeStatus);
+            setLikesCount(prev => newLikeStatus ? prev + 1 : prev - 1);
+        } catch (error) {
+            console.error('Error toggling like:', error);
+        }
+    };
+    
+    if (loading) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Text>Loading recap...</Text>
+            </View>
+        );
+    }
+
+    if (error || !recap) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <Text>Recap not found</Text>
+            </View>
+        );
+    }
+
     const renderImageCarousel = () => {
-        if (recap.media.length === 0) return null;
+        if (media.length === 0) {
+            return <View style={{ height: heroHeight /2 }} />;
+        }
 
         return (
             <View style={styles.imageCarouselContainer}>
@@ -50,9 +131,9 @@ const RecapViewScreen = () => {
                     height={heroHeight}
                     autoPlay={true}
                     autoPlayInterval={3000}
-                    data={recap.media}
-                    onSnapToItem={(index) => setCurrentImageIndex(index)}
-                    renderItem={({ item, index }) => (
+                    data={media}
+                    onSnapToItem={(index: number) => setCurrentImageIndex(index)}
+                    renderItem={({ item, index }: { item: string; index: number }) => (
                         <TouchableOpacity
                             key={index}
                             style={{ flex: 1 }}
@@ -60,16 +141,19 @@ const RecapViewScreen = () => {
                             activeOpacity={1}
                         >
                             <ImageBackground
-                                source={{ uri: item.url }}
+                                source={{ uri: item }}
                                 style={styles.carouselImage}
                                 resizeMode="cover"
                             />
                         </TouchableOpacity>
                     )}
                 />
-                <View style={[styles.headerButtons, { top: insets.top + 10 }]}>
+                <View style={[styles.headerButtons, { top: insets.top + 20 }]}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
-                         <Ionicons name="chevron-back" size={24} color={Colors.white} />
+                        <Ionicons name="chevron-back" size={24} color={Colors.white} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleSharePress} style={styles.iconButton}>
+                        <Ionicons name="share-outline" size={24} color={Colors.white} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -82,18 +166,21 @@ const RecapViewScreen = () => {
                 {renderImageCarousel()}
 
                 <View style={styles.contentContainer}>
-                    <Text style={styles.title}>{recap.title}</Text>
-                    <Text style={styles.description}>{recap.description}</Text>
+                    <View style={styles.titleContainer}>
+                        <Image source={require('@/assets/images/two_stars_icon.png')} style={styles.sparkleIcon} />
+                        <Text style={styles.title}>{formatRecapTitle(recap)}</Text>
+                    </View>
+                    <Text style={styles.description}>{recap.aiGenerated?.recapText || ''}</Text>
 
                     <View style={styles.mediaGridContainer}>
-                        {recap.media.map((item, index) => (
+                        {media.map((url: string, index: number) => (
                             <TouchableOpacity
                                 key={index}
                                 style={styles.gridItem}
                                 onPress={() => handleImagePress(index)}
                                 activeOpacity={0.8}
                             >
-                                <Image source={{ uri: item.url }} style={styles.mediaImage} />
+                                <Image source={{ uri: url }} style={styles.mediaImage} />
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -101,14 +188,18 @@ const RecapViewScreen = () => {
             </ScrollView>
 
             <View style={styles.footer}>
-                 <TouchableOpacity style={styles.footerButton}>
-                    <Ionicons name="arrow-redo-outline" size={24} color={Colors.darkGrey} />
+                <TouchableOpacity style={styles.footerButton} onPress={handleSharePress}>
+                    <Ionicons name="arrow-redo-outline" size={24} color={Colors.grey} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.commentsButton}>
-                    <Text style={styles.commentsText}>12 Comments</Text>
+                <TouchableOpacity style={styles.commentsButton} onPress={() => setCommentsVisible(true)}>
+                    <Text style={styles.commentsText}>{(recap as any).commentCount || 0} Comments</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.footerButton}>
-                    <Ionicons name="heart-outline" size={24} color={Colors.darkGrey} />
+                <TouchableOpacity style={styles.footerButton} onPress={handleLikePress}>
+                    <Ionicons 
+                        name={isLiked ? "heart" : "heart-outline"} 
+                        size={24} 
+                        color={isLiked ? Colors.red : Colors.grey} 
+                    />
                 </TouchableOpacity>
             </View>
 
@@ -120,9 +211,35 @@ const RecapViewScreen = () => {
                 presentationStyle="fullScreen"
                 backgroundColor="black"
             />
+
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isCommentsVisible}
+                onRequestClose={() => setCommentsVisible(false)}
+            >
+                <TouchableWithoutFeedback onPress={() => setCommentsVisible(false)}>
+                    <View style={styles.modalOverlay}>
+                        <TouchableWithoutFeedback>
+                            <View style={styles.commentsModal}>
+                                <CommentsSection entryId={recapId} onClose={() => setCommentsVisible(false)} />
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
+
+            <ShareBottomSheet 
+                isVisible={isShareSheetVisible}
+                onClose={() => setShareSheetVisible(false)}
+                onShare={handleShareOption}
+            />
         </View>
     );
 };
+
+const { width } = Dimensions.get('window');
+const heroHeight = width * 1.1;
 
 const styles = StyleSheet.create({
     container: {
@@ -133,90 +250,102 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     imageCarouselContainer: {
-        width: '100%',
-        height: 350,
         position: 'relative',
         marginBottom: 8,
     },
     carouselImage: {
-        width: '100%',
-        height: 350,
-        resizeMode: 'cover',
-        borderRadius: 0,
+        width: width,
+        height: heroHeight,
     },
     headerButtons: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        position: 'absolute',
-        left: 0,
-        right: 0,
     },
     iconButton: {
-        padding: 8,
-        borderRadius: 25,
-        backgroundColor: 'rgba(0, 0, 0, 0.3)',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     contentContainer: {
-        padding: 12,
-        backgroundColor: Colors.white,
-        marginTop: -30,
+        padding: 20,
+    },
+    titleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    sparkleIcon: {
+        width: 24,
+        height: 24,
+        marginRight: 8,
     },
     title: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: 'bold',
         color: Colors.black,
-        marginBottom: 10,
     },
     description: {
-        fontSize: 14,
-        lineHeight: 22,
-        color: Colors.darkGrey,
+        fontSize: 16,
+        color: Colors.grey,
+        lineHeight: 24,
         marginBottom: 20,
     },
     mediaGridContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginHorizontal: -2,
-        marginTop: 20,
+        marginHorizontal: -4,
+        marginBottom: 20,
     },
     gridItem: {
-        width: '33.333%',
+        width: '33.33%',
         aspectRatio: 1,
-        padding: 2,
+        padding: 4,
     },
     mediaImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 0,
+        borderRadius: 8,
     },
     footer: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
         alignItems: 'center',
-        paddingVertical: 10,
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
         borderTopWidth: 1,
         borderTopColor: Colors.lightGrey,
         backgroundColor: Colors.white,
-        paddingBottom: 20,
     },
     footerButton: {
         padding: 10,
     },
     commentsButton: {
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderWidth: 1,
-        borderColor: Colors.lightGrey,
-        borderRadius: 20,
+        padding: 10,
     },
     commentsText: {
         fontSize: 14,
-        fontWeight: '600',
-        color: Colors.darkGrey,
+        color: Colors.grey,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    commentsModal: {
+        width: '100%',
+        height: '80%',
+        backgroundColor: Colors.white,
+        borderTopRightRadius: 20,
+        borderTopLeftRadius: 20,
+        paddingHorizontal: 20,
+        paddingTop: 10,
     },
 });
 
 export default RecapViewScreen;
-

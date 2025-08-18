@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useJournal } from '@/hooks/useJournal';
 import JournalEntryCard from '@/features/journal/components/JournalEntryCard';
+import JournalEntryPreviewCard from '@/features/journal/components/JournalEntryPreviewCard';
 
 const SearchScreen = () => {
   const router = useRouter();
@@ -53,7 +54,7 @@ const SearchScreen = () => {
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity onPress={() => router.push(`/journal/${item.id}` as any)}>
-              <JournalEntryCard entry={item} />
+              <JournalEntryPreviewCard entry={item} />
             </TouchableOpacity>
           )}
           contentContainerStyle={styles.list}
