@@ -331,10 +331,14 @@ const RecapsScreen = () => {
       />
       <FlatList
         data={filteredRecaps}
-        renderItem={({ item }) => <RecapCard recap={item as Recap} onShare={handleSharePress} />}
+        renderItem={({ item }) => (
+          <View style={styles.cardContainer}>
+            <RecapCard recap={item as Recap} onShare={handleSharePress} />
+          </View>
+        )}
         keyExtractor={(item) => item.id!}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 16 }}
+        contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 16 }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No recaps found</Text>
@@ -462,6 +466,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingTop: 100,
+  },
+  cardContainer: {
+    marginBottom: 16,
   },
   emptyText: {
     fontSize: 16,

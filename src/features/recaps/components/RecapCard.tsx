@@ -121,7 +121,7 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
         <TouchableOpacity onPress={handlePress} activeOpacity={0.9} style={styles.card}>
             <View style={styles.header}>
                 <Image source={require('@/assets/images/two_stars_icon.png')} style={styles.sparkleIcon} />
-                <Text style={styles.title} numberOfLines={3}>{recap.aiGenerated.recapText || recap.aiGenerated.summary || 'Recap'}</Text>
+                <Text style={styles.title} numberOfLines={1}>{recap.aiGenerated.recapText || recap.aiGenerated.summary || 'Recap'}</Text>
             </View>
             <RecapMediaGrid media={highlightPhotos?.map((url: string) => ({ url, type: 'image' as const })) ?? []} dateOverlay={formattedDate} />
             <View style={styles.footer}>
@@ -153,18 +153,17 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
 const styles = StyleSheet.create({
     card: {
         backgroundColor: Colors.white,
-        borderRadius: 24,
-        marginHorizontal: 16,
-        marginBottom: 24,
-        padding: 12,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.05,
-        shadowRadius: 12,
-        elevation: 5,
+        borderRadius: 16,
+        overflow: 'hidden',
+        padding: 4,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: Colors.lightGrey,
+        shadowColor: Colors.black,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1.41,
+        elevation: 2,
     },
     header: {
         marginTop: 4,
@@ -183,8 +182,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: Colors.blacktext,
-        marginLeft: 8,
+       
         flex: 1,
+        lineHeight: 20,
     },
     footer: {
         flexDirection: 'row',

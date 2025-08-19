@@ -131,7 +131,7 @@ const RecapMediaGrid: React.FC<RecapMediaGridProps> = ({ media, dateOverlay }) =
 const styles = StyleSheet.create({
   mediaGridContainer: {
     flexDirection: 'row',
-    borderRadius: 12,
+    borderRadius: 0,
     overflow: 'hidden',
     height: 180,
     backgroundColor: Colors.offWhite,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   mediaImage: {
     width: '100%',
     height: '100%',
-    borderRadius: 8,
+    borderRadius: 0,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
