@@ -145,7 +145,7 @@ service cloud.firestore {
     match /recaps/{recapId} {
       // A user can read an entry if they are a family member, or backend can read them.
       allow read: if isFamilyMember(resource.data.userId) || isBackendFunction();
-      
+
       // Owners or the backend can create recaps
       allow create: if isOwner(request.resource.data.userId) || isBackendFunction()
         && request.resource.data.keys().hasAll(['userId', 'childId', 'type', 'period', 'status', 'createdAt'])
@@ -153,14 +153,30 @@ service cloud.firestore {
         && request.resource.data.status in ['generating', 'completed', 'failed']
         && request.resource.data.createdAt is timestamp;
 
-      // Owners can update their recaps
-      allow update: if isOwner(resource.data.userId) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'content', 'status', 'isFavorited', 'updatedAt'
-        ]);
+      // Owners can update content, family members can update interactions.
+      allow update: if (isOwner(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'status', 'isFavorited', 'updatedAt', 'isMilestone'])) ||
+                      (isFamilyMember(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited', 'commentCount']));
 
       // Owners can delete their recaps
       allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ===== RECAP COMMENTS COLLECTION =====
+    match /recapComments/{commentId} {
+      // Any authenticated user can read comake sure the mments.
+      allow read: if isAuthenticated();
+
+      // Users can create comments for a recap if they are authenticated and own the comment.
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && exists(/databases/$(database)/documents/recaps/$(request.resource.data.recapId))
+        && request.resource.data.keys().hasAll(['userId', 'recapId', 'text', 'createdAt', 'userName'])
+        && request.resource.data.text is string && request.resource.data.text.size() > 0;
+
+      // Users can delete their own comments.
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // ===== FAMILY SHARING COLLECTIONS =====
@@ -263,28 +279,6 @@ service cloud.firestore {
     match /featureFlags/{userId} {
       allow read: if isOwner(userId);
       allow write: if false; // Managed by backend
-    }
-
-    // ===== RECAP INTERACTIONS =====
-    // Recap likes (user-specific like tracking)
-    match /aiRecaps/{recapId} {
-      allow read: if isAuthenticated();
-      allow update: if isAuthenticated() 
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'likes', 'isFavorited', 'isMilestone', 'commentCount', 'lastCommentAt'
-        ]);
-    }
-
-    // Recap comments
-    match /recapComments/{commentId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() 
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.text is string
-        && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 500;
-      allow delete: if isAuthenticated() 
-        && resource.data.userId == request.auth.uid;
     }
   }
 }

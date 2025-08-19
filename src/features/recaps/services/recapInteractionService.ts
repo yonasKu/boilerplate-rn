@@ -3,7 +3,7 @@ import { doc, updateDoc, getDoc } from 'firebase/firestore';
 
 export const recapInteractionService = {
   async toggleLike(recapId: string, userId: string): Promise<boolean> {
-    const recapRef = doc(db, 'aiRecaps', recapId);
+    const recapRef = doc(db, 'recaps', recapId);
     const recapDoc = await getDoc(recapRef);
     
     if (!recapDoc.exists()) throw new Error('Recap not found');
@@ -27,7 +27,7 @@ export const recapInteractionService = {
   },
 
   async toggleFavorite(recapId: string, isFavorited: boolean): Promise<boolean> {
-    const recapRef = doc(db, 'aiRecaps', recapId);
+    const recapRef = doc(db, 'recaps', recapId);
     
     await updateDoc(recapRef, {
       isFavorited: !isFavorited
@@ -37,7 +37,7 @@ export const recapInteractionService = {
   },
 
   async toggleMilestone(recapId: string, isMilestone: boolean): Promise<boolean> {
-    const recapRef = doc(db, 'aiRecaps', recapId);
+    const recapRef = doc(db, 'recaps', recapId);
     
     await updateDoc(recapRef, {
       isMilestone: !isMilestone
@@ -47,7 +47,7 @@ export const recapInteractionService = {
   },
 
   async getLikesCount(recapId: string): Promise<number> {
-    const recapRef = doc(db, 'aiRecaps', recapId);
+    const recapRef = doc(db, 'recaps', recapId);
     const recapDoc = await getDoc(recapRef);
     
     if (!recapDoc.exists()) return 0;
@@ -57,7 +57,7 @@ export const recapInteractionService = {
   },
 
   async isLikedByUser(recapId: string, userId: string): Promise<boolean> {
-    const recapRef = doc(db, 'aiRecaps', recapId);
+    const recapRef = doc(db, 'recaps', recapId);
     const recapDoc = await getDoc(recapRef);
     
     if (!recapDoc.exists()) return false;
@@ -66,8 +66,8 @@ export const recapInteractionService = {
     return likes[userId] === true;
   },
 
-  async isFavoritedByUser(recapId: string, userId: string): Promise<boolean> {
-    const recapRef = doc(db, 'aiRecaps', recapId);
+  async isFavorited(recapId: string): Promise<boolean> {
+    const recapRef = doc(db, 'recaps', recapId);
     const recapDoc = await getDoc(recapRef);
     
     if (!recapDoc.exists()) return false;

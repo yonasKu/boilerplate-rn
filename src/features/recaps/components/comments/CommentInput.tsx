@@ -1,20 +1,32 @@
 import { Colors } from '@/theme';
 import React, { useState } from 'react';
-import { View, TextInput, TouchableOpacity, Text, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-
+import { View, TextInput, TouchableOpacity, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import { recapCommentsService } from '../../services/recapCommentsService';
+import { auth } from '@/lib/firebase/firebaseConfig';
 
 interface CommentInputProps {
-  entryId: string;
+  recapId: string;
+  onCommentAdded: () => void;
 }
 
-const CommentInput: React.FC<CommentInputProps> = ({ entryId }) => {
+const CommentInput: React.FC<CommentInputProps> = ({ recapId, onCommentAdded }) => {
   const [comment, setComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const user = auth.currentUser;
 
-  const handleAddComment = () => {
-    if (comment.trim()) {
-      // Logic to add comment will go here
-      console.log(`Adding comment to entry ${entryId}: ${comment}`);
+  const handleAddComment = async () => {
+    if (!comment.trim() || !user || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await recapCommentsService.addComment(recapId, user.uid, user.displayName || 'Anonymous', comment);
       setComment('');
+      onCommentAdded(); // Notify parent to refresh comments
+    } catch (error) {
+      console.error('Failed to add comment:', error);
+      Alert.alert('Error', 'Could not post your comment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

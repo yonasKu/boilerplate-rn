@@ -20,7 +20,7 @@ const Avatar: React.FC<AvatarProps> = ({ source, size = 100 }) => {
       {source ? (
         <Image source={source} style={styles.image} />
       ) : (
-        <Ionicons name="person" size={size * 0.6} color={Colors.gray} />
+        <Ionicons name="person" size={size * 0.6} color={Colors.grey} />
       )}
     </View>
   );
@@ -28,7 +28,7 @@ const Avatar: React.FC<AvatarProps> = ({ source, size = 100 }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.lightGray,
+    backgroundColor: Colors.lightGrey,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',

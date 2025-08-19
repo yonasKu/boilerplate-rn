@@ -6,11 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Carousel from 'react-native-reanimated-carousel';
 import ImageViewing from 'react-native-image-viewing';
+import FullScreenImageFooter from '../components/FullScreenImageFooter';
 import CommentsSection from '../components/comments/CommentsSection';
 import ShareBottomSheet from '../../journal/components/ShareBottomSheet';
 import { useRecap } from '../hooks/useRecap';
 import { recapInteractionService } from '../services/recapInteractionService';
+import { recapCommentsService } from '../services/recapCommentsService';
 import { auth } from '@/lib/firebase/firebaseConfig';
+import { Recap } from '../../../services/aiRecapService';
 
 
 const RecapViewScreen = () => {
@@ -25,19 +28,20 @@ const RecapViewScreen = () => {
     const { recap, loading, error } = useRecap(recapId);
     const [isLiked, setIsLiked] = useState(false);
     const [likesCount, setLikesCount] = useState(0);
+    const [commentCount, setCommentCount] = useState(0);
 
-    const formatRecapTitle = (recap: any) => {
+    const formatRecapTitle = (recap: Recap) => {
         if (!recap?.type || !recap.period?.startDate) {
             return 'Recap';
         }
 
-        const startDate = new Date(recap.period.startDate.seconds * 1000);
+        const startDate = recap.period.startDate;
 
         const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
         switch (recap.type) {
-            case 'daily':
-                return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+            // case 'daily':
+            //     return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
             case 'weekly':
                 return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
             case 'monthly':
@@ -50,28 +54,29 @@ const RecapViewScreen = () => {
     };
 
     useEffect(() => {
-        if (!recap || !auth.currentUser?.uid) return;
+        // console.log('RecapViewScreen - recap:', recap);
+        // console.log('RecapViewScreen - recap.id:', recap?.id);
+        // console.log('RecapViewScreen - auth.currentUser:', auth.currentUser);
         
-        const loadInteractionData = async () => {
-            try {
-                const [liked, count] = await Promise.all([
-                    recapInteractionService.isLikedByUser(recap.id!, auth.currentUser!.uid),
-                    recapInteractionService.getLikesCount(recap.id!)
-                ]);
-                setIsLiked(liked);
-                setLikesCount(count);
-            } catch (error) {
-                console.error('Error loading interaction data:', error);
-            }
-        };
-        
-        loadInteractionData();
+        if (!recap) return;
         
         // Auto-open comments if requested
         if (openComments === 'true') {
             setCommentsVisible(true);
         }
-    }, [recap, openComments]);
+
+        // Fetch initial comment count
+        const fetchCommentCount = async () => {
+            try {
+                const comments = await recapCommentsService.getComments(recapId);
+                setCommentCount(comments.length);
+            } catch (error) {
+                console.error('Failed to fetch comment count:', error);
+            }
+        };
+        
+        fetchCommentCount();
+    }, [recap, recapId, openComments]);
 
     const imagesForViewer = recap?.media?.highlightPhotos?.map((url: string) => ({ uri: url })) ?? [];
     const media = recap?.media?.highlightPhotos ?? [];
@@ -90,15 +95,25 @@ const RecapViewScreen = () => {
         Alert.alert('Sharing', `Shared via ${platform}`);
     };
 
+    const handleCommentCountUpdate = (count: number) => {
+        setCommentCount(count);
+    };
+
     const handleLikePress = async () => {
-        if (!recap || !auth.currentUser?.uid) return;
+        if (!recap || !auth.currentUser?.uid) {
+            console.log('Like press blocked - missing recap or user:', { recap: !!recap, user: !!auth.currentUser?.uid });
+            return;
+        }
         
+        console.log('Toggling like for recap:', recap.id, 'user:', auth.currentUser.uid);
         try {
             const newLikeStatus = await recapInteractionService.toggleLike(recap.id!, auth.currentUser.uid);
+            console.log('Like toggled successfully:', newLikeStatus);
             setIsLiked(newLikeStatus);
             setLikesCount(prev => newLikeStatus ? prev + 1 : prev - 1);
         } catch (error) {
             console.error('Error toggling like:', error);
+            console.error('Error details:', { recapId: recap.id, userId: auth.currentUser.uid });
         }
     };
     
@@ -120,7 +135,26 @@ const RecapViewScreen = () => {
 
     const renderImageCarousel = () => {
         if (media.length === 0) {
-            return <View style={{ height: heroHeight /2 }} />;
+            return (
+                <View style={styles.placeholderContainer}>
+                    <View style={[styles.headerButtons, { top: insets.top + 20 }]}>
+                        <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
+                            <Ionicons name="chevron-back" size={24} color={Colors.white} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={handleSharePress} style={styles.iconButton}>
+                            <Ionicons name="arrow-redo-outline" size={24} color={Colors.white} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={styles.placeholderContent}>
+                        <Image 
+                            source={require('@/assets/images/splash_logo.png')} 
+                            style={styles.placeholderIcon}
+                            resizeMode="contain"
+                        />
+                        <Text style={styles.placeholderText}>No images available</Text>
+                    </View>
+                </View>
+            );
         }
 
         return (
@@ -192,13 +226,13 @@ const RecapViewScreen = () => {
                     <Ionicons name="arrow-redo-outline" size={24} color={Colors.grey} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.commentsButton} onPress={() => setCommentsVisible(true)}>
-                    <Text style={styles.commentsText}>{(recap as any).commentCount || 0} Comments</Text>
+                    <Text style={styles.commentsText}>{commentCount} Comments</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.footerButton} onPress={handleLikePress}>
                     <Ionicons 
-                        name={isLiked ? "heart" : "heart-outline"} 
+                        name={(recap as any).isFavorited ? "heart" : "heart-outline"} 
                         size={24} 
-                        color={isLiked ? Colors.red : Colors.grey} 
+                        color={(recap as any).isFavorited ? Colors.red : Colors.grey} 
                     />
                 </TouchableOpacity>
             </View>
@@ -210,6 +244,18 @@ const RecapViewScreen = () => {
                 onRequestClose={() => setShowFullScreenGallery(false)}
                 presentationStyle="fullScreen"
                 backgroundColor="black"
+                FooterComponent={() => (
+                    <FullScreenImageFooter
+                        commentCount={commentCount}
+                        isLiked={(recap as any).isFavorited}
+                        onSharePress={handleSharePress}
+                        onCommentPress={() => {
+                            setShowFullScreenGallery(false);
+                            setCommentsVisible(true);
+                        }}
+                        onLikePress={handleLikePress}
+                    />
+                )}
             />
 
             <Modal
@@ -222,7 +268,7 @@ const RecapViewScreen = () => {
                     <View style={styles.modalOverlay}>
                         <TouchableWithoutFeedback>
                             <View style={styles.commentsModal}>
-                                <CommentsSection entryId={recapId} onClose={() => setCommentsVisible(false)} />
+                                <CommentsSection recapId={recapId} onClose={() => setCommentsVisible(false)} onCommentCountUpdate={handleCommentCountUpdate} />
                             </View>
                         </TouchableWithoutFeedback>
                     </View>
@@ -339,12 +385,41 @@ const styles = StyleSheet.create({
     },
     commentsModal: {
         width: '100%',
-        height: '80%',
+        height: '55%',
         backgroundColor: Colors.white,
         borderTopRightRadius: 20,
         borderTopLeftRadius: 20,
         paddingHorizontal: 20,
         paddingTop: 10,
+    },
+    placeholderContainer: {
+        position: 'relative',
+        marginBottom: 8,
+        height: heroHeight,
+        backgroundColor: Colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    placeholderContent: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingBottom: 40,
+    },
+    placeholderIcon: {
+        width: 200,
+        height: 200,
+        marginBottom: 16,
+        opacity: 0.8,
+    },
+    placeholderText: {
+        fontSize: 16,
+        color: Colors.white,
+        opacity: 0.8,
+    },
+    placeholderImage: {
+        width: 120,
+        height: 120,
+        opacity: 0.7,
     },
 });
 

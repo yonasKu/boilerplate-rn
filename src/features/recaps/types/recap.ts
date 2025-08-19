@@ -16,6 +16,18 @@ export interface Recap {
   commentCount: number;
   lastCommentAt?: Timestamp;
   
+  // Additional fields
+  type?: string;
+  period?: {
+    startDate: Timestamp;
+    endDate: Timestamp;
+  };
+  media?: {
+    highlightPhotos?: string[];
+  };
+  aiGenerated?: {
+    recapText?: string;
+  };
   
   // Filtering
   tags?: string[];

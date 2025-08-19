@@ -1,26 +1,30 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { RecapComment } from '../../services/recapCommentsService';
+import { ProfileAvatar } from '../../../../components/ProfileAvatar';
 
 interface CommentItemProps {
-  comment: {
-    author: string;
-    text: string;
-    date: string;
-    avatarUrl?: string;
-    mediaUrl?: string;
-  };
+  comment: RecapComment;
 }
 
 const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
-  const { author, text, date, avatarUrl, mediaUrl } = comment;
+  const { userName, text, createdAt, userAvatar } = comment;
+
+const formattedDate = createdAt ? new Date(createdAt).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  }) : '';
+
   return (
     <View style={styles.container}>
-      <Image source={{ uri: avatarUrl || 'https://placehold.co/50' }} style={styles.avatar} />
+      <ProfileAvatar imageUrl={userAvatar} name={userName || 'Anonymous'} size={40} />
       <View style={styles.commentContent}>
-        <Text style={styles.commentText}><Text style={styles.author}>{author}</Text> commented: "{text}"</Text>
-        <Text style={styles.date}>{date}</Text>
+        <Text style={styles.commentText}>
+          <Text style={styles.author}>{userName}</Text> commented: "{text}"
+        </Text>
+        <Text style={styles.date}>{formattedDate}</Text>
       </View>
-      {mediaUrl && <Image source={{ uri: mediaUrl }} style={styles.mediaThumbnail} />} 
     </View>
   );
 };
@@ -30,6 +34,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 16,
     alignItems: 'flex-start',
+    gap :6,
   },
   avatar: {
     width: 40,
@@ -39,6 +44,7 @@ const styles = StyleSheet.create({
   },
   commentContent: {
     flex: 1,
+    marginLeft: 4,
   },
   commentText: {
     color: '#333',

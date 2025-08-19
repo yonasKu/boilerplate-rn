@@ -2,17 +2,17 @@ import React from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import CommentItem from './CommentItem';
 
-import { Comment } from '@/types';
+import { RecapComment } from '../../services/recapCommentsService';
 
 interface CommentListProps {
-  comments: Comment[];
+  comments: RecapComment[];
 }
 
 const CommentList: React.FC<CommentListProps> = ({ comments }) => {
   return (
     <FlatList
       data={comments}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item, index) => item.id || `comment-${index}`}
       renderItem={({ item }) => (
         <CommentItem
           comment={item}

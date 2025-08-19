@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
 import { useRouter } from 'expo-router';
 import RecapMediaGrid from './RecapMediaGrid';
-import { Recap } from '../../../services/aiRecapService';
+import { Recap, RecapService } from '../../../services/aiRecapService';
 import { recapInteractionService } from '../services/recapInteractionService';
 import { auth } from '@/lib/firebase/firebaseConfig';
 
@@ -32,8 +32,8 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
     const [isLiked, setIsLiked] = useState(false);
     const [isMilestone, setIsMilestone] = useState(false);
 
-    console.log('--- RecapCard ---');
-    console.log('Recap data:', JSON.stringify(recap, null, 2));
+    // console.log('--- RecapCard ---');
+    // console.log('Recap data:', JSON.stringify(recap, null, 2));
 
     const handlePress = () => {
         router.push({ pathname: '/recaps/recap-view', params: { recapId: recap.id } });
@@ -55,6 +55,22 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
         }
     };
 
+    const handleMilestoneToggle = async () => {
+        if (!recap.id || !auth.currentUser?.uid) return;
+        
+        const newMilestoneStatus = !isMilestone;
+        
+        try {
+            // Optimistic UI update
+            setIsMilestone(newMilestoneStatus);
+            
+            await RecapService.tagRecap(recap.id, { isMilestone: newMilestoneStatus });
+        } catch (error) {
+            // Revert on error
+            setIsMilestone(!newMilestoneStatus);
+        }
+    };
+
     React.useEffect(() => {
         if (!recap.id || !auth.currentUser?.uid) return;
         
@@ -66,7 +82,12 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
                 ]);
                 setIsLiked(liked);
                 setLikesCount(count);
-                setIsMilestone((recap as any).isMilestone || false);
+                
+                // Load milestone status from Firestore
+                const recaps = await RecapService.getRecaps(auth.currentUser!.uid);
+                const currentRecap = recaps.find(r => r.id === recap.id);
+                const milestoneStatus = (currentRecap as any)?.isMilestone || false;
+                setIsMilestone(milestoneStatus);
             } catch (error) {
                 console.error('Error loading card data:', error);
             }
@@ -98,12 +119,15 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
                         <Ionicons name={isLiked ? "heart" : "heart-outline"} size={22} color={isLiked ? Colors.red : Colors.grey} />
                         {likesCount > 0 && <Text style={styles.countText}>{likesCount}</Text>}
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
+                    <TouchableOpacity onPress={handleMilestoneToggle} style={styles.iconButton}>
                         <Ionicons name={isMilestone ? "trophy" : "trophy-outline"} size={20} color={isMilestone ? Colors.golden : Colors.grey} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleCommentsPress} style={styles.iconButton}>
-                        <Ionicons name="chatbubble-outline" size={20} color={Colors.grey} />
-                        {(recap as any).commentCount > 0 && <Text style={styles.countText}>{(recap as any).commentCount}</Text>}
+                        <Image 
+                            source={require('@/assets/images/message_icon.png')} 
+                            style={styles.messageIcon}
+                            resizeMode="contain"
+                        />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={onShare} style={styles.actionIcon}>
                         <Ionicons name="arrow-redo-outline" size={20} color={Colors.grey} />
@@ -167,12 +191,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     actionIcon: {
-        marginLeft: 16,
+        marginLeft: 0,
     },
     iconButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: 10,
     },
     countText: {
         fontSize: 12,
@@ -180,14 +204,21 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         fontWeight: '500',
     },
-    shareIcon: {
-        width: 22,
-        height: 22,
-        tintColor: Colors.grey,
-    },
     messageIcon: {
         width: 20,
         height: 20,
         tintColor: Colors.grey,
+    },
+    redDot: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: Colors.red,
+    },
+    shareIcon: {
+        marginLeft: 12,
     },
 });
