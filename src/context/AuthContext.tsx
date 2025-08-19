@@ -80,7 +80,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const handleSignOut = async () => {
     if (user) {
       try {
-        await NotificationService.removeTokenFromFirestore(user.uid);
+        // Get current push token and remove via cloud function
+        const token = await NotificationService.getPushToken();
+        if (token) {
+          await NotificationService.removeDeviceToken(user.uid, token);
+        }
       } catch (error) {
         console.error('Error removing push token during sign out:', error);
       }

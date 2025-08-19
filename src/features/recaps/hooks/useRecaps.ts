@@ -1,117 +1,77 @@
-import { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db, auth } from '../../../lib/firebase/firebaseConfig';
-import { Recap } from '../../../services/aiRecapService';
+import { useState, useEffect, useCallback } from 'react';
+import { auth } from '../../../lib/firebase/firebaseConfig';
+import { RecapService, Recap } from '../../../services/aiRecapService';
 
 export const useRecaps = (childId?: string) => {
   const [recaps, setRecaps] = useState<Recap[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+
+  const fetchRecaps = useCallback(async (userId: string) => {
+    setLoading(true);
+    try {
+      const fetchedRecaps = childId
+        ? await RecapService.getRecapsByChild(userId, childId)
+        : await RecapService.getRecaps(userId);
+      setRecaps(fetchedRecaps);
+      setError(null);
+    } catch (e) {
+      const err = e as Error;
+      console.error('Failed to fetch recaps in useRecaps hook:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [childId]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUserId(user?.uid || null);
-    });
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (!userId) {
-      setRecaps([]);
-      setLoading(false);
-      return;
-    }
-
-    let q = query(
-      collection(db, 'recaps'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
-
-    if (childId) {
-      q = query(q, where('childId', '==', childId));
-    }
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const recapsData: Recap[] = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt.toDate(),
-          generatedAt: doc.data().generatedAt.toDate(),
-        } as Recap));
-        setRecaps(recapsData);
-        setLoading(false);
-        setError(null);
-      },
-      (error) => {
-        console.error('Error fetching recaps:', error);
-        setError(error.message);
+      if (user) {
+        fetchRecaps(user.uid);
+      } else {
+        setRecaps([]);
         setLoading(false);
       }
-    );
+    });
 
-    return unsubscribe;
-  }, [userId, childId]);
+    return () => unsubscribe();
+  }, [fetchRecaps]);
 
-  return { recaps, loading, error };
+  return { recaps, loading, error, refresh: fetchRecaps };
 };
 
 export const useRecapsByType = (type: 'weekly' | 'monthly' | 'yearly', childId?: string) => {
   const [recaps, setRecaps] = useState<Recap[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+
+  const fetchRecaps = useCallback(async (userId: string) => {
+    setLoading(true);
+    try {
+      const fetchedRecaps = await RecapService.getRecapsByType(userId, type, childId);
+      setRecaps(fetchedRecaps);
+      setError(null);
+    } catch (e) {
+      const err = e as Error;
+      console.error(`Failed to fetch ${type} recaps in useRecapsByType hook:`, err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [type, childId]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUserId(user?.uid || null);
-    });
-    return unsubscribe;
-  }, []);
-
-  useEffect(() => {
-    if (!userId) {
-      setRecaps([]);
-      setLoading(false);
-      return;
-    }
-
-    let q = query(
-      collection(db, 'recaps'),
-      where('userId', '==', userId),
-      where('type', '==', type),
-      orderBy('createdAt', 'desc')
-    );
-
-    if (childId) {
-      q = query(q, where('childId', '==', childId));
-    }
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const recapsData: Recap[] = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt.toDate(),
-          generatedAt: doc.data().generatedAt.toDate(),
-        } as Recap));
-        setRecaps(recapsData);
-        setLoading(false);
-        setError(null);
-      },
-      (error) => {
-        console.error('Error fetching recaps by type:', error);
-        setError(error.message);
+      if (user) {
+        fetchRecaps(user.uid);
+      } else {
+        setRecaps([]);
         setLoading(false);
       }
-    );
+    });
 
-    return unsubscribe;
-  }, [userId, type, childId]);
+    return () => unsubscribe();
+  }, [fetchRecaps]);
 
-  return { recaps, loading, error };
+  return { recaps, loading, error, refresh: fetchRecaps };
 };

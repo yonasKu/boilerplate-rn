@@ -18,30 +18,47 @@ interface RecapMediaGridProps {
   };
 }
 
-const renderImageWithOverlay = (item: any, style: any, key: any, overlayCount?: number, dateOverlay?: RecapMediaGridProps['dateOverlay']) => (
-    <View key={key} style={style}>
-        <Image source={{ uri: item.url }} style={styles.mediaImage} />
-        {overlayCount && overlayCount > 0 && (
-            <View style={styles.overlay}>
-                <Text style={styles.overlayText}>+{overlayCount}</Text>
-            </View>
-        )}
-        {dateOverlay && (
-            <View style={styles.dateOverlayContainer}>
-                <Text style={styles.dateOverlayText}>{dateOverlay.line1}</Text>
-                <Text style={[styles.dateOverlayText, styles.dateOverlayTextLarge]}>
-                    {dateOverlay.line2} {dateOverlay.line3}
-                </Text>
-                <Text style={styles.dateOverlayText}>{dateOverlay.line4}</Text>
-            </View>
-        )}
-    </View>
-);
+const renderImageWithOverlay = (item: any, style: any, key: any, overlayCount?: number, dateOverlay?: RecapMediaGridProps['dateOverlay']) => {
+    console.log('renderImageWithOverlay - item:', item);
+    console.log('renderImageWithOverlay - item.url:', item?.url);
+    
+    return (
+        <View key={key} style={style}>
+            <Image 
+                source={{ uri: item.url }} 
+                style={styles.mediaImage} 
+                onError={(error) => console.log('Image load error:', error, 'for URL:', item.url)}
+                onLoad={() => console.log('Image loaded successfully:', item.url)}
+            />
+            {overlayCount && overlayCount > 0 && (
+                <View style={styles.overlay}>
+                    <Text style={styles.overlayText}>+{overlayCount}</Text>
+                </View>
+            )}
+            {dateOverlay && (
+                <View style={styles.dateOverlayContainer}>
+                    <Text style={styles.dateOverlayText}>{dateOverlay.line1}</Text>
+                    <Text style={[styles.dateOverlayText, styles.dateOverlayTextLarge]}>
+                        {dateOverlay.line2} {dateOverlay.line3}
+                    </Text>
+                    <Text style={styles.dateOverlayText}>{dateOverlay.line4}</Text>
+                </View>
+            )}
+        </View>
+    );
+};
 
 const RecapMediaGrid: React.FC<RecapMediaGridProps> = ({ media, dateOverlay }) => {
-  if (!media || media.length === 0) return null;
+  console.log('RecapMediaGrid - media prop:', media);
+  console.log('RecapMediaGrid - media length:', media?.length);
+  
+  if (!media || media.length === 0) {
+    console.log('RecapMediaGrid - No media to display');
+    return null;
+  }
 
   const mediaCount = media.length;
+  console.log('RecapMediaGrid - Processing media count:', mediaCount);
 
   if (mediaCount === 1) {
       return (

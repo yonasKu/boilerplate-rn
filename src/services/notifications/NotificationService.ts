@@ -69,9 +69,58 @@ export class NotificationService {
   }
 
   /**
+   * Register device token using cloud function
+   * @param userId - Firebase user ID
+   * @param token - Push notification token
+   * @returns Promise<void>
+   */
+  static async registerDeviceToken(userId: string, token: string): Promise<void> {
+    try {
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const functions = getFunctions();
+      
+      console.log('Registering device token via cloud function:', { userId, token, platform: Platform.OS });
+      
+      const registerToken = httpsCallable(functions, 'registerDeviceToken');
+      await registerToken({
+        token,
+        platform: Platform.OS,
+      });
+      
+      console.log('Device token registered successfully via cloud function');
+    } catch (error) {
+      console.error('Error registering device token via cloud function:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Backend handles all reminder scheduling via Firebase Functions
    * Client only manages preferences and tokens
    */
+
+  /**
+   * Remove device token using cloud function on logout
+   * @param userId - Firebase user ID
+   * @param token - Push notification token to remove
+   * @returns Promise<void>
+   */
+  static async removeDeviceToken(userId: string, token: string): Promise<void> {
+    try {
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const functions = getFunctions();
+      
+      console.log('Removing device token via cloud function:', { userId, token });
+      
+      const removeToken = httpsCallable(functions, 'removeDeviceToken');
+      await removeToken({ token });
+      
+      console.log('Device token removed successfully via cloud function');
+    } catch (error) {
+      console.error('Error removing device token via cloud function:', error);
+      // Don't throw - this is cleanup and shouldn't break logout
+    }
+  }
 
   /**
    * Get user notification preferences from Firestore

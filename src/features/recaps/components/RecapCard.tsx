@@ -32,8 +32,18 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
     const [isLiked, setIsLiked] = useState(false);
     const [isMilestone, setIsMilestone] = useState(false);
 
-    // console.log('--- RecapCard ---');
-    // console.log('Recap data:', JSON.stringify(recap, null, 2));
+    // Debug logging for recap data
+    console.log('RecapCard - Full recap data:', recap);
+    console.log('RecapCard - recap.media:', recap.media);
+    console.log('RecapCard - recap.media?.highlightPhotos:', recap.media?.highlightPhotos);
+    console.log('RecapCard - recap.summary?.media?.highlightPhotos:', recap.summary?.media?.highlightPhotos);
+    
+    // Use highlightPhotos directly from recap data, fallback to summary.media.highlightPhotos
+    const highlightPhotos = (recap.media?.highlightPhotos && recap.media?.highlightPhotos?.length > 0) 
+      ? recap.media.highlightPhotos 
+      : recap.summary?.media?.highlightPhotos || [];
+    console.log('RecapCard - highlightPhotos (final):', highlightPhotos);
+    console.log('RecapCard - highlightPhotos length:', highlightPhotos.length);
 
     const handlePress = () => {
         router.push({ pathname: '/recaps/recap-view', params: { recapId: recap.id } });
@@ -96,12 +106,14 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
         loadCardData();
     }, [recap.id]);
 
-    const formattedDate = {
+    const displayDate = recap.createdAt || recap.period?.endDate;
+
+    const formattedDate = displayDate ? {
         line1: 'WEEK OF',
-        line2: recap.createdAt.toLocaleDateString('en-US', { month: 'long' }).toUpperCase(),
-        line3: recap.createdAt.getDate(),
-        line4: recap.createdAt.getFullYear(),
-    };
+        line2: displayDate.toLocaleDateString('en-US', { month: 'long' }).toUpperCase(),
+        line3: displayDate.getDate(),
+        line4: displayDate.getFullYear(),
+    } : undefined;
     
     const age = '11 months, 3 days'; // TODO: Calculate from recap data
 
@@ -111,7 +123,7 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
                 <Image source={require('@/assets/images/two_stars_icon.png')} style={styles.sparkleIcon} />
                 <Text style={styles.title} numberOfLines={3}>{recap.aiGenerated.recapText || recap.aiGenerated.summary || 'Recap'}</Text>
             </View>
-            <RecapMediaGrid media={recap.media?.highlightPhotos?.map((url: string) => ({ url, type: 'image' as const })) ?? []} dateOverlay={formattedDate} />
+            <RecapMediaGrid media={highlightPhotos?.map((url: string) => ({ url, type: 'image' as const })) ?? []} dateOverlay={formattedDate} />
             <View style={styles.footer}>
                 <Text style={styles.ageText}>{age}</Text>
                 <View style={styles.footerIcons}>

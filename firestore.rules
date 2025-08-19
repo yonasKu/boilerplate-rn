@@ -124,8 +124,7 @@ service cloud.firestore {
         && request.resource.data.text.size() > 0
         && request.resource.data.isMilestone is bool
         && request.resource.data.isFavorited is bool
-        && request.resource.data.media is list
-        && request.resource.data.likes is list;
+        && request.resource.data.media is list;
       
       // A user can read an entry if they are a family member, or backend can read them.
       allow read: if isFamilyMember(resource.data.userId) || isBackendFunction();
@@ -148,10 +147,15 @@ service cloud.firestore {
 
       // Owners or the backend can create recaps
       allow create: if isOwner(request.resource.data.userId) || isBackendFunction()
-        && request.resource.data.keys().hasAll(['userId', 'childId', 'type', 'period', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['userId', 'childId', 'type', 'period', 'status', 'createdAt', 'imageMetadata'])
         && request.resource.data.type in ['daily', 'weekly', 'monthly', 'yearly']
         && request.resource.data.status in ['generating', 'completed', 'failed']
-        && request.resource.data.createdAt is timestamp;
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.imageMetadata is map
+        && request.resource.data.imageMetadata.keys().hasAll(['count', 'hasImages', 'imageTypes'])
+        && request.resource.data.imageMetadata.count is number
+        && request.resource.data.imageMetadata.hasImages is bool
+        && request.resource.data.imageMetadata.imageTypes is list;
 
       // Owners can update content, family members can update interactions.
       allow update: if (isOwner(resource.data.userId) && 
@@ -165,14 +169,14 @@ service cloud.firestore {
 
     // ===== RECAP COMMENTS COLLECTION =====
     match /recapComments/{commentId} {
-      // Any authenticated user can read comake sure the mments.
+      // Any authenticated user can read comments.
       allow read: if isAuthenticated();
 
       // Users can create comments for a recap if they are authenticated and own the comment.
       allow create: if isAuthenticated()
         && request.resource.data.userId == request.auth.uid
         && exists(/databases/$(database)/documents/recaps/$(request.resource.data.recapId))
-        && request.resource.data.keys().hasAll(['userId', 'recapId', 'text', 'createdAt', 'userName'])
+        && request.resource.data.keys().hasAll(['userId', 'recapId', 'text', 'createdAt'])
         && request.resource.data.text is string && request.resource.data.text.size() > 0;
 
       // Users can delete their own comments.

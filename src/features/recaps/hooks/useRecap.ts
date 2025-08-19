@@ -25,11 +25,20 @@ export const useRecap = (recapId?: string) => {
         const docSnap = await getDoc(recapDoc);
 
         if (docSnap.exists()) {
+          const data = docSnap.data();
+          
           const recapData = {
             id: docSnap.id,
-            ...docSnap.data(),
-            createdAt: docSnap.data().createdAt?.toDate(),
-            generatedAt: docSnap.data().generatedAt?.toDate(),
+            ...data,
+            media: {
+              highlightPhotos: data.media?.highlightPhotos || data.summary?.media?.highlightPhotos || []
+            },
+            period: {
+              startDate: data.period.startDate.toDate(),
+              endDate: data.period.endDate.toDate(),
+            },
+            createdAt: data.createdAt ? data.createdAt.toDate() : undefined,
+            generatedAt: data.generatedAt ? data.generatedAt.toDate() : undefined,
           } as Recap;
           setRecap(recapData);
         } else {

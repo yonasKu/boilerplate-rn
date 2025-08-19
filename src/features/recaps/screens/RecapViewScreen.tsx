@@ -35,13 +35,19 @@ const RecapViewScreen = () => {
             return 'Recap';
         }
 
-        const startDate = recap.period.startDate;
+        // Ensure startDate is a Date object
+        const startDate = recap.period.startDate instanceof Date 
+            ? recap.period.startDate 
+            : new Date(recap.period.startDate);
+
+        // Check if startDate is valid
+        if (!(startDate instanceof Date) || isNaN(startDate.getTime())) {
+            return 'Recap';
+        }
 
         const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
         switch (recap.type) {
-            // case 'daily':
-            //     return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
             case 'weekly':
                 return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
             case 'monthly':
@@ -187,7 +193,7 @@ const RecapViewScreen = () => {
                         <Ionicons name="chevron-back" size={24} color={Colors.white} />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleSharePress} style={styles.iconButton}>
-                        <Ionicons name="share-outline" size={24} color={Colors.white} />
+                        <Ionicons name="arrow-redo-outline" size={24} color={Colors.white} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -305,16 +311,17 @@ const styles = StyleSheet.create({
     },
     headerButtons: {
         position: 'absolute',
-        left: 20,
-        right: 20,
+        left: 12,
+        right: 12,
         flexDirection: 'row',
         justifyContent: 'space-between',
     },
     iconButton: {
-        width: 44,
-        height: 44,
+        width: 40,
+        height: 40,
         borderRadius: 22,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        borderColor: 'rgba(255, 255, 255, 0.8)',
+        borderWidth:2,
         justifyContent: 'center',
         alignItems: 'center',
     },

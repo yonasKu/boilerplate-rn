@@ -28,7 +28,7 @@ export const useLogin = () => {
             if (hasPermission) {
                 const token = await NotificationService.getPushToken();
                 if (token) {
-                    await NotificationService.saveTokenToFirestore(userId, token);
+                    await NotificationService.registerDeviceToken(userId, token);
                 }
             }
         } catch (error) {

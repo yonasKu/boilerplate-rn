@@ -152,32 +152,65 @@ const RecapsScreen = () => {
   }, [user]);
 
   const filteredRecaps = React.useMemo(() => {
+    console.log('📊 RECAPS FILTERING START:');
+    console.log('Raw recaps count:', rawRecaps?.length);
+    console.log('Raw recaps data:', rawRecaps);
+    
     let filtered = rawRecaps.filter(recap => recap.id);
+    console.log('After id filter:', filtered.length);
 
     // Filter by selected child
-    if (selectedChild?.id) {
-      filtered = filtered.filter(recap => recap.childId === selectedChild.id);
+    if (selectedChild && String(selectedChild) !== 'all') {
+      const childId = typeof selectedChild === 'string' ? selectedChild : 
+                    (typeof selectedChild === 'object' && selectedChild !== null ? 
+                     (selectedChild as any).id : String(selectedChild));
+      console.log('Filtering by child:', childId);
+      
+      filtered = filtered.filter(recap => {
+        const recapChildId = (recap as any).childId;
+        const recapChildIds = (recap as any).childIds;
+        
+        const matches = recapChildId === childId || 
+          (Array.isArray(recapChildIds) && recapChildIds.includes(childId));
+        
+        console.log(`   Recap ${recap.id}: childId=${recapChildId}, childIds=${JSON.stringify(recapChildIds)}, matches=${matches}`);
+        return matches;
+      });
+      console.log(`   Filtered by child ${childId}: ${filtered.length} recaps`);
     }
 
     // Apply timeline filter
     if (activeTimeline !== 'All') {
+      console.log('Filtering by timeline:', activeTimeline);
       // Add timeline filtering logic based on your data structure
-      // This will depend on how your recaps are tagged with timeline
     }
 
     // Apply other filters
+    console.log('Applying filter:', activeFilter);
     switch (activeFilter) {
       case 'Favorites':
-        filtered = filtered.filter(recap => (recap as any).isFavorited === true);
+        filtered = filtered.filter(recap => {
+          const isFav = (recap as any).isFavorited === true;
+          console.log(`   Favorites filter: ${recap.id} isFavorited=${isFav}`);
+          return isFav;
+        });
         break;
       case 'Milestones':
-        filtered = filtered.filter(recap => (recap as any).isMilestone);
+        filtered = filtered.filter(recap => {
+          const isMilestone = (recap as any).isMilestone === true;
+          console.log(`   Milestones filter: ${recap.id} isMilestone=${isMilestone}`);
+          return isMilestone;
+        });
         break;
       case 'Age':
-        // Age filtering will be handled by the Age filter modal
+        console.log('Age filtering will be handled by Age filter modal');
         break;
     }
 
+    console.log('📊 RECAPS FILTERING COMPLETE:');
+    console.log('Final filtered count:', filtered.length);
+    console.log('Final filtered recaps:', filtered);
+    
     return filtered;
   }, [rawRecaps, activeTimeline, activeFilter, selectedChild]);
 

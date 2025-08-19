@@ -1,41 +1,36 @@
 import { Timestamp } from 'firebase/firestore';
 
 export interface Recap {
-  id: string;
+  id?: string;
   userId: string;
+  type: 'weekly' | 'monthly' | 'yearly';
+  period: string;
   title: string;
-  content: string;
-  summary: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
-  
-  // Interaction fields
-  likes: Record<string, boolean>; // userId -> true
+  aiGenerated: {
+    recapText: string;
+    summary: string;
+    keyMoments: string[];
+    tone: string;
+  };
+  mediaEntries: Array<{
+    content: string;
+    date: Date;
+    id: string;
+    isFavorited: boolean;
+    isMilestone: boolean;
+    mediaCount: number;
+  }>;
+  dateRange: {
+    start: Date;
+    end: Date;
+  };
+  childIds: string[];
+  likes: number;
   isFavorited: boolean;
   isMilestone: boolean;
   commentCount: number;
-  lastCommentAt?: Timestamp;
-  
-  // Additional fields
-  type?: string;
-  period?: {
-    startDate: Timestamp;
-    endDate: Timestamp;
-  };
-  media?: {
-    highlightPhotos?: string[];
-  };
-  aiGenerated?: {
-    recapText?: string;
-  };
-  
-  // Filtering
-  tags?: string[];
-  childIds?: string[];
-  dateRange: {
-    start: Timestamp;
-    end: Timestamp;
-  };
+  generatedAt: Date;
+  status: 'completed' | 'generating' | 'failed';
 }
 
 export interface RecapComment {
@@ -48,4 +43,3 @@ export interface RecapComment {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
-
