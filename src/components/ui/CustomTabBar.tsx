@@ -91,6 +91,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
             const isFocused = state.index === index;
 
             const onPress = () => {
+              if (route.name === 'search') {
+                router.push('/search-tray');
+                return;
+              }
+
               const event = navigation.emit({
                 type: 'tabPress',
                 target: route.key,

@@ -51,8 +51,14 @@
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "expo-notifications"
     ],
+    "extra": {
+      "eas": {
+        "projectId": "sproutbook-d0c8f"
+      }
+    },
     "experiments": {
       "typedRoutes": true
     }

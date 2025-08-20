@@ -79,14 +79,14 @@ const ChildProfilesScreen = () => {
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#5D9275" />
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
       <ScreenHeader title="Child Profiles" />
       <ScrollView style={styles.scrollView}>
         <View style={styles.listContainer}>
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   addButton: {
     backgroundColor: Colors.primary,
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 50,
     alignItems: 'center',
     marginTop: 20,
   },

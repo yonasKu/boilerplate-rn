@@ -35,7 +35,16 @@ export class NotificationService {
         return null;
       }
 
-      const token = await Notifications.getExpoPushTokenAsync();
+      // Use environment variables for Firebase config
+      const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
+      if (!projectId) {
+        console.error('Firebase project ID not found in environment variables');
+        return null;
+      }
+
+      const token = await Notifications.getExpoPushTokenAsync({
+        projectId: projectId,
+      });
       return token.data;
     } catch (error) {
       console.error('Push token error:', error);

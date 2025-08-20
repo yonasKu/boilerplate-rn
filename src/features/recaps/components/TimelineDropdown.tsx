@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
-import { Colors } from '@/theme/colors';
+import { Colors } from '@/theme';
 
 export type TimelineOption = 'All' | 'Weekly' | 'Monthly';
 
@@ -14,7 +14,7 @@ interface TimelineDropdownProps {
 
 const TimelineDropdown: React.FC<TimelineDropdownProps> = ({ options, selectedValue, onSelect, position }) => {
   return (
-    <View style={[styles.dropdown, { top: position.top, left: position.left }]}>
+    <View style={[styles.dropdown, { top: position.top, left: position.left }]}> 
       <FlatList
         data={options}
         keyExtractor={(item) => item}

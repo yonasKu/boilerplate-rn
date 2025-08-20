@@ -19,9 +19,6 @@ interface RecapMediaGridProps {
 }
 
 const renderImageWithOverlay = (item: any, style: any, key: any, overlayCount?: number, dateOverlay?: RecapMediaGridProps['dateOverlay']) => {
-    console.log('renderImageWithOverlay - item:', item);
-    console.log('renderImageWithOverlay - item.url:', item?.url);
-    
     return (
         <View key={key} style={style}>
             <Image 
@@ -30,18 +27,20 @@ const renderImageWithOverlay = (item: any, style: any, key: any, overlayCount?: 
                 onError={(error) => console.log('Image load error:', error, 'for URL:', item.url)}
                 onLoad={() => console.log('Image loaded successfully:', item.url)}
             />
-            {overlayCount && overlayCount > 0 && (
+            {overlayCount != null && overlayCount > 0 && (
                 <View style={styles.overlay}>
                     <Text style={styles.overlayText}>+{overlayCount}</Text>
                 </View>
             )}
-            {dateOverlay && (
+            {dateOverlay && dateOverlay.line1 && dateOverlay.line2 && (
                 <View style={styles.dateOverlayContainer}>
-                    <Text style={styles.dateOverlayText}>{dateOverlay.line1}</Text>
-                    <Text style={[styles.dateOverlayText, styles.dateOverlayTextLarge]}>
-                        {dateOverlay.line2} {dateOverlay.line3}
-                    </Text>
-                    <Text style={styles.dateOverlayText}>{dateOverlay.line4}</Text>
+                    {dateOverlay.line1 ? <Text style={styles.dateOverlayText}>{dateOverlay.line1}</Text> : null}
+                    {dateOverlay.line2 && dateOverlay.line3 ? (
+                        <Text style={[styles.dateOverlayText, styles.dateOverlayTextLarge]}>
+                            {dateOverlay.line2} {dateOverlay.line3}
+                        </Text>
+                    ) : null}
+                    {dateOverlay.line4 ? <Text style={styles.dateOverlayText}>{dateOverlay.line4}</Text> : null}
                 </View>
             )}
         </View>

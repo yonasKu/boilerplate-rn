@@ -31,17 +31,17 @@ const RecapViewScreen = () => {
     const [commentCount, setCommentCount] = useState(0);
 
     const formatRecapTitle = (recap: Recap) => {
-        if (!recap?.type || !recap.period?.startDate) {
+        if (!recap?.type || !recap.period?.endDate) {
             return 'Recap';
         }
 
-        // Ensure startDate is a Date object
-        const startDate = recap.period.startDate instanceof Date 
-            ? recap.period.startDate 
-            : new Date(recap.period.startDate);
+        // Ensure endDate is a Date object
+        const endDate = recap.period.endDate instanceof Date 
+            ? recap.period.endDate 
+            : new Date(recap.period.endDate);
 
-        // Check if startDate is valid
-        if (!(startDate instanceof Date) || isNaN(startDate.getTime())) {
+        // Check if endDate is valid
+        if (!(endDate instanceof Date) || isNaN(endDate.getTime())) {
             return 'Recap';
         }
 
@@ -49,11 +49,11 @@ const RecapViewScreen = () => {
 
         switch (recap.type) {
             case 'weekly':
-                return `Week of ${startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+                return `Week of ${endDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
             case 'monthly':
-                return `${capitalize(recap.type)} of ${startDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+                return `${capitalize(recap.type)} of ${endDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
             case 'yearly':
-                return `${capitalize(recap.type)} of ${startDate.toLocaleDateString('en-US', { year: 'numeric' })}`;
+                return `${capitalize(recap.type)} of ${endDate.toLocaleDateString('en-US', { year: 'numeric' })}`;
             default:
                 return 'Recap';
         }
@@ -363,7 +363,6 @@ const styles = StyleSheet.create({
     mediaImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 8,
     },
     footer: {
         flexDirection: 'row',

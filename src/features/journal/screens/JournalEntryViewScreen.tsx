@@ -121,7 +121,7 @@ const JournalEntryViewScreen = () => {
 
     
 
-                <View style={[styles.headerButtons, { top: insets.top - 16 }]}>
+                <View style={[styles.headerButtons, { top: insets.top + 16 }]}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
                         <Image source={require('../../../assets/images/Chevron_Left_icon.png')} style={styles.iconImage} />
                     </TouchableOpacity>
@@ -140,7 +140,7 @@ const JournalEntryViewScreen = () => {
 
     return (
         <View style={styles.container}>
-            <ScrollView style={[styles.scrollView, { paddingTop: insets.top }]}>
+            <ScrollView style={[styles.scrollView]}>
                 {renderImageCarousel()}
 
                 <View style={styles.contentContainer}>

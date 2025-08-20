@@ -4,19 +4,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/theme';
 import ScreenHeader from '@/components/ui/ScreenHeader';
 import { useAuth } from '../../../context/AuthContext';
-import { getFirestore, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { getFirestore, collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
 interface User {
   name: string;
   avatar?: any;
 }
 
-interface Notification {
+interface NotificationItem {
   id: string;
-  type: 'recap_love' | 'comment' | 'reminder' | 'streak';
+  type: 'recap_love' | 'comment' | 'reminder' | 'streak' | 'recap_ready';
   users?: User[];
   recap?: string;
   comment?: string;
+  body?: string;
+  title?: string;
+  childId?: string;
+  recapId?: string;
+  recapType?: string;
   date: string;
   isRead: boolean;
   createdAt: any;
@@ -26,7 +31,7 @@ import StreakNotification from '../components/StreakNotification';
 import CommentNotification from '../components/CommentNotification';
 import RecapLoveNotification from '../components/RecapLoveNotification';
 
-const renderNotificationItem = ({ item }: { item: Notification }) => {
+const renderNotificationItem = ({ item }: { item: NotificationItem }) => {
   switch (item.type) {
     case 'recap_love':
       return <RecapLoveNotification item={item} />;
@@ -36,6 +41,8 @@ const renderNotificationItem = ({ item }: { item: Notification }) => {
       return <ReminderNotification item={item} />;
     case 'streak':
       return <StreakNotification item={item} />;
+    case 'recap_ready':
+      return <ReminderNotification item={item} />;
     default:
       return null;
   }
@@ -44,35 +51,46 @@ const renderNotificationItem = ({ item }: { item: Notification }) => {
 const NotificationScreen = () => {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user?.uid) return;
 
     const db = getFirestore();
-    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
-    const q = query(notificationsRef, orderBy('createdAt', 'desc'), limit(50));
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(notificationsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notificationsData: Notification[] = [];
+      const notificationsData: NotificationItem[] = [];
+      console.log('📱 Notifications loaded:', snapshot.size, 'notifications');
       snapshot.forEach((doc) => {
         const data = doc.data();
+        console.log('🔔 Notification:', {
+          id: doc.id,
+          type: data.type,
+          title: data.title,
+          body: data.body,
+          date: data.date
+        });
         notificationsData.push({
           id: doc.id,
           type: data.type || 'comment',
           users: data.users || [],
           recap: data.recap,
           comment: data.comment,
+          body: data.body,
+          title: data.title,
           date: data.date || new Date(data.createdAt?.toDate()).toLocaleDateString(),
           isRead: data.isRead || false,
           createdAt: data.createdAt,
         });
       });
+      console.log('📋 Processed notifications:', notificationsData);
       setNotifications(notificationsData);
       setLoading(false);
     }, (error) => {
-      console.error('Error fetching notifications:', error);
+      console.error('❌ Error fetching notifications:', error);
       setLoading(false);
     });
 

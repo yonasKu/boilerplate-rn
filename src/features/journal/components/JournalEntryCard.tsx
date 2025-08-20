@@ -106,7 +106,7 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, selectedChil
         <MediaGrid media={entry.media} />
         <View style={styles.footerActions}>
           <View style={styles.ageContainer}>
-            <Text style={styles.childAge}>{childAge}</Text>
+            {childAge ? <Text style={styles.childAge}>{childAge}</Text> : null}
           </View>
           <View style={styles.actionButtons}>
 

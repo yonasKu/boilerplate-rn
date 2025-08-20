@@ -5,13 +5,15 @@ import { Colors } from '@/theme';
 
 interface Notification {
   id: string;
-  type: 'recap_love' | 'comment' | 'reminder' | 'streak';
+  type: 'recap_love' | 'comment' | 'reminder' | 'streak' | 'recap_ready';
   date: string;
   isRead: boolean;
+  title?: string;
+  body?: string;
 }
 
 const ReminderNotification = ({ item }: { item: Notification }) => {
-  const iconContainerStyle = [styles.iconContainer, { backgroundColor: item.isRead ? Colors.offWhite : Colors.accent }];
+  const iconContainerStyle = [styles.iconContainer, { backgroundColor: item.isRead ? Colors.offWhite : Colors.lightPink }];
 
   return (
     <TouchableOpacity style={styles.itemContainer}>
@@ -19,7 +21,8 @@ const ReminderNotification = ({ item }: { item: Notification }) => {
         <Ionicons name="notifications-outline" size={24} color={Colors.darkGrey} />
       </View>
       <View style={styles.textContainer}>
-        <Text style={styles.text}>Journal reminder: you missed a day this week — want to fill it in?</Text>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.text}>{item.body}</Text>
         <Text style={styles.date}>{item.date}</Text>
       </View>
     </TouchableOpacity>
@@ -43,6 +46,13 @@ const styles = StyleSheet.create({
   textContainer: {
     marginLeft: 12,
     flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.darkGrey,
+    fontFamily: 'Poppins-SemiBold',
+    marginBottom: 2,
   },
   text: {
     fontSize: 15,

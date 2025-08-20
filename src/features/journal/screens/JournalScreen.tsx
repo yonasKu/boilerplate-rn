@@ -33,13 +33,13 @@ const JournalScreen = () => {
     const [filterTags, setFilterTags] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-        const [showAgeModal, setShowAgeModal] = useState(false);
+    const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
+    const [showAgeModal, setShowAgeModal] = useState(false);
     const [showChildDropdown, setShowChildDropdown] = useState(false);
     const [headerLeftLayout, setHeaderLeftLayout] = useState<{ x: number; y: number; width: number; height: number }>({ x: 16, y: 0, width: 200, height: 48 });
     const [children, setChildren] = useState<any[]>([]);
     const [selectedChild, setSelectedChild] = useState<Child | null>(null); // Will always be set to first child or user profile
     const [unreadNotifications, setUnreadNotifications] = useState(0);
-    const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
 
     const fetchUserProfile = async () => {
         if (user) {
@@ -165,27 +165,38 @@ const JournalScreen = () => {
         );
     };
 
-
-            const filteredEntries = useMemo(() => {
+    const filteredEntries = useMemo(() => {
         let filtered = entries;
 
-        // Filter by timeline (All, Weekly, Monthly)
+        // Filter by timeline (monthly/weekly)
         if (activeTimeline !== 'All') {
             const now = new Date();
-            let startDate: Date | null = null;
-
+            
             if (activeTimeline === 'Weekly') {
-                startDate = new Date(now);
-                startDate.setHours(0, 0, 0, 0);
-                startDate.setDate(startDate.getDate() - now.getDay());
-            } else if (activeTimeline === 'Monthly') {
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            }
-
-            if (startDate) {
+                // Show entries from the current week (Sunday to Saturday)
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay()); // Get Sunday of current week
+                startOfWeek.setHours(0, 0, 0, 0);
+                
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6); // Get Saturday of current week
+                endOfWeek.setHours(23, 59, 59, 999);
+                
                 filtered = filtered.filter(entry => {
-                    const created = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
-                    return created >= startDate!;
+                    const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
+                    return entryDate >= startOfWeek && entryDate <= endOfWeek;
+                });
+            } else if (activeTimeline === 'Monthly') {
+                // Show entries from the current month
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                startOfMonth.setHours(0, 0, 0, 0);
+                
+                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                endOfMonth.setHours(23, 59, 59, 999);
+                
+                filtered = filtered.filter(entry => {
+                    const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
+                    return entryDate >= startOfMonth && entryDate <= endOfMonth;
                 });
             }
         }
@@ -214,7 +225,7 @@ const JournalScreen = () => {
             });
         }
 
-                        return filtered.sort((a, b) => {
+        return filtered.sort((a, b) => {
             const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
             const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
             return dateB.getTime() - dateA.getTime();

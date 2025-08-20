@@ -86,13 +86,16 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
       
-      // --- Sub-collection for in-app notifications ---
-      match /notifications/{notificationId} {
-        // Owner can read and update (e.g., mark as read) their notifications.
-        allow read, update: if isOwner(userId);
-        // Notifications should only be created by the backend, not the client.
-        allow create, delete: if false;
-      }
+    }
+
+    // ===== NOTIFICATIONS COLLECTION =====
+    match /notifications/{notificationId} {
+      // Allow read access for authenticated users who own the notification
+      allow read, update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Allow list for queries by the owner
+      allow list: if isAuthenticated();
+      // Notifications should only be created by the backend, not the client.
+      allow create, delete: if isBackendFunction();
     }
 
     // ========== CHILDREN COLLECTION ==========

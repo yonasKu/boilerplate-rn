@@ -1,14 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import TimelineDropdown, { TimelineOption } from './TimelineDropdown';
 import { Colors } from '@/theme';
 
 interface FilterTabsProps {
   onAgePress: () => void;
   onFilterChange: (filter: string) => void;
   activeFilter: string;
-  onTimelineChange: (timeline: string) => void;
-  activeTimeline: string;
+  onTimelineChange: (timeline: TimelineOption) => void;
+  activeTimeline: TimelineOption;
 }
 
 const FilterTabs: React.FC<FilterTabsProps> = ({ 
@@ -37,7 +38,7 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
     }
   };
 
-  const handleTimelineSelect = (timeline: string) => {
+  const handleTimelineSelect = (timeline: TimelineOption) => {
     onTimelineChange(timeline);
     setDropdownVisible(false);
   };
@@ -75,27 +76,13 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
           onRequestClose={() => setDropdownVisible(false)}
         >
           <Pressable style={styles.backdrop} onPress={() => setDropdownVisible(false)} />
-          <View style={[styles.dropdown, { top: dropdownPosition.top, left: dropdownPosition.left }]}>
-            {['All', 'Weekly', 'Monthly'].map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={[
-                  styles.dropdownOption,
-                  activeTimeline === option && styles.activeDropdownOption,
-                ]}
-                onPress={() => handleTimelineSelect(option)}
-              >
-                <Text
-                  style={[
-                    styles.dropdownOptionText,
-                    activeTimeline === option && styles.activeDropdownOptionText,
-                  ]}
-                >
-                  {option}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TimelineDropdown
+            options={['All', 'Weekly', 'Monthly']}
+            selectedValue={activeTimeline}
+            onSelect={handleTimelineSelect}
+            onClose={() => setDropdownVisible(false)}
+            position={dropdownPosition}
+          />
         </Modal>
       )}
     </View>
@@ -143,33 +130,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent',
     zIndex: 1000,
-  },
-  dropdown: {
-    position: 'absolute',
-    backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    minWidth: 120,
-  },
-  dropdownOption: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 6,
-  },
-  dropdownOptionText: {
-    fontSize: 16,
-    color: Colors.darkGrey,
-  },
-  activeDropdownOption: {
-    backgroundColor: '#CDE4D2',
-  },
-  activeDropdownOptionText: {
-    fontWeight: 'bold',
   },
 });
 

@@ -13,6 +13,7 @@ import ShareBottomSheet from '../../journal/components/ShareBottomSheet';
 import FilterTabs from '../components/FilterTabs';
 import { useRecaps } from '../hooks/useRecaps';
 import { Recap } from '../../../services/aiRecapService';
+import { TimelineOption } from '../components/TimelineDropdown';
 
 interface Child {
   id: string;
@@ -26,7 +27,7 @@ const RecapsScreen = () => {
   const { user } = useAuth();
   const [isShareSheetVisible, setShareSheetVisible] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
-  const [activeTimeline, setActiveTimeline] = useState('All');
+  const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [showChildDropdown, setShowChildDropdown] = useState(false);
@@ -152,19 +153,13 @@ const RecapsScreen = () => {
   }, [user]);
 
   const filteredRecaps = React.useMemo(() => {
-    console.log('📊 RECAPS FILTERING START:');
-    console.log('Raw recaps count:', rawRecaps?.length);
-    console.log('Raw recaps data:', rawRecaps);
-    
     let filtered = rawRecaps.filter(recap => recap.id);
-    console.log('After id filter:', filtered.length);
 
     // Filter by selected child
     if (selectedChild && String(selectedChild) !== 'all') {
       const childId = typeof selectedChild === 'string' ? selectedChild : 
                     (typeof selectedChild === 'object' && selectedChild !== null ? 
                      (selectedChild as any).id : String(selectedChild));
-      console.log('Filtering by child:', childId);
       
       filtered = filtered.filter(recap => {
         const recapChildId = (recap as any).childId;
@@ -172,44 +167,27 @@ const RecapsScreen = () => {
         
         const matches = recapChildId === childId || 
           (Array.isArray(recapChildIds) && recapChildIds.includes(childId));
-        
-        console.log(`   Recap ${recap.id}: childId=${recapChildId}, childIds=${JSON.stringify(recapChildIds)}, matches=${matches}`);
         return matches;
       });
-      console.log(`   Filtered by child ${childId}: ${filtered.length} recaps`);
     }
 
     // Apply timeline filter
     if (activeTimeline !== 'All') {
-      console.log('Filtering by timeline:', activeTimeline);
-      // Add timeline filtering logic based on your data structure
+      filtered = filtered.filter(recap => recap.type === activeTimeline.toLowerCase());
     }
 
     // Apply other filters
-    console.log('Applying filter:', activeFilter);
     switch (activeFilter) {
       case 'Favorites':
-        filtered = filtered.filter(recap => {
-          const isFav = (recap as any).isFavorited === true;
-          console.log(`   Favorites filter: ${recap.id} isFavorited=${isFav}`);
-          return isFav;
-        });
+        filtered = filtered.filter(recap => recap.isFavorited === true);
         break;
       case 'Milestones':
-        filtered = filtered.filter(recap => {
-          const isMilestone = (recap as any).isMilestone === true;
-          console.log(`   Milestones filter: ${recap.id} isMilestone=${isMilestone}`);
-          return isMilestone;
-        });
+        filtered = filtered.filter(recap => recap.isMilestone === true);
         break;
       case 'Age':
-        console.log('Age filtering will be handled by Age filter modal');
+        // Age filtering will be handled by Age filter modal
         break;
     }
-
-    console.log('📊 RECAPS FILTERING COMPLETE:');
-    console.log('Final filtered count:', filtered.length);
-    console.log('Final filtered recaps:', filtered);
     
     return filtered;
   }, [rawRecaps, activeTimeline, activeFilter, selectedChild]);
@@ -263,13 +241,13 @@ const RecapsScreen = () => {
             <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
               <View style={styles.notificationContainer}>
                 <Ionicons name="notifications-outline" size={24} color="#2F4858" />
-                {unreadNotifications > 0 && (
+                {/* {unreadNotifications > 0 && (
                   <View style={styles.notificationBadge}>
                     <Text style={styles.notificationCount}>
                       {unreadNotifications > 9 ? '9+' : unreadNotifications}
                     </Text>
                   </View>
-                )}
+                )} */}
               </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>

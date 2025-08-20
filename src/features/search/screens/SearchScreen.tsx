@@ -1,16 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, SafeAreaView, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useJournal } from '@/hooks/useJournal';
 import { useAllRecaps } from '@/features/recaps/hooks/useAllRecaps';
 import JournalEntryCard from '@/features/journal/components/JournalEntryCard';
 import { RecapCard } from '@/features/recaps/components/RecapCard';
+import { Colors } from '@/theme';
 
 const SearchScreen = () => {
   const router = useRouter();
-  const [searchText, setSearchText] = useState('');
+  const { q: queryParam } = useLocalSearchParams();
+  const [searchText, setSearchText] = useState(queryParam?.toString() || '');
   const [activeTab, setActiveTab] = useState<'all' | 'entries' | 'recaps'>('all');
   const insets = useSafeAreaInsets();
   const { entries } = useJournal();
@@ -21,6 +23,12 @@ const SearchScreen = () => {
     const timer = setTimeout(() => setDebouncedQuery(searchText.trim().toLowerCase()), 300);
     return () => clearTimeout(timer);
   }, [searchText]);
+
+  useEffect(() => {
+    if (queryParam) {
+      setSearchText(queryParam.toString());
+    }
+  }, [queryParam]);
 
   const filteredEntries = useMemo(() => {
     if (!debouncedQuery) return [];
@@ -82,7 +90,7 @@ const SearchScreen = () => {
           </View>
         </TouchableOpacity>
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#A9A9A9" style={styles.searchIcon} />
+          <Ionicons name="search" size={24} color="#A9A9A9" style={styles.searchIcon} />
           <TextInput
             style={styles.input}
             value={searchText}
@@ -155,59 +163,66 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: Colors.white,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 40,
+    backgroundColor: Colors.white,
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    height: 44,
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 12,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#000',
+    color: Colors.blacktext,
+    fontFamily: 'Poppins-Regular',
+    paddingVertical: 12,
   },
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: Colors.lightGrey,
   },
   tab: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     marginRight: 8,
     borderRadius: 16,
-    backgroundColor: '#F5F5F5',
+    backgroundColor:Colors.offWhite,
   },
   activeTab: {
-    backgroundColor: '#007AFF',
+    backgroundColor: Colors.primary,
   },
   tabText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 12,
+    color: Colors.blacktext,
+    fontFamily: 'Poppins-Regular',
   },
   activeTabText: {
-    color: '#FFFFFF',
+    color: Colors.white,
+    fontFamily: 'Poppins-Regular',
   },
   resultsText: {
     fontSize: 16,
-    color: '#666',
+    color: Colors.blacktext,
     marginBottom: 8,
     paddingHorizontal: 16,
     paddingTop: 8,
+    fontFamily: 'Poppins-Regular',
   },
   list: {
     paddingHorizontal: 16,
@@ -220,7 +235,8 @@ const styles = StyleSheet.create({
   empty: {
     textAlign: 'center',
     marginTop: 40,
-    color: '#666',
+    color: Colors.blacktext,
+    fontFamily: 'Poppins-Regular',
   },
   emptyState: {
     flex: 1,
@@ -230,7 +246,8 @@ const styles = StyleSheet.create({
   emptyStateText: {
     marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: Colors.blacktext,
+    fontFamily: 'Poppins-Regular',
   },
 });
 
