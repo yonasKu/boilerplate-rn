@@ -8,7 +8,9 @@ const WelcomeScreen = () => {
     const router = useRouter();
 
     const handleGetStarted = () => {
-        // router.push('/add-profile');
+        // router.push('/add-child-details');
+
+        // router.push('/pricing');
         // router.push('/signup');
         router.push('/login');
     };

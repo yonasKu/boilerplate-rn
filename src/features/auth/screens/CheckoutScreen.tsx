@@ -36,7 +36,7 @@ const PaymentOption: React.FC<PaymentOptionProps> = ({ id, icon, title, subtitle
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Image source={require('../../../assets/images/Logo_Icon_small.png')} style={styles.mainIcon} />
         <Text style={styles.trialText}>10 days free, then</Text>
-        <Text style={styles.priceText}>$4.99/month</Text>
+        <Text style={styles.priceText}>$5.99/month</Text>
         <View style={styles.planBadge}>
           <Text style={styles.planBadgeText}>Monthly Plan</Text>
         </View>

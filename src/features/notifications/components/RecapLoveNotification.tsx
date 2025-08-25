@@ -11,10 +11,12 @@ interface User {
 
 interface Notification {
   id: string;
-  type: 'recap_love' | 'comment' | 'reminder' | 'streak';
+  type: 'recap_love' | 'comment' | 'reminder' | 'streak' | 'recap_ready';
   users?: User[];
   recap?: string;
   comment?: string;
+  body?: string;
+  title?: string;
   date: string;
   isRead: boolean;
 }
@@ -45,7 +47,13 @@ const RecapLoveNotification = ({ item }: { item: Notification }) => {
       </View>
       <View style={styles.textContainer}>
         <Text style={styles.text}>
-          <Text style={styles.bold}>{userNames}</Text> loved your recap: <Text style={styles.link}>{item.recap}</Text>
+          {users.length > 0 ? (
+            <>
+              <Text style={styles.bold}>{userNames}</Text> {item.body}
+            </>
+          ) : (
+            item.body
+          )}
         </Text>
         <Text style={styles.date}>{item.date}</Text>
       </View>

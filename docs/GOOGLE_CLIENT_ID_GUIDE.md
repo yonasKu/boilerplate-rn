@@ -39,7 +39,7 @@ This is required for the native Android app.
 
 1.  Click **+ CREATE CREDENTIALS** again and select **OAuth client ID**.
 2.  **Application type**: Select **Android**.
-3.  **Package name**: `com.anonymous.SproutBook` (This must exactly match the `package` name in your `app.json` file).
+3.  **Package name**: `com.palex.sproutbook` (This must exactly match the `package` name in your `app.json` file).
 4.  **SHA-1 certificate fingerprint**: This is the most complex part. For development, you need the SHA-1 fingerprint from your debug keystore. Open a terminal or command prompt on your computer and run this command:
     ```bash
     keytool -list -v -keystore "%USERPROFILE%\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
@@ -56,7 +56,7 @@ This is required for the native iOS app.
 
 1.  Click **+ CREATE CREDENTIALS** again and select **OAuth client ID**.
 2.  **Application type**: Select **iOS**.
-3.  **Bundle ID**: `com.anonymous.SproutBook` (You should add this to your `app.json` under the `ios` key as `bundleIdentifier`).
+3.  **Bundle ID**: `com.palex.sproutbook` (You should add this to your `app.json` under the `ios` key as `bundleIdentifier`).
 4.  Click **CREATE**.
 5.  Copy the iOS Client ID and save it.
 

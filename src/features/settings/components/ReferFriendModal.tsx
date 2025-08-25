@@ -1,13 +1,27 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, Dimensions, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../../../theme/colors';
 
 interface ReferFriendModalProps {
   visible: boolean;
   onClose: () => void;
+  shareMessage?: string;
 }
 
-const ReferFriendModal: React.FC<ReferFriendModalProps> = ({ visible, onClose }) => {
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const APP_PREVIEW_HEIGHT = Math.max(280, Math.min(SCREEN_HEIGHT * 0.45, 420));
+
+const ReferFriendModal: React.FC<ReferFriendModalProps> = ({ visible, onClose, shareMessage }) => {
+  const onPressMore = async () => {
+    try {
+      await Share.share({
+        message: shareMessage || 'Download the Sproutbook app! https://sproutbook.design',
+      });
+    } catch (e) {
+      // no-op
+    }
+  };
   return (
     <Modal
       animationType="fade"
@@ -21,14 +35,13 @@ const ReferFriendModal: React.FC<ReferFriendModalProps> = ({ visible, onClose })
         </TouchableOpacity>
 
         <View style={styles.popupContainer}>
-          <Image source={require('../../../assets/images/Logo_Icon_small.png')} style={styles.logo} />
-          <Text style={styles.ratingText}>Rated 4.5/5</Text>
-          <View style={styles.starsContainer}>
-            {[...Array(4)].map((_, i) => <Ionicons key={i} name="star" size={20} color="#FFD700" />)}
-            <Ionicons name="star-half" size={20} color="#FFD700" />
+          <Image source={require('../../../assets/images/Logo_Icon_small.png')} style={styles.topLogo} />
+          <Image source={require('../../../assets/images/shareable.png')} style={styles.appPreview} />
+          <View style={styles.downloadRow}>
+            <Text style={styles.downloadText}>Download the Sproutbook app!</Text>
+            <Image source={require('../../../assets/images/apple_icon.png')} style={styles.platformIcon} />
+            <Image source={require('../../../assets/images/android_icon.png')} style={styles.platformIcon} />
           </View>
-          <Image source={require('../../../assets/images/onboarding-1.png')} style={styles.appPreview} />
-          <Text style={styles.downloadText}>Download the Sproutbook app!</Text>
         </View>
 
         <View style={styles.bottomSheet}>
@@ -36,13 +49,13 @@ const ReferFriendModal: React.FC<ReferFriendModalProps> = ({ visible, onClose })
           <View style={styles.shareOptionsContainer}>
             <TouchableOpacity style={styles.shareOption}>
               <View style={styles.shareIconCircle}>
-                <Ionicons name="copy-outline" size={24} color="#2F4858" />
+                <Image source={require('../../../assets/images/copy_link_icon.png')} style={styles.copyIcon} />
               </View>
               <Text style={styles.shareOptionText}>Copy link</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.shareOption}>
+            <TouchableOpacity style={styles.shareOption} onPress={onPressMore}>
               <View style={styles.shareIconCircle}>
-                <Ionicons name="ellipsis-horizontal" size={24} color="#2F4858" />
+                <Ionicons name="ellipsis-horizontal" size={24} color={Colors.primary} />
               </View>
               <Text style={styles.shareOptionText}>More</Text>
             </TouchableOpacity>
@@ -80,32 +93,35 @@ const styles = StyleSheet.create({
     marginBottom: 'auto',
     marginTop: 120
   },
-  logo: {
-    width: 40,
-    height: 40,
-    resizeMode: 'contain',
-    marginBottom: 12,
-  },
-  ratingText: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 8,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
   appPreview: {
     width: '100%',
-    height: 300,
+    height: APP_PREVIEW_HEIGHT,
     resizeMode: 'contain',
     borderRadius: 16,
     marginBottom: 16,
   },
+  topLogo: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+    marginBottom: 8,
+  },
   downloadText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#2F4858',
+    color: Colors.black,
+  },
+  downloadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  platformIcon: {
+    width: 18,
+    height: 18,
+    resizeMode: 'contain',
+    marginLeft: 6,
+    tintColor: Colors.black,
   },
   bottomSheet: {
     position: 'absolute',
@@ -139,6 +155,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  copyIcon: {
+    width: 24,
+    height: 24,
+    tintColor: Colors.primary,
+    resizeMode: 'contain',
   },
   shareOptionText: {
     fontSize: 14,

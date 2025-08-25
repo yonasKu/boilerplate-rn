@@ -23,7 +23,9 @@ const SignUpScreen = () => {
         setIsPasswordFocused,
         passwordValidation,
         handleSignUp,
-        handleGoogleSignIn
+        handleGoogleSignIn,
+        handleAppleSignUp,
+        appleSignInAvailable
     } = useSignUp();
 
     return (
@@ -41,7 +43,7 @@ const SignUpScreen = () => {
                             placeholder="Name *"
                             value={name}
                             onChangeText={setName}
-                            placeholderTextColor={Colors.black}
+                            placeholderTextColor={Colors.mediumGrey}
                             accessibilityLabel="Name input"
                             autoCapitalize="words"
                         />
@@ -50,7 +52,7 @@ const SignUpScreen = () => {
                         <TextInput
                             style={styles.input}
                             placeholder="Email address *"
-                            placeholderTextColor={Colors.black}
+                            placeholderTextColor={Colors.mediumGrey}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -62,7 +64,7 @@ const SignUpScreen = () => {
                         <TextInput
                             style={styles.input}
                             placeholder="Password *"
-                            placeholderTextColor={Colors.black}
+                            placeholderTextColor={Colors.mediumGrey}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry={!isPasswordVisible}
@@ -101,10 +103,12 @@ const SignUpScreen = () => {
                             <Image source={require('../../../assets/images/google_logo.png')} style={styles.socialIcon} />
                             <Text style={styles.socialButtonText}>Continue with Google</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.socialButton}>
+                        {/* {appleSignInAvailable && ( */}
+                        <TouchableOpacity style={styles.socialButton} onPress={handleAppleSignUp}>
                             <Image source={require('../../../assets/images/apple_logo.png')} style={styles.socialIcona} />
                             <Text style={styles.socialButtonText}>Continue with Apple</Text>
                         </TouchableOpacity>
+                        {/* )} */}
                     </View>
 
                     <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
@@ -176,6 +180,7 @@ const PasswordStrengthIndicator = ({ validation }: { validation: { [key: string]
 
 const styles = StyleSheet.create({
     container: {
+        paddingTop: 12,
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
@@ -188,12 +193,11 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 28,
-        fontWeight: 'bold',
-        color: Colors.black,
+        color: Colors.blacktext,
         textAlign: 'center',
         marginTop: 10,
         marginBottom: 30,
-        fontFamily: 'Poppins',
+        fontFamily: 'Poppins_600SemiBold',
     },
     socialContainer: {
         flexDirection: 'column',
@@ -224,7 +228,8 @@ const styles = StyleSheet.create({
     },
     socialButtonText: {
         fontSize: 16,
-        color: Colors.black,
+        color: Colors.blacktext,
+        fontFamily: 'Poppins_400Regular',
     },
     dividerContainer: {
         flexDirection: 'row',
@@ -240,6 +245,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 15,
         color: Colors.mediumGrey,
         fontSize: 14,
+        fontFamily: 'Poppins_400Regular',
     },
     asterisk: {
         color: Colors.secondary,
@@ -265,10 +271,11 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 50,
         fontSize: 16,
+        fontFamily: 'Poppins_400Regular',
     },
 
     footerTextContainer: {
-        marginVertical: 50,
+        marginVertical: 20,
         alignItems: 'center',
         paddingHorizontal: 20,
     },
@@ -276,14 +283,17 @@ const styles = StyleSheet.create({
         color: Colors.mediumGrey,
         fontSize: 12,
         lineHeight: 18,
+        fontFamily: 'Poppins_400pricRegular',
     },
     signInText: {
         textAlign: 'center',
         color: Colors.mediumGrey,
         fontSize: 14,
+        fontFamily: 'Poppins_400Regular',
     },
     linkText: {
         color: Colors.primary,
+        fontFamily: 'Poppins_400Regular',
     },
     validationContainer: {
         marginBottom: 20,
@@ -299,7 +309,7 @@ const styles = StyleSheet.create({
     },
     strengthText: {
         fontSize: 14,
-        fontWeight: 'bold',
+        fontFamily: 'Poppins_600SemiBold',
     },
     strengthBar: {
         flexDirection: 'row',
@@ -318,6 +328,7 @@ const styles = StyleSheet.create({
     criterionText: {
         marginLeft: 10,
         fontSize: 14,
+        fontFamily: 'Poppins_400Regular',
     },
 });
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Pressable, ActionSheetIOS, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MediaGrid from './MediaGrid';
 import { Colors } from '../../../theme/colors';
 
 interface JournalEntryCardProps {
@@ -14,14 +15,16 @@ interface JournalEntryCardProps {
     }>;
     isFavorited: boolean;
     isMilestone: boolean;
-    childAgeAtEntry: string;
+    childAgeAtEntry: Record<string, string>;
     likes: Record<string, boolean>;
     createdAt: any;
   };
+  selectedChildId: string;
   onLike?: () => void;
   onShare?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onToggleMilestone?: () => void;
   onPress?: () => void;
   isPreview?: boolean;
 }
@@ -36,9 +39,14 @@ const formatDate = (date: any) => {
   };
 };
 
-const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onShare, onEdit, onDelete, onPress, isPreview = false }) => {
+const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, selectedChildId, onLike, onShare, onEdit, onDelete, onToggleMilestone, onPress, isPreview = false }) => {
   const isLiked = entry.isFavorited;
   const formattedDate = formatDate(entry.createdAt);
+  
+  // Display age for the selected child
+  const childAge = selectedChildId && entry.childAgeAtEntry && entry.childAgeAtEntry[selectedChildId] 
+    ? entry.childAgeAtEntry[selectedChildId] 
+    : '';
 
   const handleLongPress = () => {
     if (isPreview) return;
@@ -77,48 +85,7 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
     }
   };
 
-  const renderMedia = () => {
-    if (!entry.media || entry.media.length === 0) return null;
 
-    const media = entry.media;
-    const mediaCount = media.length;
-
-    const renderImage = (item: any, style: any, key: any) => (
-      <View key={key} style={style}>
-        <Image source={{ uri: item.url }} style={styles.mediaImage} />
-      </View>
-    );
-
-    const rightColumnImages = media.slice(1, 5);
-
-    return (
-      <View style={styles.mediaGridContainer}>
-        {/* Left Column */}
-        <View style={styles.leftColumn}>
-          {renderImage(media[0], styles.fullHeightImage, 'left-img')}
-        </View>
-
-        {/* Right Column */}
-        {mediaCount > 1 && (
-          <View style={styles.rightColumn}>
-            {rightColumnImages.map((item, index) => {
-              if (mediaCount >= 5 && index === 3) {
-                return (
-                  <View key={`right-img-${index}`} style={styles.rightGridItem}>
-                    <Image source={{ uri: item.url }} style={styles.mediaImage} />
-                    <View style={styles.overlay}>
-                      <Text style={styles.overlayText}>+{mediaCount - 4}</Text>
-                    </View>
-                  </View>
-                );
-              }
-              return renderImage(item, styles.rightGridItem, `right-img-${index}`);
-            })}
-          </View>
-        )}
-      </View>
-    );
-  };
 
   return (
     <Pressable onPress={onPress} onLongPress={handleLongPress} style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}>
@@ -136,10 +103,10 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
             </View>
           </View>
         </View>
-        {renderMedia()}
+        <MediaGrid media={entry.media} />
         <View style={styles.footerActions}>
           <View style={styles.ageContainer}>
-            <Text style={styles.childAge}>{entry.childAgeAtEntry}</Text>
+            {childAge ? <Text style={styles.childAge}>{childAge}</Text> : null}
           </View>
           <View style={styles.actionButtons}>
 
@@ -153,12 +120,14 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, onLike, onSh
                 />
               </TouchableOpacity>
             )}
-            <Ionicons
-              name="trophy-outline"
-              size={19}
-              color={entry.isMilestone ? Colors.primary : Colors.lightGrey}
-              style={[styles.actionIcon, entry.isMilestone && styles.milestoneGlow]}
-            />
+            <TouchableOpacity onPress={onToggleMilestone}>
+              <Ionicons
+                name={entry.isMilestone ? 'trophy' : 'trophy-outline'}
+                size={19}
+                color={entry.isMilestone ? Colors.golden : Colors.lightGrey}
+                style={[styles.actionIcon, entry.isMilestone && styles.milestoneGlow]}
+              />
+            </TouchableOpacity>
             {onShare && (
               <TouchableOpacity onPress={onShare} style={styles.actionIcon}>
                 <Image
@@ -260,64 +229,6 @@ const styles = StyleSheet.create({
     color: Colors.darkGrey,
     fontFamily: 'Poppins',
   },
-  mediaGridContainer: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    overflow: 'hidden',
-    height: 170, // Decreased from 220 to 160 for smaller images
-  },
-  leftColumn: {
-    flex: 1,
-    padding: 2,
-  },
-  rightColumn: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  fullHeightImage: {
-    width: '100%',
-    height: '100%',
-  },
-  rightGridItem: {
-    width: '50%',
-    height: '50%',
-    padding: 2,
-  },
-  mediaImage: {
-    width: '100%',
-    height: '100%',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    marginVertical: 2,  // Decreased from 5 to 2 for tighter overlay
-    backgroundColor: 'rgba(46, 139, 87, 0.3)', // Green overlay
-    justifyContent: 'center',
-    alignItems: 'center',
-
-  },
-  overlayText: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  mediaContainerDouble: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    height: 150,
-    gap: 4, // Add horizontal spacing between images
-  },
-  mediaHalfContainer: {
-    width: '48%', // Decrease width to accommodate spacing
-    height: '100%',
-    overflow: 'hidden',
-    backgroundColor: '#F0F0F0',
-  },
-  mediaHalfWidth: {
-    width: '100%',
-    height: '100%',
-  },
   videoOverlay: {
     position: 'absolute',
     top: 0,
@@ -330,7 +241,7 @@ const styles = StyleSheet.create({
   },
   milestoneGlow: {
     // Add subtle glow effect when milestone is active
-    textShadowColor: Colors.primary,
+    textShadowColor: Colors.golden,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 2,
   },

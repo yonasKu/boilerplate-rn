@@ -9,6 +9,7 @@ import { uploadUserProfileImage, deleteUserProfileImage } from '../../../service
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import { Colors } from '../../../theme/colors';
 import { Button } from '../../../components/Button';
+import { FamilyService } from '../../../services/familyService';
 
 const MyProfileScreen = () => {
     const insets = useSafeAreaInsets();
@@ -21,6 +22,7 @@ const MyProfileScreen = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
+    const [accountType, setAccountType] = useState<'full' | 'view-only'>('full');
     const lifestageOptions = ['Soon to be parent', 'Parent'];
 
     const handleSelect = (option: string) => {
@@ -102,6 +104,28 @@ const MyProfileScreen = () => {
         fetchUserProfile();
     }, [user]);
 
+    // Load account type to restrict editing for view-only users
+    useEffect(() => {
+        let cancelled = false;
+        const loadAccountType = async () => {
+            try {
+                const status = await FamilyService.getAccountStatus();
+                let derived: 'full' | 'view-only' = status.accountType;
+                // Fallback: infer from sharedAccess if needed
+                if (derived !== 'view-only' && user?.uid) {
+                    const asViewer = status.sharedAccess?.some(a => a.viewerId === user.uid) ?? false;
+                    const asOwner = status.sharedAccess?.some(a => a.ownerId === user.uid) ?? false;
+                    if (asViewer && !asOwner) derived = 'view-only';
+                }
+                if (!cancelled) setAccountType(derived);
+            } catch (e) {
+                console.error('Error getting account status:', e);
+            }
+        };
+        loadAccountType();
+        return () => { cancelled = true; };
+    }, [user?.uid]);
+
     const handleSaveChanges = async () => {
         setIsLoading(true);
         if (user) {
@@ -111,12 +135,14 @@ const MyProfileScreen = () => {
                 const { db } = await import('@/lib/firebase/firebaseConfig');
                 
                 const userDocRef = doc(db, 'users', user.uid);
-                await setDoc(userDocRef, {
+                const payload: any = {
                     name: name.trim(),
-                    email: email.trim(),
-                    lifestage: lifestage,
                     updatedAt: new Date()
-                }, { merge: true });
+                };
+                if (accountType !== 'view-only') {
+                    payload.lifestage = lifestage;
+                }
+                await setDoc(userDocRef, payload, { merge: true });
                 
                 console.log('Profile updated successfully');
                 // Optionally, you can show a success message to the user
@@ -160,6 +186,7 @@ const MyProfileScreen = () => {
                         placeholderTextColor="#A9A9A9"
                         value={name}
                         onChangeText={setName}
+                        editable={true}
                     />
                 </View>
 
@@ -173,31 +200,36 @@ const MyProfileScreen = () => {
                         onChangeText={setEmail}
                         keyboardType="email-address"
                         autoCapitalize="none"
+                        editable={false}
                     />
                 </View>
 
-                <Text style={styles.label}>Lifestage<Text style={styles.asterisk}>*</Text></Text>
-                <View style={styles.pickerWrapper}>
-                    <TouchableOpacity style={styles.inputContainer} onPress={() => setIsPickerOpen(!isPickerOpen)}>
-                        <Text style={styles.pickerText}>{lifestage}</Text>
-                        <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.arrowIcon} />
-                    </TouchableOpacity>
-                    {isPickerOpen && (
-                        <View style={styles.optionsContainer}>
-                            {lifestageOptions.map((option) => (
-                                <TouchableOpacity key={option} style={styles.optionItem} onPress={() => handleSelect(option)}>
-                                    {lifestage === option ? (
-                                        <View style={styles.selectedOptionButton}>
-                                            <Text style={styles.selectedOptionText}>{option}</Text>
-                                        </View>
-                                    ) : (
-                                        <Text style={styles.optionText}>{option}</Text>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
+                {accountType !== 'view-only' && (
+                    <>
+                        <Text style={styles.label}>Lifestage<Text style={styles.asterisk}>*</Text></Text>
+                        <View style={styles.pickerWrapper}>
+                            <TouchableOpacity style={styles.inputContainer} onPress={() => setIsPickerOpen(!isPickerOpen)}>
+                                <Text style={styles.pickerText}>{lifestage}</Text>
+                                <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.arrowIcon} />
+                            </TouchableOpacity>
+                            {isPickerOpen && (
+                                <View style={styles.optionsContainer}>
+                                    {lifestageOptions.map((option) => (
+                                        <TouchableOpacity key={option} style={styles.optionItem} onPress={() => handleSelect(option)}>
+                                            {lifestage === option ? (
+                                                <View style={styles.selectedOptionButton}>
+                                                    <Text style={styles.selectedOptionText}>{option}</Text>
+                                                </View>
+                                            ) : (
+                                                <Text style={styles.optionText}>{option}</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
                         </View>
-                    )}
-                </View>
+                    </>
+                )}
 
                 <View style={styles.footer}>
                     <Button 

@@ -62,7 +62,7 @@ const AddProfileScreen = () => {
                     <TextInput
                         style={styles.input}
                         value={name}
-                        editable={false}
+                        onChangeText={setName}
                         placeholder="Name"
                         placeholderTextColor={Colors.mediumGrey}
                         accessibilityLabel="Name"
@@ -145,23 +145,25 @@ const styles = StyleSheet.create({
     avatarImage: {
         width: 110,
         height: 110,
-      
+        borderRadius: 55,
     },
     editIconContainer: {
         position: 'absolute',
-        bottom: 15,
+        bottom: -4,
         right: '32%',
 
     },
     editIcon: {
         width: 50,
         height: 50,
+        
     },
     addPhotoText: {
         fontSize: 14,
         color: Colors.primary,
         fontWeight: '500',
         marginTop: 8,
+        fontFamily: 'Poppins-Regular',
     },
 
     asterisk: {
@@ -173,16 +175,17 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.white,
         borderWidth: 1,
         borderColor: Colors.lightGrey,
-        borderRadius: 16,
+        borderRadius: 25,
         paddingHorizontal: 16,
-        paddingVertical: 4,
+        height: 55,
         marginBottom: 16,
     },
     input: {
         flex: 1,
         fontSize: 16,
-        color: Colors.black,
-        paddingVertical: 10
+        color: Colors.blacktext,
+        paddingVertical: 6,
+        fontFamily: 'Poppins-Regular'
     },
     pickerWrapper: {
         marginBottom: 20,
@@ -192,9 +195,10 @@ const styles = StyleSheet.create({
     pickerText: {
         flex: 1,
         fontSize: 16,
-        color: Colors.black,
+        color: Colors.blacktext,
         padding: 10,
         width: '100%',
+        fontFamily: 'Poppins-Regular',
     },
     arrowIcon: {
         width: 20,
@@ -213,7 +217,7 @@ const styles = StyleSheet.create({
         padding: 8,
         zIndex: 1,
         elevation: 3,
-        shadowColor: Colors.black,
+        shadowColor: Colors.blacktext,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -224,7 +228,7 @@ const styles = StyleSheet.create({
     },
     optionText: {
         fontSize: 16,
-        fontFamily: 'Poppins',
+        fontFamily: 'Poppins-Regular',
         color: Colors.darkGrey,
     },
     selectedOptionButton: {
@@ -235,6 +239,7 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontWeight: '600',
         padding: 12,
+        fontFamily: 'Poppins-Regular',
     },
     footer: {
         flex: 1,
@@ -248,12 +253,14 @@ const styles = StyleSheet.create({
         color: Colors.black,
         marginBottom: 8,
         textAlign: 'center',
+        fontFamily: 'Poppins-Regular',
     },
     sectionSubtitle: {
         fontSize: 16,
         color: Colors.mediumGrey,
         textAlign: 'center',
         marginBottom: 30,
+        fontFamily: 'Poppins-Regular',
     },
     uploadingContainer: {
         justifyContent: 'center',
@@ -276,6 +283,7 @@ const styles = StyleSheet.create({
     cameraButtonText: {
         fontSize: 20,
         color: Colors.white,
+        fontFamily: 'Poppins-Regular',
     },
 });
 

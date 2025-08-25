@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { signUpWithEmail, useGoogleSignIn } from '@/lib/firebase/auth';
+import { AppleAuthService } from '@/features/auth/services/appleAuthService';
 
 export const useSignUp = () => {
     const router = useRouter();
@@ -18,7 +19,22 @@ export const useSignUp = () => {
         number: false,
         specialChar: false,
     });
+    const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
     const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+
+    useEffect(() => {
+        checkAppleSignInAvailability();
+    }, []);
+
+    const checkAppleSignInAvailability = async () => {
+        try {
+            const available = await AppleAuthService.checkAppleSignInAvailability();
+            setAppleSignInAvailable(available);
+        } catch (error) {
+            console.error('Error checking Apple Sign-In availability:', error);
+            setAppleSignInAvailable(false);
+        }
+    };
 
     const validatePassword = (password: string) => {
         const newValidation = {
@@ -100,6 +116,49 @@ export const useSignUp = () => {
         return { strengthText, strengthColor, strength };
     };
 
+    const handleAppleSignUp = async () => {
+        setIsLoading(true);
+        try {
+            const result = await AppleAuthService.signInWithApple();
+            if (result.success) {
+                // Check onboarding status after Apple sign-up
+                const { checkOnboardingStatus } = await import('../../../services/userService');
+                const { getAuth } = await import('firebase/auth');
+                const auth = getAuth();
+
+                // Small delay to ensure auth state is updated
+                setTimeout(async () => {
+                    const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
+                    console.log('Post-Apple-signup onboarding status:', status);
+                    console.log('User UID:', auth.currentUser?.uid);
+
+                    // Debug: Check children separately
+                    const { getUserChildren } = await import('../../../services/userService');
+                    const children = await getUserChildren(auth.currentUser?.uid || '');
+                    console.log('Children found:', children.length);
+                    console.log('Children data:', children);
+
+                    if (!status.hasProfile) {
+                        console.log('Redirecting to add-profile after Apple signup...');
+                        router.replace('/(auth)/add-profile');
+                    } else if (!status.hasChild) {
+                        console.log('Redirecting to add-child-details after Apple signup...');
+                        router.replace('/(auth)/add-child-details');
+                    } else {
+                        console.log('Onboarding complete, redirecting to main app...');
+                        router.replace('/(main)/(tabs)/journal');
+                    }
+                }, 1000);
+            } else {
+                Alert.alert('Sign Up Failed', result.error || 'Failed to sign up with Apple');
+            }
+        } catch (error: any) {
+            Alert.alert('Sign Up Failed', error.message || 'Failed to sign up with Apple');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const passwordCriteria = [
         { key: 'length', text: 'Between 8 and 64 characters' },
         { key: 'uppercase', text: 'At least one uppercase letter' },
@@ -109,7 +168,6 @@ export const useSignUp = () => {
     ];
 
     return {
-        // State
         name,
         setName,
         email,
@@ -122,15 +180,13 @@ export const useSignUp = () => {
         isPasswordFocused,
         setIsPasswordFocused,
         passwordValidation,
-        
-        // Derived state
+        handleSignUp,
+        handleGoogleSignIn,
+        handleAppleSignUp,
+        appleSignInAvailable,
         passwordStrength: getPasswordStrength(),
         passwordCriteria,
         isFormValid: name && email && password && Object.values(passwordValidation).every(Boolean),
-        
-        // Functions
-        handleSignUp,
-        handleGoogleSignIn,
         validatePassword
     };
 };

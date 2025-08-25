@@ -141,7 +141,7 @@ STRIPE_WEBHOOK_SECRET=whsec_your_secret
 - **Setup**: Payment Links (5 mins)
 
 #### Option B: Subscription Model
-- **Price**: $4.99/month
+- **Price**: $5.99/month
 - **Features**: All premium features
 - **Setup**: Stripe Checkout (1 hour)
 

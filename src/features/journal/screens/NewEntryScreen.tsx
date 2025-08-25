@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, ActivityIndicator, Linking, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,6 +17,8 @@ import JournalEntryPreviewCard from '@/features/journal/components/JournalEntryP
 import ShareBottomSheet from '@/features/journal/components/ShareBottomSheet';
 import JournalPreviewActionButtons from '../components/JournalPreviewActionButtons';
 import { JournalEntry } from '@/hooks/useJournal';
+import { useActiveTimeline } from '@/context/ActiveTimelineContext';
+import { useAccount } from '@/context/AccountContext';
 
 type Media = {
   uri: string;
@@ -29,6 +31,8 @@ const NewEntryScreen = () => {
   const insets = useSafeAreaInsets();
   const { addEntry, updateEntry, entries, isLoading } = useJournal();
   const isEditMode = !!entryId;
+  const { canCreateEntries, isViewingOthers, loading: timelineLoading } = useActiveTimeline();
+  const { accountType } = useAccount();
 
   const [entryText, setEntryText] = useState('');
   const [media, setMedia] = useState<Media[]>([]);
@@ -38,6 +42,25 @@ const NewEntryScreen = () => {
   const [children, setChildren] = useState<Array<{ id: string; name: string; dateOfBirth: Date; profileImageUrl?: string }>>([]);
   const [isPreview, setIsPreview] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (timelineLoading) return;
+    if (!canCreateEntries) {
+      if ((accountType ?? 'full') === 'view-only') {
+        Alert.alert('View-only access', 'Upgrade your account to create journal entries.');
+      } else if (isViewingOthers) {
+        Alert.alert('Switch timeline', 'Switch to your own timeline to create journal entries.');
+      } else {
+        Alert.alert('Unavailable', 'You cannot create entries right now.');
+      }
+      router.replace('/(main)/(tabs)/journal');
+    }
+  }, [canCreateEntries, isViewingOthers, accountType, timelineLoading]);
+
+  if (timelineLoading) {
+    return null;
+  }
 
   useEffect(() => {
     const loadChildren = async () => {
@@ -162,67 +185,119 @@ const NewEntryScreen = () => {
   };
 
   const handleSave = async () => {
+    console.log('🚀 Starting save process...');
+    console.log('📄 Entry text:', entryText);
+    console.log('👶 Selected children:', selectedChildren);
+    console.log('📸 Media count:', media.length);
+    console.log('⭐ Is favorited:', isFavorited);
+    console.log('🏆 Is milestone:', isMilestone);
+
     if (!entryText.trim()) {
+      console.log('❌ Save failed: Empty entry text');
       Alert.alert('Empty Entry', 'Please write something before saving.');
       return;
     }
     if (selectedChildren.length === 0) {
+      console.log('❌ Save failed: No children selected');
       Alert.alert('Select Child', 'Please select at least one child');
       return;
     }
 
+    setIsSaving(true);
+    console.log('⏳ Setting isSaving to true...');
+
     try {
       const selectedChildData = children.filter(c => selectedChildren.includes(c.id));
+      console.log('👶 Selected child data:', selectedChildData);
+      
       if (selectedChildData.length === 0) {
+        console.log('❌ Save failed: No child data found');
         Alert.alert('Error', 'Could not find child information.');
+        setIsSaving(false);
         return;
       }
 
-      // Use first child's age for age calculation, or handle multiple ages if needed
-      const childAgeAtEntry = selectedChildren.length > 0 
-        ? selectedChildren.map(childId => {
-            const child = children.find(c => c.id === childId);
-            return child ? `${child.name}: ${journalService.calculateChildAgeAtDate(new Date(child.dateOfBirth), new Date())}` : '';
-          }).filter(Boolean).join(', ')
-        : '';
+      // Calculate age for each selected child
+      const childAgeAtEntry: Record<string, string> = {};
+      selectedChildren.forEach(childId => {
+        const child = children.find(c => c.id === childId);
+        if (child) {
+          const age = journalService.calculateChildAgeAtDate(new Date(child.dateOfBirth), new Date());
+          childAgeAtEntry[childId] = age;
+        }
+      });
+      console.log('📊 Child age at entry:', childAgeAtEntry);
 
-      const uploadedMedia = await Promise.all(
-        media.filter(item => !item.uri.startsWith('http')).map(async (item) => {
-          const url = await journalService.uploadMedia(item.uri, item.type);
-          return { type: item.type, url };
-        })
-      );
-
-      const existingMedia = media.filter(item => item.uri.startsWith('http')).map(item => ({
-        type: item.type,
-        url: item.uri
+      console.log('📸 Processing media...');
+      const mediaToUpload = media.filter(item => !item.uri.startsWith('http'));
+      // Prepare media array with correct format for addEntry (uri property)
+      const finalMedia = media.filter(item => item.uri).map(item => ({
+        uri: item.uri,
+        type: item.type as 'image' | 'video'
       }));
+      console.log('📸 Final media array:', finalMedia);
 
       if (isEditMode && entryId) {
+        console.log('📝 Updating existing entry:', entryId);
+        // For updateEntry, we need to provide the actual URLs
+        const uploadedMedia = await Promise.all(
+          media.filter(item => item.uri && !item.uri.startsWith('http')).map(async (item) => {
+            const url = await journalService.uploadMedia(item.uri, item.type);
+            return { url: url, type: item.type };
+          })
+        );
+
+        const existingMedia = media.filter(item => item.uri && item.uri.startsWith('http')).map(item => ({
+          url: item.uri,
+          type: item.type
+        }));
+
+        const updateMedia = [...uploadedMedia, ...existingMedia];
+        
         await updateEntry(entryId as string, {
           text: entryText,
-          media: media.map(m => ({ type: m.type, url: m.uri })),
+          media: updateMedia,
           isFavorited,
           isMilestone
         });
+        console.log('✅ Entry updated successfully');
+        console.log('🎯 Navigating back to journal...');
       } else {
-        await addEntry({
+        console.log('📝 Creating new entry...');
+        const entryData = {
           text: entryText,
-          media: media,
+          media: finalMedia,
           isFavorited,
           isMilestone,
           childIds: selectedChildren,
           childAgeAtEntry
-        });
+        };
+        console.log('📝 Entry data to save:', entryData);
+        await addEntry(entryData);
+        console.log('✅ New entry created successfully');
       }
 
-      // Navigate back and refresh the journal page
+      console.log('🎯 Navigating back to journal...');
       router.replace('/(main)/(tabs)/journal');
     } catch (error) {
+      console.error('❌ Save failed with error:', error);
+      console.error('❌ Error stack:', (error as Error).stack);
+      
+      let errorMessage = 'Could not save your entry. Please try again.';
+      if ((error as any).code === 'permission-denied') {
+        errorMessage = 'You don\'t have permission to post this entry. Please check your account status or contact support.';
+      } else if ((error as any).code === 'unavailable') {
+        errorMessage = 'Service is temporarily unavailable. Please check your internet connection and try again.';
+      }
+      
       Alert.alert(
-        'Save Failed',
-        `Could not save your entry: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`
+        'Cannot Post Entry',
+        errorMessage,
+        [{ text: 'OK', style: 'default' }]
       );
+    } finally {
+      console.log('🏁 Save process completed, setting isSaving to false');
+      setIsSaving(false);
     }
   };
 
@@ -238,7 +313,7 @@ const NewEntryScreen = () => {
   };
 
   const renderHeaderRight = () => {
-    if (isLoading) {
+    if (isSaving || isLoading) {
       return <ActivityIndicator color="#5D9275" />;
     }
 
@@ -249,7 +324,7 @@ const NewEntryScreen = () => {
         <TouchableOpacity
           style={[styles.actionButton, isDisabled && styles.disabledActionButton]}
           onPress={handleSave}
-          disabled={isDisabled}
+          disabled={isDisabled || isSaving}
         >
           <Ionicons name="checkmark" size={20} color={isDisabled ? '#BDBDBD' : '#5D9275'} />
         </TouchableOpacity>
@@ -303,7 +378,9 @@ const NewEntryScreen = () => {
         showCalendarIcon={true}
       />
 
-      <ScrollView
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -383,6 +460,8 @@ const NewEntryScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+     </View>
+    </TouchableWithoutFeedback>
       <ShareBottomSheet
         isVisible={showShareSheet}
         onClose={() => setShowShareSheet(false)}
@@ -402,7 +481,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 10,
-    paddingTop: 16,
+    paddingTop: 8,
     flexGrow: 1,
   },
   label: {
@@ -414,8 +493,9 @@ const styles = StyleSheet.create({
   childSelectorContainer: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 20,
-    justifyContent: 'center',
+    marginBottom: 8,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 10,
   },
   childSelector: {
     flexDirection: 'row',
@@ -428,7 +508,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: Colors.grey,
+    borderColor: Colors.lightGrey,
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -436,7 +516,7 @@ const styles = StyleSheet.create({
   },
   selectedChild: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.primary + '15',
+    backgroundColor: Colors.white,
   },
   selectedChildName: {
     color: Colors.primary,
@@ -568,11 +648,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
     borderWidth: 1,
     borderColor: Colors.lightGrey,
   },

@@ -7,6 +7,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useRouter } from 'expo-router';
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import { Colors } from '../../../theme/colors';
+import { FamilyService } from '../../../services/familyService';
 
 type SettingsOption = {
   icon: any;
@@ -19,6 +20,7 @@ const settingsOptions: SettingsOption[] = [
   { icon: require('../../../assets/images/refer_icon.png'), text: 'Refer a friend' },
   { icon: require('../../../assets/images/settings_icon.png'), text: 'Account settings' },
   { icon: require('../../../assets/images/gift_icon.png'), text: 'Gift a free year' },
+  { icon: require('../../../assets/images/edit_con.png'), text: 'Create Journaling Account' },
   { icon: require('../../../assets/images/people_icon.png'), text: 'Family sharing' },
   { icon: 'log-out', text: 'Logout' }, // Using correct Feather icon name
 ];
@@ -29,6 +31,16 @@ const SettingsScreen = () => {
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
+  const [accountType, setAccountType] = useState<'full' | 'view-only'>('full');
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.replace('/(auth)/welcome');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   // Fetch actual user profile from Firestore
   useEffect(() => {
@@ -57,6 +69,32 @@ const SettingsScreen = () => {
     fetchUserProfile();
   }, [user]);
 
+  // Detect account type to tailor Settings options for viewers
+  useEffect(() => {
+    let cancelled = false;
+    const loadAccountType = async () => {
+      try {
+        const status = await FamilyService.getAccountStatus();
+        let derived: 'full' | 'view-only' = status.accountType;
+        // Fallback: if claims are missing, infer from shared access
+        if (derived !== 'view-only' && user?.uid) {
+          const asViewer = status.sharedAccess?.some(a => a.viewerId === user.uid) ?? false;
+          const asOwner = status.sharedAccess?.some(a => a.ownerId === user.uid) ?? false;
+          if (asViewer && !asOwner) derived = 'view-only';
+        }
+        if (!cancelled) setAccountType(derived);
+      } catch (e) {
+        console.error('Error getting account status:', e);
+      }
+    };
+    loadAccountType();
+    return () => { cancelled = true; };
+  }, [user?.uid]);
+
+  const optionsToRender = accountType === 'view-only'
+    ? settingsOptions.filter(o => ['Gift a free year', 'Create Journaling Account', 'Logout'].includes(o.text))
+    : settingsOptions;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
@@ -81,20 +119,28 @@ const SettingsScreen = () => {
         </View>
 
         <View style={styles.optionsContainer}>
-          {settingsOptions.map((option, index) => (
+          {optionsToRender.map((option, index) => (
             <TouchableOpacity key={index} style={styles.optionRow} onPress={() => {
-                if (option.text === 'Child Profiles') {
+                if (option.text === 'Logout') {
+                  handleLogout();
+                } else if (option.text === 'Child Profiles') {
                   router.push('/child-profiles');
-                } else if (option.text === 'Account settings') {
-                  router.push('/account-settings');
                 } else if (option.text === 'Partner access') {
                   router.push('/partner-access');
                 } else if (option.text === 'Refer a friend') {
                   router.push('/refer-a-friend');
+                } else if (option.text === 'Account settings') {
+                  router.push('/account-settings');
                 } else if (option.text === 'Family sharing') {
                   router.push('/family-sharing');
-                } else if (option.text === 'Logout') {
-                  signOut();
+                } else if (option.text === 'Gift a free year') {
+                  router.push('/gift-card');
+                } else if (option.text === 'Create Journaling Account') {
+                  router.push('/(auth)/pricing');
+                } else if (option.text === 'Test Notifications') {
+                  router.push('/notification-test');
+                } else {
+                  console.log('Navigate to:', option.text);
                 }
               }}>
               <View style={styles.iconBackground}>
@@ -167,7 +213,7 @@ const styles = StyleSheet.create({
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 4,
   },
   iconBackground: {

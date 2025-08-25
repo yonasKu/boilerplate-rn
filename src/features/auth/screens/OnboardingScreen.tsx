@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -50,6 +50,8 @@ const OnboardingScreen = () => {
   const ref = useRef<FlatList>(null);
   const router = useRouter();
   const textOpacity = useRef(new Animated.Value(1)).current;
+  const insets = useSafeAreaInsets()
+
 
   const updateCurrentSlideIndex = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = e.nativeEvent.contentOffset.x;
@@ -92,7 +94,7 @@ const OnboardingScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* Image Slider in the background */}
@@ -156,9 +158,9 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '75%',
-    height: '70%',
+    height: '65%',
     resizeMode: 'cover',
-    marginBottom:height/2.6,
+    marginBottom:height/3.2,
   },
 
   overlayContainer: {

@@ -1,7 +1,7 @@
-{
+{ 
   "expo": {
-    "name": "SproutBook",
-    "slug": "SproutBook",
+    "name": "Sproutbook",
+    "slug": "Sproutbook",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
@@ -10,27 +10,43 @@
     "splash": {
       "image": "./src/assets/images/splash_logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2E7E78",
-      "imageWidth": 180,
-      "imageHeight": 180
+      "backgroundColor": "#2E7E78"
     },
     "ios": {
       "supportsTablet": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "bundleIdentifier": "com.palex.sproutbook",
+      "developmentTeam": "XUW3VL9XHM",
+      "usesAppleSignIn": true,
+      "entitlements": {
+        "com.apple.developer.applesignin": [
+          "Default"
+        ]
+      },
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "SproutBook needs access to your photo library to upload child profile pictures.",
-        "NSPhotoLibraryAddUsageDescription": "SproutBook needs access to save child profile pictures to your photo library.",
-        "NSCameraUsageDescription": "SproutBook needs access to your camera to take child profile pictures and journal entries.",
+        "NSUserNotificationUsageDescription": "Sproutbook sends reminders and updates like weekly/monthly recaps and comments.",
+        "NSPhotoLibraryUsageDescription": "Sproutbook needs access to your photo library to upload child profile pictures.",
+        "NSPhotoLibraryAddUsageDescription": "Sproutbook needs access to save child profile pictures to your photo library.",
+        "NSCameraUsageDescription": "Sproutbook needs access to your camera to take child profile pictures and journal entries.",
+        "CFBundleDisplayName": "Sproutbook",
         "UIViewControllerBasedStatusBarAppearance": false,
-        "UIRequiresFullScreen": true
-      }
+        "UIRequiresFullScreen": true,
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      },
+      "appleTeamId": "9FGB5GTWLN"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#2E7E78"
       },
-      "package": "com.anonymous.SproutBook",
-      "googleServicesFile": "./android/app/google-services.json"
+      "package": "com.palex.sproutbook",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -47,8 +63,14 @@
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "expo-notifications"
     ],
+    "extra": {
+      "eas": {
+        "projectId": "sproutbook-d0c8f"
+      }
+    },
     "experiments": {
       "typedRoutes": true
     }

@@ -48,8 +48,37 @@ service cloud.firestore {
         && request.resource.data.createdAt is timestamp
         && request.resource.data.onboarded is bool;
 
-      // Only the owner can read, update, or delete their own document
-      allow read, update, delete: if isOwner(userId);
+      // Allow reading own data or if a family member.
+      allow read: if isOwner(userId) || isFamilyMember(userId);
+
+      // Allow owner to update their document. A more specific rule for family sharing updates is also included.
+      allow update: if isOwner(userId) ||
+        (isFamilyMember(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'profile', 'permissions', 'updatedAt', 'subscriptionStatus'
+        ]));
+      
+      // Only the owner can delete their own document
+      allow delete: if isOwner(userId);
+
+      // --- Sub-collection for device tokens for push notifications ---
+      match /devices/{deviceToken} {
+        // Only the owner of the user document can manage their own device tokens.
+        allow read, write: if isOwner(userId);
+      }
+
+      // --- Sub-collection for user's notification preferences ---
+      match /notificationPreferences/{prefId} {
+        // Only the owner can manage their notification preferences.
+        allow read, write: if isOwner(userId);
+      }
+      
+      // --- Sub-collection for in-app notifications ---
+      match /notifications/{notificationId} {
+        // Owner can read and update (e.g., mark as read) their notifications.
+        allow read, update: if isOwner(userId);
+        // Notifications should only be created by the backend, not the client.
+        allow create, delete: if false;
+      }
     }
 
     // ========== CHILDREN COLLECTION ==========
@@ -77,65 +106,60 @@ service cloud.firestore {
     match /journalEntries/{entryId} {
       // A user can create an entry if they are logged in and the entry's `userId` field matches their own ID.
       allow create: if isOwner(request.resource.data.userId)
-        && request.resource.data.keys().hasAll(['userId', 'text', 'childIds', 'createdAt'])
+        && request.resource.data.keys().hasAll(['userId', 'text', 'childIds'])
         && request.resource.data.text is string
         && request.resource.data.childIds is list
         && request.resource.data.childIds.size() > 0
         && (request.resource.data.media == null || request.resource.data.media is list)
         && (request.resource.data.isFavorited == null || request.resource.data.isFavorited is bool)
         && (request.resource.data.isMilestone == null || request.resource.data.isMilestone is bool)
-        && (request.resource.data.childAgeAtEntry == null || request.resource.data.childAgeAtEntry is string)
+        && (request.resource.data.childAgeAtEntry == null || request.resource.data.childAgeAtEntry is map)
         && (request.resource.data.likes == null || request.resource.data.likes is map)
-        && request.resource.data.createdAt is timestamp;
       
-      // A user can read entries they own or shared with family
-      allow read: if isOwner(resource.data.userId) || isFamilyMember(resource.data.userId);
+      // A user can read entries they own or that are shared with them as a family member
+      allow read: if isOwner(resource.data.userId) || 
+                     (request.auth != null && 
+                      (request.auth.uid == resource.data.userId || 
+                       request.auth.uid in resource.data.sharedWith ||
+                       resource.data.userId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.sharedWith));
       
-      // A user can update their own entry's content and tags
-      allow update: if isOwner(resource.data.userId)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes', 'childIds', 'childAgeAtEntry']);
-      
-      // A user can update likes and isFavorited on any entry (for like functionality)
-      allow update: if isAuthenticated() && 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited']) &&
-        (request.resource.data.likes[request.auth.uid] == true || 
-         (request.resource.data.likes[request.auth.uid] == null && resource.data.likes[request.auth.uid] == true)) &&
-        (request.resource.data.isFavorited == true || request.resource.data.isFavorited == false);
+      // A user can update their own entry's content and tags.
+      // Family members can also update likes and favorites.
+      allow update: if (isOwner(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes', 'childIds', 'childAgeAtEntry'])) ||
+                      (isFamilyMember(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited']));
       
       // A user can delete their own entry
       allow delete: if isOwner(resource.data.userId);
     }
 
-    // ===== AI RECAPS COLLECTION =====
-    match /aiRecaps/{recapId} {
-      // AI recaps are user-owned and auto-generated
-      allow read: if isOwner(resource.data.userId);
-      allow create: if isOwner(request.resource.data.userId) 
-        && request.resource.data.type in ['weekly', 'monthly']
-        && request.resource.data.status in ['pending', 'generating', 'completed', 'failed']
-        && request.resource.data.keys().hasAll(['userId', 'type', 'status', 'createdAt'])
+    // ===== RECAPS COLLECTION =====
+    match /recaps/{recapId} {
+      // Recaps can be read by family members
+      allow read: if isFamilyMember(resource.data.userId);
+
+      // Owners can create recaps
+      allow create: if isOwner(request.resource.data.userId)
+        && request.resource.data.keys().hasAll(['userId', 'childId', 'type', 'period', 'status', 'createdAt'])
+        && request.resource.data.type in ['weekly', 'monthly', 'yearly']
+        && request.resource.data.status in ['generating', 'completed', 'failed']
+        && request.resource.data.period.startDate is timestamp
+        && request.resource.data.period.endDate is timestamp
         && request.resource.data.createdAt is timestamp;
-      allow update: if isOwner(resource.data.userId) 
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'content', 'updatedAt', 'metadata']);
+
+      // Owners can update their recaps
+      allow update: if isOwner(resource.data.userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'aiGenerated', 'media', 'status', 'updatedAt'
+        ]);
+
+      // Owners can delete their recaps
       allow delete: if isOwner(resource.data.userId);
     }
 
     // ===== FAMILY SHARING COLLECTIONS =====
     
-    // Extended users collection for family sharing
-    match /users/{userId} {
-      // Allow reading family members' basic info
-      allow read: if isOwner(userId) || 
-        (isAuthenticated() && 
-         (request.auth.uid == resource.data.parentUserId || 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.parentUserId == userId));
-      
-      // Allow updates to profile and permissions
-      allow update: if isOwner(userId) 
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'profile', 'permissions', 'updatedAt', 'subscriptionStatus'
-        ]);
-    }
 
     // Invitations for family sharing
     match /invitations/{invitationId} {

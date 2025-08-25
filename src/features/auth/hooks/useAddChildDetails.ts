@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
@@ -6,6 +6,8 @@ import { addChild } from '../../../services/childService';
 import { uploadChildProfileImage } from '../../../services/userService';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../../lib/firebase/firebaseConfig';
 
 export const useAddChildDetails = () => {
     const router = useRouter();
@@ -22,10 +24,44 @@ export const useAddChildDetails = () => {
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     
-    const lifestage = params.lifestage as string || 'Soon to be parent';
-    const genderOptions = lifestage === 'Soon to be parent' 
+    // Resolve lifestage from route params or fetch from Firestore as fallback
+    const [lifestage, setLifestage] = useState<string>('');
+
+    useEffect(() => {
+        const resolveLifestage = async () => {
+            const paramStage = (params.lifestage as string) || '';
+            if (paramStage) {
+                setLifestage(paramStage);
+                return;
+            }
+            // Fallback: fetch from user profile
+            if (user?.uid) {
+                try {
+                    const snap = await getDoc(doc(db, 'users', user.uid));
+                    if (snap.exists()) {
+                        const data = snap.data() as any;
+                        let stage = data?.lifestage || '';
+                        // Normalize value to match UI expectations
+                        if (stage === 'Soon-to-be parent') stage = 'Soon to be parent';
+                        if (stage !== 'Parent' && stage !== 'Soon to be parent') {
+                            stage = 'Soon to be parent';
+                        }
+                        setLifestage(stage);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn('Failed to fetch user lifestage, defaulting:', e);
+                }
+            }
+            setLifestage('Soon to be parent');
+        };
+        resolveLifestage();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.uid]);
+
+    const genderOptions = (lifestage || 'Soon to be parent') === 'Soon to be parent' 
         ? ['Boy', 'Girl', "Don't know yet"] 
-        : ['Boy', 'Girl'];
+        : ['Boy', 'Girl', 'Prefer not to say'];
 
     const handleSelect = (option: string) => {
         setGender(option);
@@ -98,10 +134,20 @@ export const useAddChildDetails = () => {
                 profileImageUrl = await uploadChildProfileImage(childId, childImage);
             }
 
+            // Map UI label to canonical stored value
+            // Stored set: 'Boy' | 'Girl' | "Don't know yet" | 'prefer_not_to_say'
+            const firestoreGender = (gender === 'Boy'
+                ? 'Boy'
+                : gender === 'Girl'
+                    ? 'Girl'
+                    : gender === 'Prefer not to say'
+                        ? 'prefer_not_to_say'
+                        : "Don't know yet") as 'Boy' | 'Girl' | 'prefer_not_to_say' | "Don't know yet";
+
             await addChild({
                 name: childName,
                 dateOfBirth: date,
-                gender: gender as 'male' | 'female' | 'prefer_not_to_say',
+                gender: firestoreGender,
                 ...(profileImageUrl && { profileImageUrl })
             }, user.uid);
 

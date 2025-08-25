@@ -89,7 +89,9 @@ const EditChildProfileScreen = () => {
                     setDate(dob);
                     setDueDate(formatDateDisplay(childData.dateOfBirth));
                 }
-                setGender(childData.gender);
+                // Map stored value to display label
+                const toDisplayGender = (g: string) => (g === 'prefer_not_to_say' ? 'Prefer not to say' : g);
+                setGender(toDisplayGender(childData.gender));
                 const childDataAny = childData as any;
                 setChildImage(childDataAny.profileImageUrl || childData.avatar || null);
                 // Determine lifestage based on child's data or current date
@@ -133,15 +135,9 @@ const EditChildProfileScreen = () => {
                 return;
             }
 
-            // Map UI gender values to ChildInput interface values
-            let firestoreGender: 'male' | 'female' | 'prefer_not_to_say';
-            if (gender === 'Boy') {
-                firestoreGender = 'male';
-            } else if (gender === 'Girl') {
-                firestoreGender = 'female';
-            } else {
-                firestoreGender = 'prefer_not_to_say';
-            }
+            // Map display label to stored canonical value
+            // Stored set: 'Boy' | 'Girl' | "Don't know yet" | 'prefer_not_to_say'
+            const firestoreGender = (gender === 'Prefer not to say' ? 'prefer_not_to_say' : gender) as 'Boy' | 'Girl' | 'prefer_not_to_say' | "Don't know yet";
 
             const updateData: Partial<ChildInput> = {
                 name: childName,

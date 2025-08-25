@@ -11,52 +11,60 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="welcome" options={{ headerShown: false }} />
-      <Stack.Screen 
-        name="signup" 
+      <Stack.Screen
+        name="signup"
         options={{
-          header: () => <CustomHeader title="" />,
+          headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="success" 
+      <Stack.Screen
+        name="success"
         options={{
           header: () => <CustomHeader title="Success" showBackButton={false} />,
         }}
       />
-      <Stack.Screen 
-        name="pricing" 
+      <Stack.Screen
+        name="pricing"
         options={{
-          header: () => <CustomHeader />,
+          headerShown: false,
         }}
       />
-      <Stack.Screen 
-        name="checkout" 
+      <Stack.Screen
+        name="checkout"
         options={{
           header: () => <CustomHeader title="Checkout" />,
         }}
       />
-      <Stack.Screen 
+      <Stack.Screen
         name="login"
         options={{
-          header: (props) => <LoginHeader title="Log in" {...props} />,
+          headerShown: false,
+          // header: (props) => <LoginHeader title="Log in" {...props} />,
         }}
       />
-       <Stack.Screen 
-        name="add-child-details" 
+      <Stack.Screen
+        name="add-child-details"
         options={{
           header: () => <CustomHeader title="Tell us about your little one" />,
         }}
       />
-       <Stack.Screen 
-        name="add-profile" 
+      <Stack.Screen
+        name="add-profile"
         options={{
           header: () => <CustomHeader title="Tell us about yourself" />,
         }}
       />
-        <Stack.Screen 
-        name="verify-email" 
+      <Stack.Screen
+        name="verify-email"
         options={{
-          header: () => <CustomHeader title="" />,
+          headerShown: false,
+          // header: () => <CustomHeader title="" />,
+        }}
+      />
+      <Stack.Screen
+        name="enter-invite"
+        options={{
+          header: () => <CustomHeader title="Enter Invite Code" />,
         }}
       />
     </Stack>

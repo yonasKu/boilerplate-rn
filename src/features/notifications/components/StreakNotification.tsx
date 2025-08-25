@@ -5,9 +5,11 @@ import { Colors } from '@/theme';
 
 interface Notification {
   id: string;
-  type: 'recap_love' | 'comment' | 'reminder' | 'streak';
+  type: 'recap_love' | 'comment' | 'reminder' | 'streak' | 'recap_ready';
   date: string;
   isRead: boolean;
+  body?: string;
+  title?: string;
 }
 
 const StreakNotification = ({ item }: { item: Notification }) => {

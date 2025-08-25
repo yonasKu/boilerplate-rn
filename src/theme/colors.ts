@@ -1,13 +1,16 @@
 export const Colors = {
   // Primary Palette
   primary: '#2E7E78',
+  golden: '#FFD700',
   secondary: '#F68B7F',
   background: '#F9F6F4',
   accent: '#FFD8CD',
   lightPink: '#FFF5F2',
+  lightPink2: '#FFE4DC',
 
   // Greyscale Palette
   black: '#1F1F1F',
+  blacktext: '#3C3C3C',
   darkGrey: '#2E2E2E',
   mediumGrey: '#797877',
   lightGrey: '#D2D0CF',

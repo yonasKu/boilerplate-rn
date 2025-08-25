@@ -5,6 +5,7 @@ import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../../../context/AuthContext';
 import { getUserProfile, UserProfile } from '../../../services/userService';
+import NotificationService from '../../../services/notifications/NotificationService';
 import { Colors } from '../../../theme/colors';
 
 interface AccordionSectionProps {
@@ -69,7 +70,9 @@ const AccountSettingsScreen = () => {
     likes: true,
     weeklyRecaps: true,
     monthlyRecaps: true,
+    pushNotifications: false,
   });
+  const [hasPushPermission, setHasPushPermission] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -78,7 +81,22 @@ const AccountSettingsScreen = () => {
         setLoading(true);
         const profile = await getUserProfile(user.uid);
         setUserProfile(profile);
-        // Here you would also fetch and set reminder preferences
+        
+        // Load all notification preferences
+        const permission = await NotificationService.requestPermissions();
+        setHasPushPermission(permission);
+        
+        const prefs = await NotificationService.getNotificationPreferences(user.uid);
+        if (prefs) {
+          setReminders({
+            dailyEntries: prefs.dailyEntries?.enabled ?? true,
+            comments: prefs.comments?.enabled ?? false,
+            likes: prefs.likes?.enabled ?? true,
+            weeklyRecaps: prefs.weeklyRecaps?.enabled ?? true,
+            monthlyRecaps: prefs.monthlyRecaps?.enabled ?? true,
+            pushNotifications: prefs.pushNotifications?.enabled ?? false,
+          });
+        }
       } catch (error) {
         console.error('Error fetching user profile:', error);
       } finally {
@@ -88,9 +106,42 @@ const AccountSettingsScreen = () => {
     fetchUserData();
   }, [user]);
 
-  const handleReminderChange = (key: keyof typeof reminders) => {
-    setReminders(prev => ({ ...prev, [key]: !prev[key] }));
-    // Here you would typically save the new settings to your backend
+  const handleReminderChange = async (key: keyof typeof reminders) => {
+    if (!user?.uid) return;
+    
+    const newValue = !reminders[key];
+    const updatedReminders = { ...reminders, [key]: newValue };
+    setReminders(updatedReminders);
+    
+    // Save to Firestore using NotificationService - backend will handle scheduling
+    await NotificationService.updatePreference(user.uid, key, newValue);
+  };
+
+  const handlePushNotificationToggle = async (enabled: boolean) => {
+    if (!user?.uid) return;
+    
+    if (enabled) {
+      const granted = await NotificationService.requestPermissions();
+      setHasPushPermission(granted);
+      
+      if (granted) {
+        const token = await NotificationService.getPushToken();
+        if (token) {
+          await NotificationService.saveTokenToFirestore(user.uid, token);
+        }
+      }
+    } else {
+      setHasPushPermission(false);
+      await NotificationService.removeTokenFromFirestore(user.uid);
+    }
+    
+    const updatedReminders = { ...reminders, pushNotifications: enabled };
+    setReminders(updatedReminders);
+    await NotificationService.updateNotificationPreferences(user.uid, {
+      pushNotifications: { enabled }
+    });
+    
+    // Backend will handle scheduling based on preferences
   };
 
   if (loading) {
@@ -117,6 +168,11 @@ const AccountSettingsScreen = () => {
         </AccordionSection>
 
         <AccordionSection title="Notifications" defaultExpanded={true}>
+          <ReminderRow 
+            label="Push Notifications" 
+            value={reminders.pushNotifications} 
+            onValueChange={handlePushNotificationToggle} 
+          />
           <ReminderRow label="Daily Entries" value={reminders.dailyEntries} onValueChange={() => handleReminderChange('dailyEntries')} />
           <ReminderRow label="Comments" value={reminders.comments} onValueChange={() => handleReminderChange('comments')} />
           <ReminderRow label="Likes" value={reminders.likes} onValueChange={() => handleReminderChange('likes')} />

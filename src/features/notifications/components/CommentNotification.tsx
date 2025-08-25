@@ -9,10 +9,12 @@ interface User {
 
 interface Notification {
   id: string;
-  type: 'recap_love' | 'comment' | 'reminder' | 'streak';
+  type: 'recap_love' | 'comment' | 'reminder' | 'streak' | 'recap_ready';
   users?: User[];
   recap?: string;
   comment?: string;
+  body?: string;
+  title?: string;
   date: string;
   isRead: boolean;
 }

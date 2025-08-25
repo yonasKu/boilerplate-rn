@@ -11,7 +11,9 @@ import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import JournalFilter from '../components/JournalFilter';
 import AgeFilterModal from '../components/modals/AgeFilterModal';
 import { TimelineOption } from '../components/TimelineDropdown';
+import ShareBottomSheet from '../components/ShareBottomSheet';
 import { Colors } from '@/theme';
+import { getInitials, generateAvatarColor } from '@/utils/avatarUtils';
 
 
 interface Child {
@@ -31,40 +33,128 @@ const JournalScreen = () => {
     const [filterTags, setFilterTags] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-        const [showAgeModal, setShowAgeModal] = useState(false);
+    const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
+    const [showAgeModal, setShowAgeModal] = useState(false);
     const [showChildDropdown, setShowChildDropdown] = useState(false);
     const [headerLeftLayout, setHeaderLeftLayout] = useState<{ x: number; y: number; width: number; height: number }>({ x: 16, y: 0, width: 200, height: 48 });
     const [children, setChildren] = useState<any[]>([]);
-        const [selectedChild, setSelectedChild] = useState<Child | null>(null); // null means 'All Children'
-    const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
+    const [selectedChild, setSelectedChild] = useState<Child | null>(null); // Will always be set to first child or user profile
+    const [unreadNotifications, setUnreadNotifications] = useState(0);
 
-    // Fetch actual user profile from Firestore
-        useEffect(() => {
-        const fetchChildren = async () => {
-            if (user) {
-                try {
-                    const { collection, query, where, getDocs } = await import('firebase/firestore');
-                    const { db } = await import('@/lib/firebase/firebaseConfig');
-                    const childrenQuery = query(collection(db, 'children'), where('parentId', '==', user.uid));
-                    const querySnapshot = await getDocs(childrenQuery);
-                    const childrenData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    setChildren(childrenData);
-                } catch (err) {
-                    console.error('Error fetching children:', err);
+    const fetchUserProfile = async () => {
+        if (user) {
+            try {
+                const { doc, getDoc } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase/firebaseConfig');
+                
+                const userDocRef = doc(db, 'users', user.uid);
+                const userDoc = await getDoc(userDocRef);
+                
+                if (userDoc.exists()) {
+                    setUserProfile(userDoc.data());
                 }
+                setLoadingProfile(false);
+            } catch (error) {
+                console.error('Error fetching user profile:', error);
+                setLoadingProfile(false);
             }
-        };
+        } else {
+            setLoadingProfile(false);
+        }
+    };
+
+    const fetchChildren = async () => {
+        if (!user?.uid) return;
+        
+        try {
+            const { collection, query, where, getDocs } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase/firebaseConfig');
+            
+            const childrenSnapshot = await getDocs(
+                query(collection(db, 'children'), where('parentId', '==', user.uid))
+            );
+            
+            const childrenData = childrenSnapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data() 
+            }));
+            
+            setChildren(childrenData);
+            
+            if (childrenData.length > 0) {
+                const child = childrenData[0];
+                setSelectedChild({
+                    id: child.id,
+                    name: (child as any).name || (child as any).displayName || 'Unnamed',
+                    profileImageUrl: (child as any).profileImageUrl || (child as any).photoURL || (child as any).photoUrl || (child as any).avatarUrl || null
+                });
+            } else {
+                setSelectedChild(null); // Will use user profile
+            }
+        } catch (err) {
+            console.error('Error fetching children:', err);
+        }
+    };
+
+    useEffect(() => {
+        fetchUserProfile();
         fetchChildren();
     }, [user]);
 
+    useEffect(() => {
+        if (!user?.uid) return;
+
+        const fetchUnreadNotifications = async () => {
+            try {
+                const { collection, query, where, getDocs } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase/firebaseConfig');
+                const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+                const unreadQuery = query(notificationsRef, where('read', '==', false));
+                const querySnapshot = await getDocs(unreadQuery);
+                setUnreadNotifications(querySnapshot.size);
+            } catch (error) {
+                console.error('Error fetching unread notifications:', error);
+            }
+        };
+
+        fetchUnreadNotifications();
+
+        // Set up real-time listener for unread notifications
+        let unsubscribe: (() => void) | undefined;
+        
+        const setupListener = async () => {
+            const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+            const { db } = await import('@/lib/firebase/firebaseConfig');
+            const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+            const unreadQuery = query(notificationsRef, where('read', '==', false));
+            
+            unsubscribe = onSnapshot(unreadQuery, (snapshot) => {
+                setUnreadNotifications(snapshot.size);
+            });
+        };
+
+        setupListener();
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [user]);
+
+
     // Helpers: ensure consistent avatar/name resolution
     const getItemName = (item: any | null) => {
-        if (!item) return 'Journals';
+        if (!item) return userProfile?.name || userProfile?.displayName || 'Profile';
         return item.name || item.displayName || 'Unnamed';
     };
 
     const getItemAvatar = (item: any | null) => {
-        if (!item) return userProfile?.profileImageUrl || userProfile?.photoURL || userProfile?.avatarUrl || null;
+        if (!item) {
+            return userProfile?.profileImageUrl || 
+                   userProfile?.photoURL || 
+                   userProfile?.avatarUrl || 
+                   userProfile?.photoUrl ||
+                   null;
+        }
         return (
             item.profileImageUrl ||
             item.photoURL ||
@@ -75,52 +165,38 @@ const JournalScreen = () => {
         );
     };
 
-    useEffect(() => {
-        const fetchUserProfile = async () => {
-            if (user) {
-                try {
-                    const { doc, getDoc } = await import('firebase/firestore');
-                    const { db } = await import('@/lib/firebase/firebaseConfig');
-                    
-                    const userDocRef = doc(db, 'users', user.uid);
-                    const userDoc = await getDoc(userDocRef);
-                    
-                    if (userDoc.exists()) {
-                        setUserProfile(userDoc.data());
-                    }
-                    setLoadingProfile(false);
-                } catch (error) {
-                    console.error('Error fetching user profile:', error);
-                    setLoadingProfile(false);
-                }
-            } else {
-                setLoadingProfile(false);
-            }
-        };
-
-        fetchUserProfile();
-    }, [user]);
-
-            const filteredEntries = useMemo(() => {
+    const filteredEntries = useMemo(() => {
         let filtered = entries;
 
-        // Filter by timeline (All, Weekly, Monthly)
+        // Filter by timeline (monthly/weekly)
         if (activeTimeline !== 'All') {
             const now = new Date();
-            let startDate: Date | null = null;
-
+            
             if (activeTimeline === 'Weekly') {
-                startDate = new Date(now);
-                startDate.setHours(0, 0, 0, 0);
-                startDate.setDate(startDate.getDate() - now.getDay());
-            } else if (activeTimeline === 'Monthly') {
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            }
-
-            if (startDate) {
+                // Show entries from the current week (Sunday to Saturday)
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay()); // Get Sunday of current week
+                startOfWeek.setHours(0, 0, 0, 0);
+                
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6); // Get Saturday of current week
+                endOfWeek.setHours(23, 59, 59, 999);
+                
                 filtered = filtered.filter(entry => {
-                    const created = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
-                    return created >= startDate!;
+                    const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
+                    return entryDate >= startOfWeek && entryDate <= endOfWeek;
+                });
+            } else if (activeTimeline === 'Monthly') {
+                // Show entries from the current month
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                startOfMonth.setHours(0, 0, 0, 0);
+                
+                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                endOfMonth.setHours(23, 59, 59, 999);
+                
+                filtered = filtered.filter(entry => {
+                    const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
+                    return entryDate >= startOfMonth && entryDate <= endOfMonth;
                 });
             }
         }
@@ -149,7 +225,7 @@ const JournalScreen = () => {
             });
         }
 
-                        return filtered.sort((a, b) => {
+        return filtered.sort((a, b) => {
             const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
             const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
             return dateB.getTime() - dateA.getTime();
@@ -164,12 +240,41 @@ const JournalScreen = () => {
         }
     };
 
-    const handleShare = async (entry: any) => {
+    const handleToggleMilestone = async (entryId: string) => {
         try {
-            await Share.share({
-                message: `Check out this memory from SproutBook: ${entry.text}`,
-                // You can also add a URL to share, e.g., a web link to the entry
-            });
+            const entry = entries.find(e => e.id === entryId);
+            if (entry) {
+                await updateEntry(entryId, { 
+                    isMilestone: !entry.isMilestone 
+                });
+            }
+        } catch (error) {
+            console.error('Error toggling milestone:', error);
+        }
+    };
+
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareEntry, setShareEntry] = useState<any>(null);
+
+    const handleShare = (entry: any) => {
+        setShareEntry(entry);
+        setShowShareModal(true);
+    };
+
+    const handleShareAction = async (platform: 'copy' | 'system') => {
+        if (!shareEntry) return;
+        
+        try {
+            if (platform === 'copy') {
+                await Share.share({
+                    message: `Check out this memory from SproutBook: ${shareEntry.text}`,
+                });
+            } else {
+                await Share.share({
+                    message: `Check out this memory from SproutBook: ${shareEntry.text}`,
+                });
+            }
+            setShowShareModal(false);
         } catch (error) {
             console.error('Error sharing entry:', error);
         }
@@ -245,7 +350,16 @@ const JournalScreen = () => {
                     </TouchableOpacity>
                     <View style={styles.headerRight}>
                         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
-                            <Ionicons name="notifications-outline" size={24} color="#2F4858" />
+                            <View style={styles.notificationContainer}>
+                                <Ionicons name="notifications-outline" size={24} color="#2F4858" />
+                                {unreadNotifications > 0 && (
+                                    <View style={styles.notificationBadge}>
+                                        <Text style={styles.notificationCount}>
+                                            {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
                             <Ionicons name="settings-outline" size={24} color="#2F4858" />
@@ -266,10 +380,10 @@ const JournalScreen = () => {
                     ]}>
                         <FlatList
                             keyboardShouldPersistTaps="handled"
-                            data={[null, ...children].filter(item => item?.id !== selectedChild?.id)}
-                            keyExtractor={(item) => item?.id || 'all-journals'}
+                            data={children.filter(item => item?.id !== selectedChild?.id)}
+                            keyExtractor={(item) => item?.id}
                             renderItem={({ item }) => {
-                                const isSelected = (item === null && selectedChild === null) || (item?.id === selectedChild?.id);
+                                const isSelected = item?.id === selectedChild?.id;
                                 const name = getItemName(item);
                                 const imageUrl = getItemAvatar(item);
                                 return (
@@ -298,23 +412,25 @@ const JournalScreen = () => {
                 )}
             </View>
             {entries.length > 0 && <WeekNavigator />}
-            <JournalFilter 
-                onAgePress={() => setShowAgeModal(true)} 
-                activeTimeline={activeTimeline}
-                onTimelineChange={setActiveTimeline}
-                onFilterChange={(filter) => {
-                    if (filter === 'All') {
-                        setFilterTags([]);
-                    } else if (filter === 'Favorites') {
-                        setFilterTags(['favorite']);
-                    } else if (filter === 'Milestones') {
-                        setFilterTags(['milestone']);
-                    }
-                }}
-                activeFilter={filterTags.length === 0 ? 'All' : 
-                    filterTags.includes('favorite') ? 'Favorites' : 
-                    filterTags.includes('milestone') ? 'Milestones' : 'All'}
-            />
+            {entries.length > 0 && (
+                <JournalFilter 
+                    onAgePress={() => setShowAgeModal(true)} 
+                    activeTimeline={activeTimeline}
+                    onTimelineChange={setActiveTimeline}
+                    onFilterChange={(filter) => {
+                        if (filter === 'All') {
+                            setFilterTags([]);
+                        } else if (filter === 'Favorites') {
+                            setFilterTags(['favorite']);
+                        } else if (filter === 'Milestones') {
+                            setFilterTags(['milestone']);
+                        }
+                    }}
+                    activeFilter={filterTags.length === 0 ? 'All' : 
+                        filterTags.includes('favorite') ? 'Favorites' : 
+                        filterTags.includes('milestone') ? 'Milestones' : 'All'}
+                />
+            )}
             
             <AgeFilterModal
                 visible={showAgeModal}
@@ -323,6 +439,12 @@ const JournalScreen = () => {
                     console.log('Age filter applied:', ageRange);
                                         setShowAgeModal(false);
                 }}
+            />
+
+            <ShareBottomSheet
+                isVisible={showShareModal}
+                onClose={() => setShowShareModal(false)}
+                onShare={handleShareAction}
             />
 
                         
@@ -354,11 +476,13 @@ const JournalScreen = () => {
                     renderItem={({ item }) => (
                         <JournalEntryCard 
                             entry={item} 
+                            selectedChildId={selectedChild?.id || ''}
                             onPress={() => router.push(`/journal/${item.id}` as any)}
                             onLike={() => handleLike(item.id)}
                             onShare={() => handleShare(item)}
                             onEdit={() => handleEdit(item)}
                             onDelete={() => handleDelete(item)}
+                            onToggleMilestone={() => handleToggleMilestone(item.id)}
                         />
                     )}
                     keyExtractor={(item) => item.id}
@@ -484,11 +608,11 @@ const styles = StyleSheet.create({
     },
     centeredContent: {
         flex: 1,
-        justifyContent: 'flex-start',
+        justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
         backgroundColor: Colors.white,
-        paddingTop: '45%', // Move content up from center
+        paddingTop: 0, // Remove top padding to center properly
     },
     listContentContainer: {
         paddingHorizontal: 16,
@@ -496,9 +620,10 @@ const styles = StyleSheet.create({
         paddingBottom: 100, // Ensure space for floating action button if any
     },
     mainImage: {
-        width: 80,
-        height: 80,
+        width: 100,
+        height: 100,
         resizeMode: 'contain',
+        marginBottom: 16, // Add spacing below logo
     },
     promptText: {
         marginTop: 24,
@@ -546,10 +671,32 @@ const styles = StyleSheet.create({
         color: Colors.mediumGrey,
     },
     activeTagText: {
-        color: Colors.primary,
-        fontWeight: '500',
+        color: '#fff',
+        fontWeight: '600',
+    },
+    notificationContainer: {
+        position: 'relative',
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: -6,
+        right: -6,
+        backgroundColor: '#FF3B30',
+        borderRadius: 8,
+        minWidth: 16,
+        height: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 3,
+        borderWidth: 1,
+        borderColor: '#fff',
+    },
+    notificationCount: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 'bold',
+        lineHeight: 12,
     },
 });
 
 export default JournalScreen;
-

@@ -143,19 +143,17 @@ export const useGoogleSignIn = () => {
         const credential = GoogleAuthProvider.credential(id_token);
         const userCredential = await signInWithCredential(auth, credential);
 
-        // After signing in, check if a user document exists. If not, create one.
-        const user = userCredential.user;
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (!userDoc.exists()) {
-          // If it's a new user, send a verification email and sign out.
-          // The profile will be created on the verification screen.
-          if (!user.emailVerified) {
-             await sendEmailVerification(user);
-          }
-          // Sign out to force user to go through verification screen.
-          await firebaseSignOut(auth);
+        // Ensure the users/{uid} document exists with required fields
+        try {
+          const { ensureUserDocumentExists } = await import('../../services/userService');
+          const user = userCredential.user;
+          await ensureUserDocumentExists(
+            user.uid,
+            user.displayName ?? null,
+            user.email ?? null
+          );
+        } catch (e) {
+          console.error('Failed to ensure user document after Google sign-in:', e);
         }
       }
     };

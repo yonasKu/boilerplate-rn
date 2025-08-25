@@ -11,7 +11,17 @@ export default function MainLayout() {
       <Stack.Screen name="child-profiles" />
       <Stack.Screen name="partner-access" />
       <Stack.Screen name="refer-a-friend" />
+      <Stack.Screen name="gift-card" />
+      <Stack.Screen name="gift-card-confirmation" />
       <Stack.Screen name="notifications" />
+      <Stack.Screen name="notification-test" />
+      <Stack.Screen
+        name="search-tray"
+        options={{
+          presentation: 'transparentModal',
+          animation: 'fade',
+        }}
+      />
     </Stack>
   );
 }

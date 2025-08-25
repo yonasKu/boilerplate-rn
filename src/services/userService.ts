@@ -300,3 +300,53 @@ export const deleteChildProfileImage = async (childId: string, imageUrl: string)
     throw error;
   }
 };
+
+/**
+ * Ensure the users/{uid} document exists with the required fields for Firestore rules.
+ * Returns true if the document was created, false if it already existed or couldn't be created.
+ */
+export const ensureUserDocumentExists = async (
+  uid: string,
+  name?: string | null,
+  email?: string | null
+): Promise<boolean> => {
+  try {
+    const userRef = doc(db, 'users', uid);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      return false; // already exists
+    }
+
+    // Firestore rules require a valid email on create that matches the auth token
+    if (!email) {
+      console.warn('ensureUserDocumentExists: missing email; cannot create user doc due to Firestore rules', { uid });
+      return false;
+    }
+
+    const now = new Date();
+    const safeName = (name && name.trim().length > 0) ? name.trim() : 'New User';
+
+    await setDoc(userRef, {
+      uid,
+      name: safeName,
+      email,
+      lifestage: null,
+      subscription: {
+        plan: 'free',
+        status: 'trial',
+        startDate: now,
+        trialEndDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000)
+      },
+      children: [],
+      createdAt: now,
+      updatedAt: now,
+      onboarded: false
+    });
+
+    console.log('ensureUserDocumentExists: created users doc for', uid);
+    return true;
+  } catch (e) {
+    console.error('ensureUserDocumentExists error:', e);
+    return false;
+  }
+};

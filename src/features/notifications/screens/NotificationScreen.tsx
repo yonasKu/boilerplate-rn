@@ -1,88 +1,37 @@
-import React from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, ActivityIndicator, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/theme';
 import ScreenHeader from '@/components/ui/ScreenHeader';
+import { useAuth } from '../../../context/AuthContext';
+import { getFirestore, collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
 interface User {
   name: string;
   avatar?: any;
 }
 
-interface Notification {
+interface NotificationItem {
   id: string;
-  type: 'recap_love' | 'comment' | 'reminder' | 'streak';
+  type: 'recap_love' | 'comment' | 'reminder' | 'streak' | 'recap_ready';
   users?: User[];
   recap?: string;
   comment?: string;
+  body?: string;
+  title?: string;
+  childId?: string;
+  recapId?: string;
+  recapType?: string;
   date: string;
   isRead: boolean;
+  createdAt: any;
 }
 import ReminderNotification from '../components/ReminderNotification';
 import StreakNotification from '../components/StreakNotification';
 import CommentNotification from '../components/CommentNotification';
 import RecapLoveNotification from '../components/RecapLoveNotification';
 
-// NOTE: Using placeholder images. Replace with actual paths or URIs if they differ.
-const notificationsData: Notification[] = [
-  {
-    id: '1',
-    type: 'recap_love',
-    users: [{ name: 'Susan', avatar: require('@/assets/images/sample.png') }],
-    recap: 'Week of July 15th, 2025',
-    date: 'July 22, 2025',
-    isRead: false,
-  },
-  {
-    id: '2',
-    type: 'comment',
-    users: [{ name: 'Susan', avatar: require('@/assets/images/sample.png') }],
-    comment: '“Wow, look at her go!”',
-    date: 'July 16, 2025',
-    isRead: false,
-  },
-  {
-    id: '3',
-    type: 'comment',
-    users: [{ name: 'Sarah', avatar: require('@/assets/images/sample.png') }],
-    comment: '“Such a sweet smile! She’s growing so fast”',
-    date: 'July 15, 2025',
-    isRead: true,
-  },
-  {
-    id: '4',
-    type: 'recap_love',
-    users: [
-      { name: 'Susan', avatar: require('@/assets/images/sample.png') },
-      { name: 'Dave', avatar: require('@/assets/images/sample2.png') },
-    ],
-    recap: 'Week of July 8th, 2025',
-    date: 'July 15, 2025',
-    isRead: true,
-  },
-  {
-    id: '5',
-    type: 'recap_love',
-    users: [{ name: 'Sarah', avatar: require('@/assets/images/sample.png') }, { name: 'Dave', avatar: require('@/assets/images/sample2.png') }, { name: 'others' }],
-    recap: 'Week of July 1st, 2025',
-    date: 'July 8, 2025',
-    isRead: true,
-  },
-  {
-    id: '6',
-    type: 'reminder',
-    date: 'June 30, 2025',
-    isRead: true,
-  },
-  {
-    id: '7',
-    type: 'streak',
-    date: 'June 29, 2025',
-    isRead: true,
-  },
-];
-
-const renderNotificationItem = ({ item }: { item: Notification }) => {
+const renderNotificationItem = ({ item }: { item: NotificationItem }) => {
   switch (item.type) {
     case 'recap_love':
       return <RecapLoveNotification item={item} />;
@@ -92,6 +41,8 @@ const renderNotificationItem = ({ item }: { item: Notification }) => {
       return <ReminderNotification item={item} />;
     case 'streak':
       return <StreakNotification item={item} />;
+    case 'recap_ready':
+      return <ReminderNotification item={item} />;
     default:
       return null;
   }
@@ -99,15 +50,77 @@ const renderNotificationItem = ({ item }: { item: Notification }) => {
 
 const NotificationScreen = () => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const db = getFirestore();
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(notificationsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notificationsData: NotificationItem[] = [];
+      console.log('📱 Notifications loaded:', snapshot.size, 'notifications');
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        console.log('🔔 Notification:', {
+          id: doc.id,
+          type: data.type,
+          title: data.title,
+          body: data.body,
+          date: data.date
+        });
+        notificationsData.push({
+          id: doc.id,
+          type: data.type || 'comment',
+          users: data.users || [],
+          recap: data.recap,
+          comment: data.comment,
+          body: data.body,
+          title: data.title,
+          date: data.date || new Date(data.createdAt?.toDate()).toLocaleDateString(),
+          isRead: data.isRead || false,
+          createdAt: data.createdAt,
+        });
+      });
+      console.log('📋 Processed notifications:', notificationsData);
+      setNotifications(notificationsData);
+      setLoading(false);
+    }, (error) => {
+      console.error('❌ Error fetching notifications:', error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScreenHeader title="Notifications" showBackButton={true} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScreenHeader title="Notifications" showBackButton={true} />
       <FlatList
-        data={notificationsData}
+        data={notifications}
         renderItem={renderNotificationItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No notifications yet</Text>
+          </View>
+        }
       />
     </View>
   );
@@ -120,6 +133,22 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingVertical: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.mediumGrey,
+    fontFamily: 'Poppins-Regular',
   },
   notificationTextContainer: {
     flex: 1,

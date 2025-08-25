@@ -51,7 +51,7 @@ For Google Sign-In to work securely on Android, Firebase needs to know your app'
     *   Copy the **SHA1** value (the long string of hexadecimal numbers).
 
 4.  **Add the SHA-1 Key to Firebase:**
-    *   Go to your Firebase Project Settings: [https://console.firebase.google.com/project/sproutbook-8ea5c/settings/general/android:com.anonymous.SproutBook](https://console.firebase.google.com/project/sproutbook-8ea5c/settings/general/android:com.anonymous.SproutBook)
+    *   Go to your Firebase Project Settings: [https://console.firebase.google.com/project/sproutbook-8ea5c/settings/general/android:com.palex.sproutbook](https://console.firebase.google.com/project/sproutbook-8ea5c/settings/general/android:com.palex.sproutbook)
     *   Scroll down to the "Your apps" card and find your Android app.
     *   Click on **Add fingerprint**.
     *   Paste the **SHA-1** key you copied into the "SHA certificate fingerprint" field.

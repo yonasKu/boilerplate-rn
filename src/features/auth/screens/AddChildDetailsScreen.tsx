@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, Platform, Alert, ActivityIndicator, StatusBar, Linking } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
 import { addChild } from '../../../services/childService';
-import { uploadChildProfileImage } from '../../../services/userService';
+import { uploadChildProfileImage, getUserProfile } from '../../../services/userService';
 import * as ImagePicker from 'expo-image-picker';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../lib/firebase/firebaseConfig';
@@ -19,14 +19,26 @@ const AddChildDetailsScreen = () => {
     const [dueDate, setDueDate] = useState('');
     const [gender, setGender] = useState('');
     const [childImage, setChildImage] = useState<string | null>(null);
+    const [lifestage, setLifestage] = useState<string>('Soon to be parent');
     const [isPickerOpen, setIsPickerOpen] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-    const params = useLocalSearchParams();
-    const lifestage = params.lifestage as string || 'Soon to be parent';
+    // Fetch user's actual life stage from Firebase
+    useEffect(() => {
+        const fetchUserLifeStage = async () => {
+            if (user?.uid) {
+                const userProfile = await getUserProfile(user.uid);
+                if (userProfile?.lifestage) {
+                    setLifestage(userProfile.lifestage);
+                }
+            }
+        };
+        fetchUserLifeStage();
+    }, [user]);
+
     const genderOptions = lifestage === 'Soon to be parent'
         ? ['Boy', 'Girl', "Don't know yet"]
         : ['Boy', 'Girl', "Prefer not to say"];
@@ -37,12 +49,18 @@ const AddChildDetailsScreen = () => {
     };
 
     const onDateChange = (event: any, selectedDate?: Date) => {
-        // Always hide picker on Android, keep open on iOS until user confirms
+        // For Android, the picker is modal and closes on its own.
+        // For iOS, we need to manually hide it.
         if (Platform.OS === 'android') {
             setShowDatePicker(false);
         }
 
         if (selectedDate) {
+            // A date was selected. Update state and close the picker on iOS.
+            if (Platform.OS === 'ios') {
+                setShowDatePicker(false);
+            }
+
             try {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0); // Reset time to start of day
@@ -67,10 +85,8 @@ const AddChildDetailsScreen = () => {
                 console.error('Error handling date change:', error);
                 Alert.alert('Error', 'Failed to process date selection. Please try again.');
             }
-        }
-
-        // On iOS, only hide if user cancelled
-        if (Platform.OS === 'ios' && event && event.type === 'dismissed') {
+        } else if (event.type === 'dismissed') {
+            // This handles cancellation on iOS
             setShowDatePicker(false);
         }
     };
@@ -90,14 +106,15 @@ const AddChildDetailsScreen = () => {
         try {
             let profileImageUrl: string | undefined = undefined;
 
-            // Map UI gender values to Firestore rule values
-            let firestoreGender: 'Boy' | 'Girl' | "Don't know yet" | "Prefer not to say";
+            // Map UI label to canonical stored value
+            // Stored set: 'Boy' | 'Girl' | "Don't know yet" | 'prefer_not_to_say'
+            let firestoreGender: 'Boy' | 'Girl' | "Don't know yet" | 'prefer_not_to_say';
             if (gender === 'Boy') {
                 firestoreGender = 'Boy';
             } else if (gender === 'Girl') {
                 firestoreGender = 'Girl';
-            } else if (gender === "Prefer not to say") {
-                firestoreGender = "Prefer not to say";
+            } else if (gender === 'Prefer not to say') {
+                firestoreGender = 'prefer_not_to_say';
             } else {
                 firestoreGender = "Don't know yet";
             }
@@ -106,7 +123,7 @@ const AddChildDetailsScreen = () => {
             const childId = await addChild({
                 name: childName,
                 dateOfBirth: date,
-                gender: firestoreGender as any, // Cast to match ChildInput interface
+                gender: firestoreGender as any, // Matches ChildInput union in childService
             }, user.uid);
 
             // Upload child image after child document is created
@@ -225,7 +242,7 @@ const AddChildDetailsScreen = () => {
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder="child's name*"
+                        placeholder="Child's name*"
                         placeholderTextColor={Colors.mediumGrey}
                         value={childName}
                         onChangeText={setChildName}
@@ -265,7 +282,7 @@ const AddChildDetailsScreen = () => {
                 <View style={styles.pickerWrapper}>
                     <TouchableOpacity style={styles.inputContainer} onPress={() => setIsPickerOpen(!isPickerOpen)}>
                         <Text style={[styles.pickerText, { color: gender ? Colors.black : Colors.mediumGrey }]}>
-                            {gender || `gender*`}
+                            {gender || `Baby Gender`}
                         </Text>
                         <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.arrowIcon} />
                     </TouchableOpacity>
@@ -306,16 +323,16 @@ const AddChildDetailsScreen = () => {
                         </View>
                         <Text style={styles.modalTitle}>Child profile added</Text>
 
-                        <TouchableOpacity 
-                            style={[styles.modalButton, styles.primaryButton]} 
+                        <TouchableOpacity
+                            style={[styles.modalButton, styles.primaryButton]}
                             onPress={handleStartJournaling}
                             accessibilityLabel="Start journaling"
                         >
                             <Text style={styles.primaryButtonText}>Start Journaling</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
-                            style={[styles.modalButton, styles.secondaryButton]} 
+                        <TouchableOpacity
+                            style={[styles.modalButton, styles.secondaryButton]}
                             onPress={handleAddAnotherChild}
                             accessibilityLabel="Add another child"
                         >
@@ -357,7 +374,7 @@ const styles = StyleSheet.create({
     },
     editIconContainer: {
         position: 'absolute',
-        bottom: 15,
+        bottom: -4,
         right: '32%',
     },
     editIcon: {
@@ -379,21 +396,23 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.white,
         borderWidth: 1,
         borderColor: Colors.lightGrey,
-        borderRadius: 16,
+        borderRadius: 25,
+        height: 55,
         paddingHorizontal: 16,
-        paddingVertical: 4,
         marginBottom: 16,
     },
     input: {
         flex: 1,
         fontSize: 16,
-        color: Colors.black,
-        paddingVertical: 10
+        color: Colors.blacktext,
+        height: 50,
+        paddingVertical: 6
     },
     dateText: {
         flex: 1,
         fontSize: 16,
-        color: Colors.black,
+        color: Colors.blacktext,
+        fontFamily: 'Poppins-Regular',
     },
     pickerWrapper: {
         marginBottom: 20,
@@ -403,9 +422,10 @@ const styles = StyleSheet.create({
     pickerText: {
         flex: 1,
         fontSize: 16,
-        color: Colors.black,
-        padding: 10,
+        color: Colors.blacktext,
         width: '100%',
+        fontFamily: 'Poppins-Regular',
+        paddingVertical: 6
     },
     arrowIcon: {
         width: 20,
@@ -435,7 +455,7 @@ const styles = StyleSheet.create({
     },
     optionText: {
         fontSize: 16,
-        fontFamily: 'Poppins',
+        fontFamily: 'Poppins-Regular',
         color: Colors.darkGrey,
     },
     selectedOptionButton: {
@@ -446,11 +466,12 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontWeight: '600',
         padding: 12,
+        fontFamily: 'Poppins-SemiBold',
     },
     calendarIcon: {
-        width: 24,
-        height: 24,
-        tintColor: Colors.mediumGrey,
+        width: 22,
+        height: 22,
+        tintColor: Colors.grey,
     },
     footer: {
         flex: 1,
@@ -472,6 +493,7 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 18,
         fontWeight: 'bold',
+        fontFamily: 'Poppins-Regular',
     },
     continueButton: {
         marginBottom: 20,
@@ -482,6 +504,7 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontWeight: '500',
         marginTop: 8,
+        fontFamily: 'Poppins-Regular',
     },
     uploadingContainer: {
         justifyContent: 'center',
@@ -495,6 +518,7 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         backgroundColor: 'rgba(0,0,0,0.5)',
+        elevation: 5,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -512,6 +536,8 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
         elevation: 5,
+        width: '80%',
+        maxWidth: 320,
     },
     successBadge: {
         width: 56,
@@ -534,6 +560,7 @@ const styles = StyleSheet.create({
         marginTop: 16,
         marginBottom: 24,
         textAlign: 'center',
+        fontFamily: 'Poppins-Regular',
     },
     modalButton: {
         width: '100%',
@@ -554,11 +581,13 @@ const styles = StyleSheet.create({
         color: Colors.white,
         fontSize: 16,
         fontWeight: '600',
+        fontFamily: 'Poppins-Regular',
     },
     secondaryButtonText: {
         color: Colors.black,
         fontSize: 16,
         fontWeight: '600',
+        fontFamily: 'Poppins-Regular',
     },
 });
 

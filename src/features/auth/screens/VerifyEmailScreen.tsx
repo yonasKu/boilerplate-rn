@@ -17,10 +17,12 @@ import { sendEmailVerification } from 'firebase/auth';
 import { auth } from '@/lib/firebase/firebaseConfig';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../../theme/colors';
+import { useAccount } from '@/context/AccountContext';
 
 export default function VerifyEmailScreen() {
     const router = useRouter();
     const { email } = useLocalSearchParams();
+    const { accountType } = useAccount();
     const [isSending, setIsSending] = useState(false);
     const [isChecking, setIsChecking] = useState(false);
     const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
@@ -47,7 +49,12 @@ export default function VerifyEmailScreen() {
             await user.reload();
 
             if (user.emailVerified) {
-                router.replace('/(auth)/pricing');
+                // Harden: route view-only accounts straight to main app (skip pricing)
+                if (accountType === 'view-only') {
+                    router.replace('/(main)/(tabs)/journal');
+                } else {
+                    router.replace('/(auth)/pricing');
+                }
             } else {
                 setVerificationStatus('Please check your email and verify before continuing.');
             }

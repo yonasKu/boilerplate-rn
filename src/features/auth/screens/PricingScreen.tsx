@@ -118,14 +118,14 @@ const PricingScreen = () => {
           </TouchableOpacity>
         </View>
 
-
+        <View style={styles.footer}>
+          <Text style={styles.footerInfoText}>Get 10 days free before being charged</Text>
+          <Text style={styles.promoText}>
+            Have a promo code? <Text style={styles.redeemText}>Redeem code</Text>
+          </Text>
+        </View>
       </ScrollView>
-      <View style={styles.footer}>
-        <Text style={styles.footerInfoText}>Get 10 days free before being charged</Text>
-        <Text style={styles.promoText}>
-          Have a promo code? <Text style={styles.redeemText}>Redeem code</Text>
-        </Text>
-      </View>
+
     </SafeAreaView>
   );
 };
@@ -159,20 +159,19 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '600',
     color: Colors.darkGrey,
-    //textAlign: 'center',
     marginBottom: 26,
-
+    fontFamily: 'Poppins_600SemiBold',
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.mediumGrey,
+    color: Colors.darkGrey,
     marginBottom: 16,
-    fontFamily: 'Poppins',
+    textAlign: 'center',
+    fontFamily: 'Poppins-400Regular',
   },
   featuresContainer: {
-    paddingLeft: 12,  
+    paddingLeft: 12,
     alignSelf: 'flex-start',
     marginBottom: 14,
     //marginLeft: 24
@@ -186,8 +185,8 @@ const styles = StyleSheet.create({
   featureText: {
     fontSize: 14,
     color: Colors.darkGrey,
-    marginLeft: 12,
-    fontFamily: 'Poppins',
+    marginLeft: 8,
+    fontFamily: 'Poppins_400Regular',
   },
   testimonialCard: {
     backgroundColor: "#F9F6F4",
@@ -214,7 +213,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.darkGrey,
     marginRight: 8,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_400Regular',
   },
   authorImage: {
     width: 32,
@@ -231,7 +230,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     color: Colors.darkGrey,
     lineHeight: 22,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_400Regular',
   },
   pricingInfoContainer: {
     alignItems: 'center',
@@ -241,21 +240,19 @@ const styles = StyleSheet.create({
   },
   priceText: {
     fontSize: 14,
-    fontWeight: '500',
     color: Colors.darkGrey,
-    fontFamily: 'Poppins-semibold',
+    fontFamily: 'Poppins_500Medium',
   },
   billingText: {
     fontSize: 14,
     color: Colors.mediumGrey,
     marginTop: 4,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_400Regular',
   },
   seePlansText: {
     fontSize: 15,
     marginBottom: 24,
-    fontFamily: 'Poppins',
-    fontWeight: '500',
+    fontFamily: 'Poppins_500Medium',
     textDecorationLine: 'underline',
   },
   paymentButton: {
@@ -275,8 +272,7 @@ const styles = StyleSheet.create({
   paymentButtonText: {
     color: Colors.white,
     fontSize: 18,
-    fontWeight: '500',
-    fontFamily: 'Poppins-semibold',
+    fontFamily: 'Poppins_500Medium',
     marginHorizontal: -8,
   },
   paymentLogo: {
@@ -287,30 +283,29 @@ const styles = StyleSheet.create({
   moreWaysText: {
     fontSize: 15,
     color: Colors.darkGrey,
-    marginBottom: 24,
-    fontFamily: 'Poppins',
+    marginBottom: 12,
+    fontFamily: 'Poppins_400Regular',
   },
   footer: {
     alignItems: 'center',
     marginBottom: 25,
-    paddingTop: 24,
     width: '100%',
   },
   footerInfoText: {
     fontSize: 14,
     color: Colors.secondary,
     marginBottom: 8,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_400Regular',
   },
   promoText: {
     fontSize: 14,
     color: Colors.mediumGrey,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_400Regular',
   },
   redeemText: {
     color: Colors.darkGrey,
     textDecorationLine: 'underline',
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_400Regular',
   },
   planSelectorContainer: {
     width: '95%',
@@ -353,14 +348,13 @@ const styles = StyleSheet.create({
   },
   planPrice: {
     fontSize: 14,
-    fontWeight: '500',
     color: Colors.darkGrey,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_500Medium',
   },
   planBilling: {
     fontSize: 12,
     color: Colors.mediumGrey,
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_400Regular',
     marginTop: 4,
   },
   popularBadge: {
@@ -376,8 +370,7 @@ const styles = StyleSheet.create({
   popularBadgeText: {
     color: Colors.white,
     fontSize: 12,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_700Bold',
   },
   savedBadge: {
     backgroundColor: Colors.secondary,
@@ -388,8 +381,7 @@ const styles = StyleSheet.create({
   savedBadgeText: {
     color: Colors.white,
     fontSize: 12,
-    fontWeight: 'bold',
-    fontFamily: 'Poppins',
+    fontFamily: 'Poppins_700Bold',
   }
 });
 

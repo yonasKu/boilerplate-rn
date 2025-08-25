@@ -1,10 +1,13 @@
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Image, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useJournal } from '@/hooks/useJournal';
+import { Colors } from '@/theme';
+import { useActiveTimeline } from '@/context/ActiveTimelineContext';
+import { useAccount } from '@/context/AccountContext';
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { bottom } = useSafeAreaInsets();
@@ -12,17 +15,25 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
   const glowAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const { entries } = useJournal();
+  const { canCreateEntries, isViewingOthers } = useActiveTimeline();
+  const { accountType } = useAccount();
 
-  const getIcon = (routeName: string): keyof typeof Feather.glyphMap => {
+  const getIcon = (routeName: string, isActive: boolean) => {
     switch (routeName) {
       case 'journal':
-        return 'home';
+        return isActive
+          ? require('@/assets/images/journal_icon_active.png')
+          : require('@/assets/images/journal_icon.png');
       case 'recaps':
-        return 'book-open';
+        return isActive
+          ? require('@/assets/images/recaps_icon_active.png')
+          : require('@/assets/images/recaps_icon.png');
       case 'search':
-        return 'search';
+        return isActive
+          ? require('@/assets/images/search_icon_active.png')
+          : require('@/assets/images/search_icon.png');
       default:
-        return 'home';
+        return require('@/assets/images/journal_icon.png');
     }
   };
 
@@ -30,33 +41,33 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
 
 
 
-  // Animation for new entry hint - glowing orb effect
+  // Animation for new entry hint - enhanced glowing orb effect
   useEffect(() => {
-    // Show glow if no entries exist
+    // Show enhanced glow if no entries exist
     const shouldShowGlow = entries.length === 0;
 
     if (shouldShowGlow) {
-      // Create glowing orb animation
+      // Balanced animation - noticeable but not overwhelming
       Animated.loop(
         Animated.sequence([
           Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 2000,
+            toValue: 0.8,
+            duration: 2500,
             useNativeDriver: true,
           }),
           Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 2000,
+            toValue: 0.2,
+            duration: 2500,
             useNativeDriver: true,
           }),
         ])
       ).start();
 
-      // Subtle scale pulse
+      // Gentle scale pulse
       Animated.loop(
         Animated.sequence([
           Animated.timing(scaleAnim, {
-            toValue: 1.1,
+            toValue: 1.15,
             duration: 2000,
             useNativeDriver: true,
           }),
@@ -68,9 +79,20 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
         ])
       ).start();
     }
+    return () => {};
   }, [entries.length]);
 
   const handleNewEntryPress = () => {
+    if (!canCreateEntries) {
+      if ((accountType ?? 'full') === 'view-only') {
+        Alert.alert('View-only access', 'Upgrade your account to create journal entries.');
+      } else if (isViewingOthers) {
+        Alert.alert('Switch timeline', 'Switch to your own timeline to create journal entries.');
+      } else {
+        Alert.alert('Unavailable', 'You cannot create entries right now.');
+      }
+      return;
+    }
     router.push('/new-entry');
   };
 
@@ -84,6 +106,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
             const isFocused = state.index === index;
 
             const onPress = () => {
+              if (route.name === 'search') {
+                router.push('/search-tray');
+                return;
+              }
+
               const event = navigation.emit({
                 type: 'tabPress',
                 target: route.key,
@@ -101,8 +128,22 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
                 onPress={onPress}
                 style={styles.tabButton}
               >
-                <Feather name={getIcon(route.name)} size={20} color={isFocused ? '#5D9275' : '#888'} />
-                <Text style={[styles.label, { color: isFocused ? '#5D9275' : '#888' }]}>
+                <Image
+                  source={getIcon(route.name, isFocused)}
+                  style={
+                    route.name === 'journal'
+                      ? (isFocused ? styles.journalIconActive : styles.journalIcon)
+                      : route.name === 'recaps'
+                        ? (isFocused ? styles.recapsIconActive : styles.recapsIcon)
+                        : (isFocused ? styles.searchIconActive : styles.searchIcon)
+                  }
+                  resizeMode="contain"
+                />
+                <Text style={[
+                  styles.label,
+                  { color: isFocused ? Colors.primary : Colors.mediumGrey },
+                  route.name === 'recaps' && styles.recapLabel
+                ]}>
                   {label}
                 </Text>
               </TouchableOpacity>
@@ -110,46 +151,48 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
           })}
         </View>
 
-        <View style={styles.newButtonContainer}>
-          {entries.length === 0 && (
+        {canCreateEntries && (
+          <View style={styles.newButtonContainer}>
+            {entries.length === 0 && (
+              <Animated.View
+                style={[
+                  styles.glowOrb,
+                  {
+                    opacity: glowAnim,
+                    transform: [
+                      {
+                        scale: scaleAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1.1, 1.3]
+                        })
+                      }
+                    ]
+                  }
+                ]}
+              />
+            )}
             <Animated.View
               style={[
-                styles.glowOrb,
-                {
-                  opacity: glowAnim,
+                styles.newButton,
+                entries.length === 0 && {
                   transform: [
                     {
-                      scale: scaleAnim.interpolate({
-                        inputRange: [0.8, 1],
-                        outputRange: [1.2, 1.5]
-                      })
+                      scale: scaleAnim
                     }
                   ]
                 }
               ]}
-            />
-          )}
-          <Animated.View
-            style={[
-              styles.newButton,
-              entries.length === 0 && {
-                transform: [
-                  {
-                    scale: scaleAnim
-                  }
-                ]
-              }
-            ]}
-          >
-            <TouchableOpacity
-              onPress={handleNewEntryPress}
-              style={styles.newButton}
             >
-              <Feather name="edit" size={20} color="#fff" />
-              <Text style={styles.newButtonText}>New</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+              <TouchableOpacity
+                onPress={handleNewEntryPress}
+                style={styles.newButton}
+              >
+                <Feather name="edit" size={20} color="#fff" />
+                <Text style={styles.newButtonText}>New</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -170,13 +213,13 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.white,
     borderRadius: 30,
     paddingVertical: 10,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'space-around',
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
@@ -186,8 +229,39 @@ const styles = StyleSheet.create({
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
-    gap: 5,
+    paddingHorizontal: 12,
+    gap: 4,
+  },
+  journalIcon: {
+    width: 22,
+    height: 22,
+    opacity: 0.7,
+  },
+  journalIconActive: {
+    width: 22,
+    height: 22,
+    opacity: 1,
+  },
+  recapsIcon: {
+    width: 38,
+    height: 30,
+    opacity: 0.7,
+    marginBottom: -1
+  },
+  recapsIconActive: {
+    width: 30,
+    height: 30,
+    opacity: 1,
+  },
+  searchIcon: {
+    width: 22,
+    height: 22,
+    opacity: 0.7,
+  },
+  searchIconActive: {
+    width: 22,
+    height: 22,
+    opacity: 1,
   },
   iconContainer: {
     width: 40,
@@ -198,7 +272,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   activeIconContainer: {
-    backgroundColor: '#5D9275',
+    backgroundColor: Colors.primary,
   },
   newButtonContainer: {
     alignItems: 'center',
@@ -208,10 +282,10 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#5D9275',
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
@@ -219,7 +293,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   newButtonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
@@ -241,13 +315,24 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textTransform: 'capitalize',
   },
+  recapLabel: {
+    fontSize: 12,
+    marginTop: 0,
+    textTransform: 'capitalize',
+  },
   glowOrb: {
     position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#5D9275',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.primary,
     opacity: 0.3,
+    shadowColor: Colors.primary,
+
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 5,
     zIndex: -1,
   },
 });

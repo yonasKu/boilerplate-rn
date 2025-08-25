@@ -4,11 +4,31 @@
 
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 export class NotificationService {
+  // Ensure a default handler so foreground notifications are shown
+  static configured = (() => {
+    try {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+          // iOS specific (Expo SDK 50+)
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+    } catch (e) {
+      console.warn('Failed to set notification handler:', e);
+    }
+    return true;
+  })();
+
   /**
    * Request notification permissions from user
    * @returns Promise<boolean> - true if granted, false if denied
@@ -35,7 +55,30 @@ export class NotificationService {
         return null;
       }
 
-      const token = await Notifications.getExpoPushTokenAsync();
+      // Android: ensure a default channel exists
+      if (Platform.OS === 'android') {
+        try {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'Default',
+            importance: Notifications.AndroidImportance.MAX,
+            sound: 'default',
+            vibrationPattern: [0, 250, 250, 250],
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          });
+        } catch (e) {
+          console.warn('Failed to create Android notification channel:', e);
+        }
+      }
+
+      // Determine EAS projectId for Expo push tokens
+      const easProjectId =
+        (Constants as any)?.expoConfig?.extra?.eas?.projectId ||
+        (Constants as any)?.easConfig?.projectId ||
+        process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+
+      const token = easProjectId
+        ? await Notifications.getExpoPushTokenAsync({ projectId: easProjectId })
+        : await Notifications.getExpoPushTokenAsync();
       return token.data;
     } catch (error) {
       console.error('Push token error:', error);
@@ -53,39 +96,72 @@ export class NotificationService {
       const { getFirestore } = await import('firebase/firestore');
       const { doc, setDoc } = await import('firebase/firestore');
       
-      await setDoc(doc(getFirestore(), 'users', userId), {
-        pushToken: token,
+      console.log('Saving device token:', { userId, token, platform: Platform.OS });
+      
+      await setDoc(doc(getFirestore(), 'users', userId, 'devices', token), {
+        token: token,
+        platform: Platform.OS,
+        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      });
+      
+      console.log('Device token saved successfully to devices collection');
     } catch (error) {
       console.error('Error saving token to Firestore:', error);
     }
   }
 
   /**
-   * Schedule daily reminder notification
-   * @param hour - Hour (0-23)
-   * @param minute - Minute (0-59)
+   * Register device token using cloud function
+   * @param userId - Firebase user ID
+   * @param token - Push notification token
+   * @returns Promise<void>
    */
-  static async scheduleDailyReminder(hour: number, minute: number): Promise<void> {
+  static async registerDeviceToken(userId: string, token: string): Promise<void> {
     try {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Daily Journal Reminder',
-          body: 'Time to capture today\'s memories!',
-          data: { screen: '/journal' },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.HIGH
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour,
-          minute,
-          repeats: true
-        } as Notifications.NotificationTriggerInput
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const functions = getFunctions();
+      
+      console.log('Registering device token via cloud function:', { userId, token, platform: Platform.OS });
+      
+      const registerToken = httpsCallable(functions, 'registerDeviceToken');
+      await registerToken({
+        token,
+        platform: Platform.OS,
       });
+      
+      console.log('Device token registered successfully via cloud function');
     } catch (error) {
-      console.error('Schedule reminder error:', error);
+      console.error('Error registering device token via cloud function:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Backend handles all reminder scheduling via Firebase Functions
+   * Client only manages preferences and tokens
+   */
+
+  /**
+   * Remove device token using cloud function on logout
+   * @param userId - Firebase user ID
+   * @param token - Push notification token to remove
+   * @returns Promise<void>
+   */
+  static async removeDeviceToken(userId: string, token: string): Promise<void> {
+    try {
+      const { getFunctions, httpsCallable } = await import('firebase/functions');
+      const functions = getFunctions();
+      
+      console.log('Removing device token via cloud function:', { userId, token });
+      
+      const removeToken = httpsCallable(functions, 'removeDeviceToken');
+      await removeToken({ token });
+      
+      console.log('Device token removed successfully via cloud function');
+    } catch (error) {
+      console.error('Error removing device token via cloud function:', error);
+      // Don't throw - this is cleanup and shouldn't break logout
     }
   }
 
@@ -101,7 +177,19 @@ export class NotificationService {
       const docRef = doc(getFirestore(), 'users', userId, 'notifications', 'preferences');
       const docSnap = await getDoc(docRef);
       
-      return docSnap.exists() ? docSnap.data() : null;
+      if (docSnap.exists()) {
+        return docSnap.data();
+      }
+      
+      // Return default preferences if none exist
+      return {
+        pushNotifications: { enabled: false },
+        dailyEntries: { enabled: true, push: true, email: false },
+        comments: { enabled: false, push: true, email: false },
+        likes: { enabled: true, push: true, email: false },
+        weeklyRecaps: { enabled: true, push: true, email: true },
+        monthlyRecaps: { enabled: true, push: true, email: true },
+      };
     } catch (error) {
       console.error('Get preferences error:', error);
       return null;
@@ -126,6 +214,31 @@ export class NotificationService {
       console.error('Update preferences error:', error);
     }
   }
+
+  /**
+   * Update specific notification preference
+   * @param userId - Firebase user ID
+   * @param key - Preference key (dailyEntries, comments, likes, etc.)
+   * @param enabled - Whether the preference is enabled
+   */
+  static async updatePreference(userId: string, key: string, enabled: boolean): Promise<void> {
+    try {
+      const { getFirestore } = await import('firebase/firestore');
+      const { doc, setDoc } = await import('firebase/firestore');
+      
+      await setDoc(doc(getFirestore(), 'users', userId, 'notifications', 'preferences'), {
+        [key]: { enabled, push: true, email: false },
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (error) {
+      console.error('Update preference error:', error);
+    }
+  }
+
+  /**
+   * Backend handles all reminder scheduling via Firebase Functions
+   * Client only manages preferences and tokens
+   */
 
   /**
    * Remove push token from Firestore

@@ -26,12 +26,14 @@ export default function LoginScreen() {
         biometricAvailable,
         biometricEnabled,
         biometricType,
+        appleSignInAvailable,
 
         // Functions
         handleLogin,
         handleForgotPassword,
         handleSendResetEmail,
         handleGoogleSignIn,
+        handleAppleSignIn,
         handleBiometricLogin,
         checkBiometricAvailability,
         toggleBiometricSwitch
@@ -63,7 +65,7 @@ export default function LoginScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Email address *"
-                            placeholderTextColor={Colors.black}
+                            placeholderTextColor={Colors.mediumGrey}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -76,7 +78,7 @@ export default function LoginScreen() {
                         <TextInput
                             style={styles.input}
                             placeholder="Password *"
-                            placeholderTextColor={Colors.black}
+                            placeholderTextColor={Colors.mediumGrey}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry={!isPasswordVisible}
@@ -136,15 +138,23 @@ export default function LoginScreen() {
                             <Image source={require('../../../assets/images/google_logo.png')} style={styles.socialIcon} />
                             <Text style={styles.socialButtonText}>Continue with Google</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.socialButton}>
+                        {/* {appleSignInAvailable && ( */}
+                        <TouchableOpacity style={styles.socialButton} onPress={handleAppleSignIn}>
                             <Image source={require('../../../assets/images/apple_logo.png')} style={styles.socialIcon} />
                             <Text style={styles.socialButtonText}>Continue with Apple</Text>
                         </TouchableOpacity>
+                        {/* )} */}
                     </View>
 
                     <TouchableOpacity onPress={() => router.push('/signup')}>
                         <Text style={styles.signInText}>
                             Don't have an account? <Text style={styles.linkText}>Sign Up</Text>
+                        </Text>
+                    </TouchableOpacity>
+
+                                        <TouchableOpacity onPress={() => router.push('/enter-invite' as any)}>
+                        <Text style={styles.signInText}>
+                            Have an invite code? <Text style={styles.linkText}>Enter Code</Text>
                         </Text>
                     </TouchableOpacity>
                 </ScrollView>
@@ -199,7 +209,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: Colors.white,
     },
     scrollContainer: {
         flexGrow: 1,
@@ -250,6 +260,7 @@ const styles = StyleSheet.create({
     },
     asterisk: {
         color: '#E58C8A',
+        fontFamily: 'Poppins_400Regular',
     },
     inputContainer: {
         flexDirection: 'row',
@@ -271,8 +282,9 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: 16,
-        color: Colors.black,
-        paddingVertical: 18,
+        color: Colors.blacktext,
+        height: 50,
+        fontFamily: 'Poppins_400Regular',
     },
     row: {
         flexDirection: 'row',
@@ -289,7 +301,7 @@ const styles = StyleSheet.create({
         height: 18,
         borderRadius: 4,
         borderWidth: 2,
-        borderColor: '#5D9275',
+        borderColor: Colors.primary,
         marginRight: 10,
     },
     checkedCheckbox: {
@@ -298,11 +310,13 @@ const styles = StyleSheet.create({
     checkboxLabel: {
         color: Colors.primary,
         fontWeight: '500',
+        fontFamily: 'Poppins_400Regular',
     },
     forgotPassword: {
-        color: Colors.lightGrey,
-        fontWeight: 'bold',
+        color: Colors.grey,
+        textAlign: 'right',
         fontSize: 16,
+        fontFamily: 'Poppins_400Regular',
     },
     loginRow: {
         flexDirection: 'row',
@@ -343,6 +357,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 15,
         color: Colors.mediumGrey,
         fontSize: 14,
+        fontFamily: 'Poppins_400Regular',
     },
     socialContainer: {
         flexDirection: 'column',
@@ -366,15 +381,10 @@ const styles = StyleSheet.create({
         marginRight: 10,
         resizeMode: 'contain',
     },
-    socialIcona: {
-        width: 20,
-        height: 24,
-        marginRight: 10,
-        resizeMode: 'contain',
-    },
     socialButtonText: {
         fontSize: 16,
-        color: Colors.black,
+        color: Colors.blacktext,
+        fontFamily: 'Poppins_400Regular',
     },
     footerTextContainer: {
         alignItems: 'center',
@@ -384,15 +394,18 @@ const styles = StyleSheet.create({
         color: Colors.mediumGrey,
         fontSize: 12,
         lineHeight: 18,
+        fontFamily: 'Poppins_400Regular',
     },
     signInText: {
         marginTop: 10,
         textAlign: 'center',
-        color: Colors.darkGrey,
+        color: Colors.grey,
         fontSize: 14,
+        fontFamily: 'Poppins_400Regular',
     },
     linkText: {
-        color: Colors.primary,
+        color: Colors.grey,
+        fontFamily: 'Poppins_400Regular',
     },
     faceIdToggleContainer: {
         flexDirection: 'row',
@@ -404,6 +417,7 @@ const styles = StyleSheet.create({
     faceIdToggleLabel: {
         fontSize: 16,
         color: Colors.darkGrey,
+        fontFamily: 'Poppins_400Regular',
     },
     modalOverlay: {
         position: 'absolute',
@@ -433,18 +447,19 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 24,
+        fontFamily: 'Poppins_600SemiBold',
         color: Colors.darkGrey,
         marginBottom: 8,
         textAlign: 'center',
     },
     modalDescription: {
-        fontSize: 14,
+        fontSize: 16,
+        fontFamily: 'Poppins_400Regular',
         color: Colors.mediumGrey,
-        marginBottom: 16,
+        marginBottom: 24,
         textAlign: 'center',
-        lineHeight: 20,
+        lineHeight: 22,
     },
     modalInput: {
         borderWidth: 1,
@@ -454,6 +469,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginBottom: 20,
         color: Colors.black,
+        fontFamily: 'Poppins_400Regular',
     },
     modalButtons: {
         flexDirection: 'row',
@@ -470,18 +486,33 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.lightGrey,
         borderWidth: 1,
         borderColor: Colors.lightGrey,
+        borderRadius: 50,
     },
     cancelButtonText: {
         color: Colors.darkGrey,
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: 'Poppins_400Regular',
     },
     sendButton: {
         backgroundColor: Colors.primary,
+        borderWidth: 1,
+        borderColor: 'transparent',
+        borderRadius: 50,
     },
     sendButtonText: {
         color: Colors.white,
         fontSize: 16,
-        fontWeight: '600',
+        fontFamily: 'Poppins_400Regular',
+    },
+    googleButtonText: {
+        color: Colors.darkGrey,
+        fontSize: 16,
+        fontFamily: 'Poppins_600SemiBold',
+        marginLeft: 10,
+    },
+    buttonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontFamily: 'Poppins_600SemiBold',
     },
 });

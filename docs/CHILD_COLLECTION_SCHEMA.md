@@ -30,7 +30,7 @@ collection: children
 ├── parentId (string) - Reference to users.uid (foreign key)
 ├── name (string) - Child's name
 ├── dateOfBirth (timestamp) - Child's date of birth
-├── gender (string) - "male", "female", "prefer_not_to_say"
+├── gender (string) - "Boy", "Girl", "Don't know yet", "prefer_not_to_say"
 ├── avatar (string) - URL to child's avatar image (optional)
 ├── createdAt (timestamp) - Record creation date
 └── updatedAt (timestamp) - Last update timestamp
@@ -88,7 +88,7 @@ export interface Child {
   parentId: string;
   name: string;
   dateOfBirth: Date;
-  gender: 'male' | 'female' | 'prefer_not_to_say';
+  gender: 'Boy' | 'Girl' | "Don't know yet" | 'prefer_not_to_say';
   avatar?: string;
   createdAt: Date;
   updatedAt: Date;

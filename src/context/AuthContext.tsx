@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { auth } from '../lib/firebase/firebaseConfig';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { checkOnboardingStatus, OnboardingStatus } from '../services/userService';
+import { NotificationService } from '@/services/notifications/NotificationService';
 
 // Define the shape of the context data
 interface AuthContextType {
@@ -76,9 +77,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => unsubscribe();
   }, []);
 
-    const handleSignOut = async () => {
+      const handleSignOut = async () => {
+    if (user) {
+      try {
+        // Get current push token and remove via cloud function
+        const token = await NotificationService.getPushToken();
+        if (token) {
+          await NotificationService.removeDeviceToken(user.uid, token);
+        }
+      } catch (error) {
+        console.error('Error removing push token during sign out:', error);
+      }
+    }
     try {
-      await signOut(auth);
+            await signOut(auth);
     } catch (error) {
       console.error('Error signing out:', error);
     }

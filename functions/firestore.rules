@@ -1,0 +1,288 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===== HELPER FUNCTIONS =====
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isEmailVerified() {
+      return isAuthenticated() && request.auth.token.email_verified == true;
+    }
+    
+    function isFamilyMember(parentUserId) {
+      return isAuthenticated() && 
+        (request.auth.uid == parentUserId || 
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.parentUserId == parentUserId));
+    }
+    
+    function hasSubscriptionAccess(userId) {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/subscriptionStatus/$(userId)).data.status == 'active' ||
+         get(/databases/$(database)/documents/subscriptionStatus/$(userId)).data.status == 'trial');
+    }
+
+    function isBackendFunction() {
+      // Allow server-side access from Firebase Admin SDK where auth is null
+      return request.auth == null;
+    }
+
+    // ===== USERS COLLECTION =====
+    match /users/{userId} {
+      // Allow create if the user is creating their own document and passes validation
+      allow create: if isOwner(userId)
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.email is string
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.email.matches('.*@.*\\..*')
+        && request.resource.data.onboarded == false
+        && request.resource.data.lifestage == null
+        && request.resource.data.subscription is map
+        && request.resource.data.subscription.plan is string
+        && request.resource.data.subscription.status is string
+        && request.resource.data.subscription.startDate is timestamp
+        && request.resource.data.children is list
+        && request.resource.data.children.size() == 0
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.onboarded is bool;
+
+      // Allow reading own data, if a family member, or if it's a backend function.
+      // Backend functions can list all users.
+      allow read, list: if isOwner(userId) || isFamilyMember(userId) || isBackendFunction();
+
+      // Allow owner to update their document. A more specific rule for family sharing updates is also included.
+      allow update: if isOwner(userId) ||
+        (isFamilyMember(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'profile', 'permissions', 'updatedAt', 'subscriptionStatus'
+        ]));
+      
+      // Only the owner can delete their own document
+      allow delete: if isOwner(userId);
+
+      // --- Sub-collection for children (fallback data model) ---
+      match /children/{childId} {
+        // Backend can read and list children in this subcollection.
+        // Owners can also manage their own children here.
+        allow read, list: if isOwner(userId) || isBackendFunction();
+        allow write: if isOwner(userId);
+      }
+
+      // --- Sub-collection for device tokens for push notifications ---
+      match /devices/{deviceToken} {
+        // Only the owner of the user document can manage their own device tokens.
+        allow read, write: if isOwner(userId);
+      }
+
+      // --- Sub-collection for user's notification preferences ---
+      match /notificationPreferences/{prefId} {
+        // Only the owner can manage their notification preferences.
+        allow read, write: if isOwner(userId);
+      }
+      
+      // --- Sub-collection for in-app notifications ---
+      match /notifications/{notificationId} {
+        // Owner can read and update (e.g., mark as read) their notifications.
+        allow read, update: if isOwner(userId);
+        // Notifications should only be created by the backend, not the client.
+        allow create, delete: if false;
+      }
+    }
+
+    // ========== CHILDREN COLLECTION ==========
+    match /children/{childId} {
+      // Users can read children documents they own. Backend can read and list them.
+      allow read, list: if (request.auth != null && request.auth.uid == resource.data.parentId) || isBackendFunction();
+
+      // Users can create children documents for themselves
+      allow create: if request.auth != null 
+        && request.resource.data.parentId == request.auth.uid
+        && request.resource.data.keys().hasAll(['parentId', 'name', 'dateOfBirth', 'gender', 'createdAt', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.dateOfBirth is timestamp
+        && request.resource.data.gender in ['male', 'female', 'other', 'prefer_not_to_say'];
+
+      // Users can update or delete children documents they own
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.parentId;
+    }
+
+    // ===== JOURNAL ENTRIES COLLECTION =====
+    match /journalEntries/{entryId} {
+      // A user can create an entry if they are logged in and the entry's `userId` field matches their own ID.
+      allow create: if isOwner(request.resource.data.userId)
+        && request.resource.data.keys().hasAll(['userId', 'childIds', 'text', 'createdAt', 'updatedAt'])
+        && request.resource.data.childIds is list
+        && request.resource.data.childIds.size() > 0
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.isMilestone is bool
+        && request.resource.data.isFavorited is bool
+        && request.resource.data.media is list;
+      
+      // A user can read an entry if they are a family member, or backend can read them.
+      allow read: if isFamilyMember(resource.data.userId) || isBackendFunction();
+      
+      // A user can update their own entry's content and tags.
+      // Family members can also update likes and favorites.
+      allow update: if (isOwner(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes', 'childIds', 'childAgeAtEntry'])) ||
+                      (isFamilyMember(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited']));
+      
+      // A user can delete their own entry
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ===== RECAPS COLLECTION =====
+    match /recaps/{recapId} {
+      // A user can read an entry if they are a family member, or backend can read them.
+      allow read: if isFamilyMember(resource.data.userId) || isBackendFunction();
+
+      // Owners or the backend can create recaps
+      allow create: if isOwner(request.resource.data.userId) || isBackendFunction()
+        && request.resource.data.keys().hasAll(['userId', 'childId', 'type', 'period', 'status', 'createdAt', 'imageMetadata'])
+        && request.resource.data.type in ['daily', 'weekly', 'monthly', 'yearly']
+        && request.resource.data.status in ['generating', 'completed', 'failed']
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.imageMetadata is map
+        && request.resource.data.imageMetadata.keys().hasAll(['count', 'hasImages', 'imageTypes'])
+        && request.resource.data.imageMetadata.count is number
+        && request.resource.data.imageMetadata.hasImages is bool
+        && request.resource.data.imageMetadata.imageTypes is list;
+
+      // Owners can update content, family members can update interactions.
+      allow update: if (isOwner(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'status', 'isFavorited', 'updatedAt', 'isMilestone'])) ||
+                      (isFamilyMember(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited', 'commentCount']));
+
+      // Owners can delete their recaps
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // ===== RECAP COMMENTS COLLECTION =====
+    match /recapComments/{commentId} {
+      // Any authenticated user can read comake sure the mments.
+      allow read: if isAuthenticated();
+
+      // Users can create comments for a recap if they are authenticated and own the comment.
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && exists(/databases/$(database)/documents/recaps/$(request.resource.data.recapId))
+        && request.resource.data.keys().hasAll(['userId', 'recapId', 'text', 'createdAt', 'userName'])
+        && request.resource.data.text is string && request.resource.data.text.size() > 0;
+
+      // Users can delete their own comments.
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // ===== FAMILY SHARING COLLECTIONS =====
+    
+
+    // Invitations for family sharing
+    match /invitations/{invitationId} {
+      allow create: if isAuthenticated() 
+        && request.resource.data.senderUserId == request.auth.uid
+        && request.resource.data.invitationType in ['family_view', 'upgrade']
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasAll(['senderUserId', 'recipientEmail', 'invitationType', 'status', 'createdAt'])
+        && request.resource.data.createdAt is timestamp;
+      allow read: if isOwner(resource.data.senderUserId) || 
+        (isAuthenticated() && request.auth.token.email == resource.data.recipientEmail);
+      allow update: if isAuthenticated() && 
+        request.resource.data.status in ['accepted', 'declined'] 
+        && request.auth.uid == resource.data.recipientUserId;
+      allow delete: if isOwner(resource.data.senderUserId);
+    }
+
+    // Shared access permissions
+    match /sharedAccess/{accessId} {
+      allow read: if isOwner(resource.data.granteeUserId) || 
+        isOwner(resource.data.grantorUserId);
+      allow create: if isOwner(request.resource.data.grantorUserId)
+        && request.resource.data.keys().hasAll(['grantorUserId', 'granteeUserId', 'permissions', 'createdAt'])
+        && request.resource.data.createdAt is timestamp;
+      allow update: if isOwner(resource.data.grantorUserId);
+      allow delete: if isOwner(resource.data.grantorUserId);
+    }
+
+    // ===== REFERRAL PROGRAM COLLECTIONS =====
+    
+    // Referrals tracking
+    match /referrals/{referralId} {
+      allow create: if isAuthenticated() 
+        && request.resource.data.referredUserId == request.auth.uid
+        && request.resource.data.status in ['pending', 'completed', 'expired']
+        && request.resource.data.keys().hasAll(['referrerUserId', 'referredUserId', 'referralCode', 'status', 'createdAt'])
+        && request.resource.data.createdAt is timestamp;
+      allow read: if isOwner(resource.data.referrerUserId) || 
+        isOwner(resource.data.referredUserId);
+      allow update: if isAuthenticated() && 
+        request.resource.data.status == 'completed' 
+        && request.auth.uid == resource.data.referredUserId;
+    }
+
+    // Promo codes (read-only for users)
+    match /promoCodes/{code} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Admin only via backend
+    }
+
+    // ===== SUBSCRIPTION & MONETIZATION COLLECTIONS =====
+    // COMMENTED OUT FOR DEMO MODE - All users have full access
+    /*
+    match /subscriptionStatus/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) 
+        && request.resource.data.keys().hasAll(['userId', 'plan', 'status', 'startDate'])
+        && request.resource.data.status in ['active', 'trial', 'inactive', 'cancelled']
+        && request.resource.data.createdAt is timestamp;
+      allow update: if isOwner(userId) 
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'plan', 'endDate', 'updatedAt', 'stripeCustomerId', 'stripeSubscriptionId'
+        ]);
+    }
+
+    // Payment history (read-only for users)
+    match /paymentHistory/{paymentId} {
+      allow read: if isOwner(resource.data.userId);
+      allow write: if false; // Stripe webhook only
+    }
+
+    // Gift cards
+    match /giftCards/{giftCardId} {
+      allow read: if isAuthenticated() && 
+        (isOwner(resource.data.recipientUserId) || isOwner(resource.data.senderUserId));
+      allow create: if isAuthenticated() 
+        && request.resource.data.senderUserId == request.auth.uid
+        && request.resource.data.keys().hasAll(['senderUserId', 'recipientEmail', 'amount', 'code', 'status'])
+        && request.resource.data.status in ['pending', 'redeemed', 'expired']
+        && request.resource.data.createdAt is timestamp;
+      allow update: if isAuthenticated() && 
+        request.resource.data.status == 'redeemed' 
+        && request.auth.uid == resource.data.recipientUserId;
+    }
+    */
+
+    // ===== SUBSCRIPTION FEATURES COLLECTIONS =====
+    // DEMO MODE: All users have unlimited access
+    // AI credits tracking
+    match /aiCredits/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId); // Demo: unlimited credits
+    }
+
+    // Feature flags for subscription tiers
+    match /featureFlags/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false; // Managed by backend
+    }
+  }
+}

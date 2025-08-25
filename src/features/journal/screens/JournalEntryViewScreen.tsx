@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity, Image, ImageBackground, Dimensions, Modal, FlatList, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useJournal, JournalEntry } from '@/hooks/useJournal';
 
@@ -11,7 +12,7 @@ import Carousel from 'react-native-reanimated-carousel';
 import ImageViewing from 'react-native-image-viewing';
 
 const { width, height } = Dimensions.get('window');
-const heroHeight = width * 1.1; // Reduced height as per user request
+const heroHeight = width * 1.5; // Reduced height as per user request
 
 const JournalEntryViewScreen = () => {
     const router = useRouter();
@@ -121,7 +122,7 @@ const JournalEntryViewScreen = () => {
 
     
 
-                <View style={[styles.headerButtons, { top: insets.top + 10 }]}>
+                <View style={[styles.headerButtons, { top: 16 }]}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
                         <Image source={require('../../../assets/images/Chevron_Left_icon.png')} style={styles.iconImage} />
                     </TouchableOpacity>
@@ -139,8 +140,8 @@ const JournalEntryViewScreen = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <ScrollView style={styles.scrollView}>
+        <SafeAreaView style={styles.container}>
+            <ScrollView style={[styles.scrollView]}>
                 {renderImageCarousel()}
 
                 <View style={styles.contentContainer}>
@@ -169,7 +170,7 @@ const JournalEntryViewScreen = () => {
                                 style={styles.actionButton}
                                 onPress={handleToggleMilestone}
                             >
-                                <Image source={require('../../../assets/images/Trophy_icon.png')} style={[styles.actionIcon, { tintColor: entry.isMilestone ? Colors.primary : Colors.mediumGrey }]} />
+                                <Ionicons name={entry.isMilestone ? 'trophy' : 'trophy-outline'} size={22} color={entry.isMilestone ? Colors.golden : Colors.mediumGrey} />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -224,14 +225,13 @@ const JournalEntryViewScreen = () => {
                 )}
                 backgroundColor="black"
             />
-        </View>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 2,
         backgroundColor: Colors.white,
     },
     centered: {
@@ -241,23 +241,25 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
-        padding: 2,
+        padding: 0, // Reduced margins
     },
     imageCarouselContainer: {
         width: '100%',
-        height: heroHeight,
+        height: 350, // Reduced height
         position: 'relative',
+        marginBottom: 8, // Added margin bottom
     },
     carouselImage: {
         width: '100%',
-        height: '100%',
+        height: 350, // Reduced height
         resizeMode: 'cover',
+        borderRadius: 0, // Squared corners
     },
     headerButtons: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 15,
+        paddingHorizontal: 12, // Reduced padding
         position: 'absolute',
         left: 0,
         right: 0,
@@ -277,7 +279,7 @@ const styles = StyleSheet.create({
         tintColor: 'white',
     },
     contentContainer: {
-        padding: 20,
+        padding: 12, // Reduced padding
         backgroundColor: Colors.white,
         marginTop: -30, // Pulls the content up over the hero image's bottom edge
     },
@@ -306,8 +308,8 @@ const styles = StyleSheet.create({
     },
     dateMonth: {
         fontSize: 14,
-        fontFamily: 'Poppins-Bold',
-        color: Colors.darkGrey,
+        fontFamily: 'Poppins-Regular', // Un-bolded month
+        color: Colors.mediumGrey,
         lineHeight: 18,
         letterSpacing: 0.25,
     },
@@ -355,7 +357,7 @@ const styles = StyleSheet.create({
     mediaGridContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginHorizontal: -5, // Counteract parent padding
+        marginHorizontal: -2, // Counteract parent padding
     },
     gridItem: {
         width: '33.333%', // 3 columns
@@ -365,7 +367,7 @@ const styles = StyleSheet.create({
     mediaImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 2,
+        borderRadius: 0,
     },
     fullScreenCloseButton: {
         position: 'absolute',

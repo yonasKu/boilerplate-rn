@@ -3,6 +3,9 @@ import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { signInWithEmail, useGoogleSignIn, resetPassword } from '@/lib/firebase/auth';
 import { biometricService } from '@/services/biometricService';
+import { AppleAuthService } from '@/features/auth/services/appleAuthService';
+import { NotificationService } from '@/services/notifications/NotificationService';
+import { FamilyService } from '@/services/familyService';
 
 export const useLogin = () => {
     const router = useRouter();
@@ -17,10 +20,26 @@ export const useLogin = () => {
     const [biometricAvailable, setBiometricAvailable] = useState(false);
     const [biometricEnabled, setBiometricEnabled] = useState(false);
     const [biometricType, setBiometricType] = useState<string>('Face ID');
+    const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
     const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+
+    const registerForPushNotifications = async (userId: string) => {
+        try {
+            const hasPermission = await NotificationService.requestPermissions();
+            if (hasPermission) {
+                const token = await NotificationService.getPushToken();
+                if (token) {
+                    await NotificationService.registerDeviceToken(userId, token);
+                }
+            }
+        } catch (error) {
+            console.error('Error registering for push notifications:', error);
+        }
+    };
 
     useEffect(() => {
         checkBiometricAvailability();
+        checkAppleSignInAvailability();
     }, []);
 
     const checkBiometricAvailability = async () => {
@@ -41,6 +60,16 @@ export const useLogin = () => {
         }
     };
 
+    const checkAppleSignInAvailability = async () => {
+        try {
+            const available = await AppleAuthService.checkAppleSignInAvailability();
+            setAppleSignInAvailable(available);
+        } catch (error) {
+            console.error('Error checking Apple Sign-In availability:', error);
+            setAppleSignInAvailable(false);
+        }
+    };
+
     const handleLogin = async () => {
         if (!email || !password) {
             Alert.alert('Login Failed', 'Please enter both email and password.');
@@ -49,7 +78,10 @@ export const useLogin = () => {
 
         setIsLoading(true);
         try {
-            await signInWithEmail(email, password);
+            const userCredential = await signInWithEmail(email, password);
+            if (userCredential.user) {
+                await registerForPushNotifications(userCredential.user.uid);
+            }
             
             // Check if we should prompt for biometric setup
             const available = await biometricService.isAvailable();
@@ -89,6 +121,17 @@ export const useLogin = () => {
                 );
             }
             
+            // View-only accounts: skip onboarding screens, go straight to main app
+            try {
+                const { accountType } = await FamilyService.getAccountStatus();
+                if (accountType === 'view-only') {
+                    router.replace('/(main)/(tabs)/journal');
+                    return;
+                }
+            } catch (e) {
+                console.warn('Account status check failed, proceeding with onboarding check', e);
+            }
+
             const { checkOnboardingStatus } = await import('../../../services/userService');
             const { getAuth } = await import('firebase/auth');
             const auth = getAuth();
@@ -155,41 +198,143 @@ export const useLogin = () => {
         }
     };
 
-    const handleGoogleSignIn = async () => {
+    const handleAppleSignIn = async () => {
+        setIsLoading(true);
         try {
-            await promptGoogleSignIn();
+            const result = await AppleAuthService.signInWithApple();
+            if (result.success && result.user) {
+                await registerForPushNotifications(result.user.uid);
+            }
+            if (result.success) {
+                // Small delay to ensure auth state is updated
+                const { checkOnboardingStatus } = await import('../../../services/userService');
+                const { getAuth } = await import('firebase/auth');
+                const auth = getAuth();
+                setTimeout(async () => {
+                    // View-only accounts: skip onboarding screens, go straight to main app
+                    try {
+                        const { accountType } = await FamilyService.getAccountStatus();
+                        if (accountType === 'view-only') {
+                            router.replace('/(main)/(tabs)/journal');
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Account status check failed after Apple login', e);
+                    }
 
-            // Check onboarding status after Google login
-            const { checkOnboardingStatus } = await import('../../../services/userService');
-            const { getAuth } = await import('firebase/auth');
-            const auth = getAuth();
+                    const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
+                    console.log('Post-Apple-login onboarding status:', status);
+                    console.log('User UID:', auth.currentUser?.uid);
 
-            // Small delay to ensure auth state is updated
-            setTimeout(async () => {
-                const status = await checkOnboardingStatus(auth.currentUser?.uid || '');
-                console.log('Post-Google-login onboarding status:', status);
-                console.log('User UID:', auth.currentUser?.uid);
+                    // Debug: Check children separately (commented out as not needed now)
+                    // const { getUserChildren } = await import('../../../services/userService');
+                    // const children = await getUserChildren(auth.currentUser?.uid || '');
+                    // console.log('Children found:', children.length);
+                    // console.log('Children data:', children);
 
-                // Debug: Check children separately
-                const { getUserChildren } = await import('../../../services/userService');
-                const children = await getUserChildren(auth.currentUser?.uid || '');
-                console.log('Children found:', children.length);
-                console.log('Children data:', children);
+                    if (!status.hasProfile) {
+                        console.log('Redirecting to add-profile after Apple login...');
+                        router.replace('/(auth)/add-profile');
+                    } else if (!status.hasChild) {
+                        console.log('Redirecting to add-child-details after Apple login...');
+                        router.replace('/(auth)/add-child-details');
+                    } else {
+                        console.log('Onboarding complete, redirecting to main app...');
+                        router.replace('/(main)/(tabs)/journal');
+                    }
+                }, 1000);
+            } else {
+                Alert.alert('Login Failed', result.error || 'Failed to sign in with Apple');
+            }
+        } catch (error: any) {
+            Alert.alert('Login Failed', error.message || 'Failed to sign in with Apple');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-                if (!status.hasProfile) {
-                    console.log('Redirecting to add-profile after Google login...');
-                    router.replace('/(auth)/add-profile');
-                } else if (!status.hasChild) {
-                    console.log('Redirecting to add-child-details after Google login...');
-                    router.replace('/(auth)/add-child-details');
-                } else {
-                    console.log('Onboarding complete, redirecting to main app...');
-                    router.replace('/(main)/(tabs)/journal');
+    const handleGoogleSignIn = async () => {
+        setIsLoading(true);
+        try {
+            const result: any = await promptGoogleSignIn();
+
+            // If user cancelled or an error occurred, do not navigate
+            if (!result || result.type !== 'success') {
+                if (result?.type === 'dismiss' || result?.type === 'cancel') {
+                    console.log('Google sign-in dismissed/cancelled by user');
+                } else if (result?.type === 'error') {
+                    console.warn('Google sign-in error from provider:', result?.error || result);
+                    Alert.alert('Google Sign-In Failed', 'Unable to complete sign-in. Please try again.');
                 }
-            }, 1000);
+                return;
+            }
+
+            // Wait for Firebase auth state to reflect the Google credential sign-in
+            const waitForAuthUser = async (timeoutMs = 10000): Promise<any | null> => {
+                const { getAuth, onAuthStateChanged } = await import('firebase/auth');
+                const auth = getAuth();
+                if (auth.currentUser) return auth.currentUser;
+                return await new Promise((resolve) => {
+                    let settled = false;
+                    let unsubscribeFn: (() => void) | undefined;
+                    const timer = setTimeout(() => {
+                        if (!settled) {
+                            settled = true;
+                            if (unsubscribeFn) unsubscribeFn();
+                            resolve(null);
+                        }
+                    }, timeoutMs);
+                    unsubscribeFn = onAuthStateChanged(auth, (user) => {
+                        if (!settled && user) {
+                            settled = true;
+                            clearTimeout(timer);
+                            if (unsubscribeFn) unsubscribeFn();
+                            resolve(user);
+                        }
+                    });
+                });
+            };
+
+            const authUser = await waitForAuthUser();
+            if (!authUser) {
+                console.warn('Google sign-in did not complete within timeout: no authenticated user');
+                Alert.alert('Google Sign-In Incomplete', 'We could not verify your sign-in. Please try again.');
+                return;
+            }
+
+            await registerForPushNotifications(authUser.uid);
+
+            // View-only accounts: skip onboarding screens, go straight to main app
+            try {
+                const { accountType } = await FamilyService.getAccountStatus();
+                if (accountType === 'view-only') {
+                    router.replace('/(main)/(tabs)/journal');
+                    return;
+                }
+            } catch (e) {
+                console.warn('Account status check failed after Google login', e);
+            }
+
+            const { checkOnboardingStatus } = await import('../../../services/userService');
+            const status = await checkOnboardingStatus(authUser.uid);
+            console.log('Post-Google-login onboarding status:', status);
+            console.log('User UID:', authUser.uid);
+
+            if (!status.hasProfile) {
+                console.log('Redirecting to add-profile after Google login...');
+                router.replace('/(auth)/add-profile');
+            } else if (!status.hasChild) {
+                console.log('Redirecting to add-child-details after Google login...');
+                router.replace('/(auth)/add-child-details');
+            } else {
+                console.log('Onboarding complete, redirecting to main app...');
+                router.replace('/(main)/(tabs)/journal');
+            }
         } catch (error) {
             console.error('Google Sign-In Error:', error);
             Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -289,6 +434,17 @@ export const useLogin = () => {
                     try {
                         await signInWithEmail(credentials.email, credentials.password);
                         
+                        // View-only accounts: skip onboarding screens, go straight to main app
+                        try {
+                            const { accountType } = await FamilyService.getAccountStatus();
+                            if (accountType === 'view-only') {
+                                router.replace('/(main)/(tabs)/journal');
+                                return;
+                            }
+                        } catch (e) {
+                            console.warn('Account status check failed after biometric login', e);
+                        }
+
                         const { checkOnboardingStatus } = await import('../../../services/userService');
                         const { getAuth } = await import('firebase/auth');
                         const auth = getAuth();
@@ -393,8 +549,10 @@ export const useLogin = () => {
         handleForgotPassword,
         handleSendResetEmail,
         handleGoogleSignIn,
+        handleAppleSignIn,
         handleBiometricLogin,
         checkBiometricAvailability,
-        toggleBiometricSwitch
+        toggleBiometricSwitch,
+        appleSignInAvailable
     };
 };

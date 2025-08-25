@@ -6,7 +6,7 @@ export interface Child {
   parentId: string;
   name: string;
   dateOfBirth: Date;
-  gender: 'male' | 'female' | 'prefer_not_to_say';
+  gender: 'Boy' | 'Girl' | 'other' | 'prefer_not_to_say' | "Don't know yet";
   avatar?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -15,7 +15,7 @@ export interface Child {
 export interface ChildInput {
   name: string;
   dateOfBirth: Date;
-  gender: 'male' | 'female' | 'prefer_not_to_say';
+  gender: 'Boy' | 'Girl' | 'other' | 'prefer_not_to_say' | "Don't know yet";
   avatar?: string;
   profileImageUrl?: string;
 }
