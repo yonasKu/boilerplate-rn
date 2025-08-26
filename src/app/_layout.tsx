@@ -20,6 +20,7 @@ import { useOnboarding } from '../context/OnboardingContext';
 import { useNotification } from '../hooks/useNotification';
 import { FamilyService } from '../services/familyService';
 import { useAccount } from '@/context/AccountContext';
+import { setupRevenueCat } from '@/lib/revenuecat/setupRevenueCat';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -127,6 +128,11 @@ const RootLayoutNav = () => {
       SplashScreen.hideAsync();
     }
   }, [loaded, fontsLoaded]);
+
+  // Initialize RevenueCat once (safe if keys are not set)
+  useEffect(() => {
+    setupRevenueCat();
+  }, []);
 
   // Notification tap handling (background -> opened) and cold start
   useEffect(() => {

@@ -64,7 +64,8 @@ export default function AuthLayout() {
       <Stack.Screen
         name="enter-invite"
         options={{
-          header: () => <CustomHeader title="Enter Invite Code" />,
+          headerShown: false,
+          // header: () => <CustomHeader title="Enter Invite Code" />,
         }}
       />
     </Stack>

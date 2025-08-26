@@ -1,0 +1,55 @@
+{
+    "cli": {
+      "version": ">= 16.13.3",
+      "appVersionSource": "remote"
+    },
+    "build": {
+      "development": {
+        "developmentClient": true,
+        "distribution": "internal",
+        "env": {
+          "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDNUDsBTPHn6pHaWCJn-pDQxn4e9nX1iZ8",
+          "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "sproutbook-d0c8f.firebaseapp.com",
+          "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "sproutbook-d0c8f",
+          "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "sproutbook-d0c8f.firebasestorage.app",
+          "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "103109944764",
+          "EXPO_PUBLIC_FIREBASE_APP_ID": "1:103109944764:web:1da4401d412e86ed0537b9",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_ANDROID_CLIENT_ID": "223279391862-hh67gq8ln7kp58vngn2labqlf9froru2.apps.googleusercontent.com",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_WEB_CLIENT_ID": "223279391862-amkgqflatpsn30bhgv1a8mol6kchvqr8.apps.googleusercontent.com",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_IOS_CLIENT_ID": "223279391862-03lvl3jtqj573fnb0drqnmds9p8dn9he.apps.googleusercontent.com"
+        }
+      },
+      "preview": {
+        "distribution": "internal",
+        "env": {
+          "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDNUDsBTPHn6pHaWCJn-pDQxn4e9nX1iZ8",
+          "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "sproutbook-d0c8f.firebaseapp.com",
+          "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "sproutbook-d0c8f",
+          "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "sproutbook-d0c8f.firebasestorage.app",
+          "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "103109944764",
+          "EXPO_PUBLIC_FIREBASE_APP_ID": "1:103109944764:web:1da4401d412e86ed0537b9",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_ANDROID_CLIENT_ID": "223279391862-hh67gq8ln7kp58vngn2labqlf9froru2.apps.googleusercontent.com",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_WEB_CLIENT_ID": "223279391862-amkgqflatpsn30bhgv1a8mol6kchvqr8.apps.googleusercontent.com",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_IOS_CLIENT_ID": "223279391862-03lvl3jtqj573fnb0drqnmds9p8dn9he.apps.googleusercontent.com"
+        }
+      },
+      "production": {
+        "autoIncrement": true,
+        "env": {
+          "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDNUDsBTPHn6pHaWCJn-pDQxn4e9nX1iZ8",
+          "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "sproutbook-d0c8f.firebaseapp.com",
+          "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "sproutbook-d0c8f",
+          "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "sproutbook-d0c8f.firebasestorage.app",
+          "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "103109944764",
+          "EXPO_PUBLIC_FIREBASE_APP_ID": "1:103109944764:web:1da4401d412e86ed0537b9",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_ANDROID_CLIENT_ID": "223279391862-hh67gq8ln7kp58vngn2labqlf9froru2.apps.googleusercontent.com",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_WEB_CLIENT_ID": "223279391862-amkgqflatpsn30bhgv1a8mol6kchvqr8.apps.googleusercontent.com",
+          "EXPO_PUBLIC_FIREBASE_GOOGLE_IOS_CLIENT_ID": "223279391862-03lvl3jtqj573fnb0drqnmds9p8dn9he.apps.googleusercontent.com"
+        }
+      }
+    },
+    "submit": {
+      "production": {}
+    }
+  }
+  

@@ -19,7 +19,7 @@ This plan defines the backend contracts, Firestore mirrors, and webhook handlers
 - STRIPE_SECRET_KEY
 - STRIPE_WEBHOOK_SECRET
 - RC_SECRET_API_KEY
-- RC_WEBHOOK_SECRET (if enabled)
+- REVENUECAT_WEBHOOK_SECRET (Bearer token for RevenueCat webhook)
 - PROJECT_ID (Firebase)
 
 Optional IDs to store in config (e.g., Firestore/remote config):
@@ -68,7 +68,7 @@ These are written only by backend Functions and webhooks.
   - processedAt?: timestamp
   - status: 'processed' | 'skipped'
   - rawId: string (provider event id)
-  - hash?: string (optional signature of payload)
+  - hash?: string (optional payload hash for debugging; not used for auth)
 
 Security: Firestore rules restrict writes to Functions; clients read only their own docs.
 
@@ -192,7 +192,7 @@ Security: Firestore rules restrict writes to Functions; clients read only their 
 - Actions:
   - Map event to `featureFlags` status and plan (via product id → 'monthly'|'annual')
   - If a temporary promotional entitlement was granted, ensure consistency on subsequent purchase
-- Security: verify RC webhook signature if enabled
+- Security: require Authorization header `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>` and validate the token server-side
 
 - Idempotency:
   - Use RC `event_id` if provided (or hash of payload) to upsert `webhookEvents/{event_id}`.
@@ -249,7 +249,7 @@ Note: Files can be TypeScript if repo is configured; keep parity with existing F
 
 ## Security
 - All writes to mirrors happen in Functions only
-- Verify webhook signatures (Stripe/RC)
+- Verify webhook signature (Stripe) and Authorization Bearer token (RevenueCat)
 - Validate `userId` from auth context for HTTPS endpoints
 - Rate-limit promo validation and redemption endpoints
 - Validate `userId` ownership on all endpoints; never trust client-sent `userId` without auth context.

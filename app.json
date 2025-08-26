@@ -2,13 +2,14 @@
   "expo": {
     "name": "Sproutbook",
     "slug": "Sproutbook",
+    "owner": "kyle101",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
     "scheme": "sproutbook",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./src/assets/images/splash_logo.png",
+      "image": "./src/assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#2E7E78"
     },
@@ -43,6 +44,7 @@
         "backgroundColor": "#2E7E78"
       },
       "package": "com.palex.sproutbook",
+      "versionCode": 1,
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "POST_NOTIFICATIONS"
@@ -67,8 +69,15 @@
       "expo-notifications"
     ],
     "extra": {
+      "router": {
+        "root": "./src/app"
+      },
+      "revenuecat": {
+        "iosPublicSdkKey": "appl_JcEkhzeUBMUPGJVclTjMBQAqpNW",
+        "androidPublicSdkKey": "goog_ifMXRgJHCujqtOEXveAcnxJkAhC"
+      },
       "eas": {
-        "projectId": "sproutbook-d0c8f"
+        "projectId": "6bfa98d9-02f1-4a93-a2d0-52787dd7c737"
       }
     },
     "experiments": {

@@ -15,6 +15,8 @@ const envSchema = Joi.object({
   // Optional with defaults
 
   OPENAI_API_KEY: process.env.GCLOUD_PROJECT ? Joi.string().optional() : Joi.string().required(),
+  // RevenueCat webhook secret (provided via Secret Manager in prod). Optional in emulator.
+  REVENUECAT_WEBHOOK_SECRET: Joi.string().optional(),
   MAX_TOKENS: Joi.number().integer().min(100).max(4000).default(2000),
   TEMPERATURE: Joi.number().min(0).max(2).default(0.7),
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),

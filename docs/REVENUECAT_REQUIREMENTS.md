@@ -123,7 +123,7 @@ Tips:
   - On success, refresh `Purchases.getCustomerInfo()` or rely on Firestore mirror (`users/{uid}/subscription`) for routing/UX.
 - Security & keys
   - Keep RevenueCat Secret API keys on the server only (Functions config). Never ship secret keys in the app.
-  - Required backend envs: `RC_SECRET_API_KEY`, webhook secret (for RC → Functions), and any signing secrets for your endpoints.
+  - Required backend envs: `RC_SECRET_API_KEY`, `REVENUECAT_WEBHOOK_SECRET` (used as the Authorization Bearer token for the RevenueCat webhook), and other signing secrets for unrelated endpoints (e.g., `STRIPE_WEBHOOK_SECRET`).
 - Testing inventory
   - Create test promo/gift codes that grant 1–3 months. Validate entitlement activation and expiration via RC webhooks and Firestore mirror.
 

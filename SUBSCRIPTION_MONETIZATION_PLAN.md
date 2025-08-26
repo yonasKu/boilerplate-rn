@@ -53,7 +53,7 @@ Support subscriptions via mobile web (Stripe or platform pay) and optional in-ap
 - **RevenueCat**
   - Project with Entitlement `pro`, Offerings (monthly/annual)
   - API Keys: Public SDK key(s) per platform; Secret API Key for server
-  - Webhook auth/secret (if enabled)
+  - Webhook Authorization header using `REVENUECAT_WEBHOOK_SECRET` (Bearer token)
   - Product identifiers mapped to stores
 
 - **Apple App Store Connect**
@@ -70,7 +70,7 @@ Support subscriptions via mobile web (Stripe or platform pay) and optional in-ap
 
 - **Environment (Functions)**
   - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-  - `RC_SECRET_API_KEY`, `RC_WEBHOOK_SECRET`
+  - `RC_SECRET_API_KEY`, `REVENUECAT_WEBHOOK_SECRET`
   - `PROJECT_ID` and other Firebase config
 
 ## UI Entry Points
@@ -130,7 +130,7 @@ Support subscriptions via mobile web (Stripe or platform pay) and optional in-ap
 
 - **Security**
   - Validate `userId` authenticity per session creation (Auth context)
-  - Trust-only webhook events with signature verification
+  - Trust-only webhook events with proper auth: Stripe signature verification; RevenueCat Authorization Bearer token
 
 - **Firestore Rules**
   - Writes to `aiCredits` and `featureFlags` via Functions only
@@ -166,7 +166,7 @@ Support subscriptions via mobile web (Stripe or platform pay) and optional in-ap
     - `featureFlags.subscription = 'active'|'trial'|'cancelled'`
     - `featureFlags.plan = 'monthly'|'annual'` (map from product id)
     - Top up `aiCredits` on purchase/renewal.
-  - Treat RevenueCat as source of truth for IAP; verify webhook signature if enabled.
+  - Treat RevenueCat as source of truth for IAP; require Authorization header `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`.
 
 - **Viewer Bypass Mapping**
   - Viewer detection (shared access) remains independent; viewers skip paywall regardless of entitlements.

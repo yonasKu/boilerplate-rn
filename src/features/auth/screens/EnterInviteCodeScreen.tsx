@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, StatusBar, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FamilyService } from '../../../services/familyService';
 import { useAuth } from '../../../context/AuthContext';
 import { Colors } from '../../../theme/colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const EnterInviteCodeScreen = () => {
   const [inviteCode, setInviteCode] = useState('');
@@ -45,82 +46,140 @@ const EnterInviteCodeScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Have an Invite Code?</Text>
-      <Text style={styles.subtitle}>Enter the code you received to get access.</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Invite Code"
-        value={inviteCode}
-        onChangeText={setInviteCode}
-        autoCapitalize="characters"
-        autoCorrect={false}
-      />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+      <View style={styles.content}>
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../../../assets/images/Logo_Icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
-      <TouchableOpacity 
-        style={[styles.button, loading && styles.disabledButton]}
-        onPress={handleAcceptInvite}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>{loading ? 'Verifying...' : 'Submit Code'}</Text>
-      </TouchableOpacity>
+        <View style={styles.headerContainer}>
+          <Text style={styles.title}>Enter Invite Code</Text>
+          <Text style={styles.description}>
+            Enter the invite code to access shared Recaps
+          </Text>
+        </View>
 
-      <TouchableOpacity onPress={() => router.back()}>
-        <Text style={styles.backText}>Go Back</Text>
-      </TouchableOpacity>
-    </View>
+        <View style={styles.footerContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter invite code"
+            value={inviteCode}
+            placeholderTextColor={Colors.mediumGrey}
+            onChangeText={setInviteCode}
+            autoCapitalize="characters"
+            autoCorrect={false}
+          />
+
+          <TouchableOpacity
+            style={[styles.button, styles.primaryButton]}
+            onPress={handleAcceptInvite}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Continue</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => router.back()}
+            disabled={loading}
+          >
+            <Text style={styles.secondaryButtonText}>Go back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 20,
     backgroundColor: Colors.white,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-    color: Colors.primary,
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 50,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
   },
-  subtitle: {
-    fontSize: 16,
+  logoContainer: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  logo: {
+    width: 100,
+    height: 100,
+  },
+  headerContainer: {
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: Colors.black,
+    marginBottom: 12,
     textAlign: 'center',
-    marginBottom: 30,
-    color: Colors.darkGrey,
+  },
+  description: {
+    fontSize: 16,
+    color: Colors.mediumGrey,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 22,
+  },
+  footerContainer: {
+    gap: 10,
+    width: '100%',
+    alignItems: 'center',
   },
   input: {
-    backgroundColor: Colors.lightGrey,
-    borderRadius: 12,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
+    backgroundColor: Colors.lightPink,
+    borderRadius: 25,
     padding: 15,
     fontSize: 16,
     marginBottom: 20,
     textAlign: 'center',
   },
   button: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 15,
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 50,
     alignItems: 'center',
   },
-  disabledButton: {
-    backgroundColor: Colors.mediumGrey,
+  primaryButton: {
+    backgroundColor: Colors.primary,
+    marginBottom: 16,
   },
-  buttonText: {
+  primaryButtonText: {
     color: Colors.white,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  backText: {
-    marginTop: 20,
-    textAlign: 'center',
+  secondaryButton: {
+    backgroundColor: Colors.white,
+  },
+  secondaryButtonText: {
     color: Colors.primary,
     fontSize: 16,
+    textDecorationLine: 'underline',
   },
 });
 
 export default EnterInviteCodeScreen;
+

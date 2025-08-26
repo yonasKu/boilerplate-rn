@@ -1,18 +1,70 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, StatusBar, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../../theme/colors';
+import Purchases, { PurchasesPackage } from 'react-native-purchases';
 
 const PricingScreen = () => {
   const router = useRouter();
   const [showPlans, setShowPlans] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('annual');
+  const [selectedPlan, setSelectedPlan] = useState<'annual' | 'monthly'>('annual');
+  const [loadingOfferings, setLoadingOfferings] = useState(false);
+  const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+  const [billingError, setBillingError] = useState<string | undefined>();
 
-  const handlePayment = () => {
-    // Stub function for payment processing
-    console.log(`${Platform.OS === 'ios' ? 'Apple Pay' : 'Google Pay'} payment initiated`);
-    router.push('/(auth)/login');
+  useEffect(() => {
+    // Try to load offerings defensively. Will fail gracefully if SDK not configured yet
+    (async () => {
+      setLoadingOfferings(true);
+      setBillingError(undefined);
+      try {
+        const offerings = await Purchases.getOfferings();
+        const current = offerings.current;
+        setPackages(current?.availablePackages ?? []);
+      } catch (e: any) {
+        // Keys not set or products not configured yet
+        setBillingError(e?.message || 'Billing not configured yet');
+      } finally {
+        setLoadingOfferings(false);
+      }
+    })();
+  }, []);
+
+  const handlePayment = async () => {
+    try {
+      if (!packages.length) {
+        setBillingError('Purchases SDK not configured or no packages available yet');
+        return;
+      }
+
+      // naive mapping: try to pick a package by identifier/title
+      const pick = (want: 'annual' | 'monthly') => {
+        const byId = packages.find((p) => p.identifier.toLowerCase().includes(want === 'annual' ? 'annual' : 'month'));
+        if (byId) return byId;
+        const byTitle = packages.find((p) => p.product.title.toLowerCase().includes(want === 'annual' ? 'year' : 'month'));
+        return byTitle ?? packages[0];
+      };
+
+      const pkg = pick(selectedPlan);
+      const { customerInfo } = await Purchases.purchasePackage(pkg);
+      // Webhook updates Firestore; app UI will reflect via useSubscription()
+      // Optionally navigate forward in your auth flow:
+      // router.replace('/(main)/(tabs)/journal');
+    } catch (e: any) {
+      // user cancelled or error
+      if (!e?.userCancelled) {
+        setBillingError(e?.message || 'Purchase failed');
+      }
+    }
+  };
+
+  const restorePurchases = async () => {
+    try {
+      await Purchases.restorePurchases();
+    } catch (e) {
+      // ignore
+    }
   };
 
   const Feature = ({ text }: { text: string }) => (
@@ -99,7 +151,10 @@ const PricingScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.paymentButton} onPress={handlePayment}>
+          {!!billingError && (
+            <Text style={styles.errorText}>{billingError}</Text>
+          )}
+          <TouchableOpacity style={styles.paymentButton} onPress={handlePayment} disabled={loadingOfferings}>
             <View style={styles.paymentButtonContent}>
               <Text style={styles.paymentButtonText}>Subscribe with </Text>
               <Image
@@ -111,6 +166,10 @@ const PricingScreen = () => {
               />
               <Text style={styles.paymentButtonText}> Pay</Text>
             </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={restorePurchases}>
+            <Text style={styles.restoreText}>Restore purchases</Text>
           </TouchableOpacity>
 
           <TouchableOpacity>
@@ -283,6 +342,19 @@ const styles = StyleSheet.create({
   moreWaysText: {
     fontSize: 15,
     color: Colors.darkGrey,
+    marginBottom: 12,
+    fontFamily: 'Poppins_400Regular',
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 12,
+    fontFamily: 'Poppins_400Regular',
+  },
+  restoreText: {
+    fontSize: 14,
+    color: Colors.darkGrey,
+    textDecorationLine: 'underline',
     marginBottom: 12,
     fontFamily: 'Poppins_400Regular',
   },

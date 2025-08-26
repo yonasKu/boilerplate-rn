@@ -217,7 +217,7 @@ const FamilySharingScreen = () => {
             <FamilyMemberCircle
               key={index}
               name={(member.viewerId && member.viewerId.substring(0, 6)) || 'Family Member'}
-              image={require('../../../assets/images/default-avatar.png')}
+              image={require('../../../assets/images/user.png')}
               selected={false}
               onPress={() => handleRevokeAccess(member.viewerId)}
             />

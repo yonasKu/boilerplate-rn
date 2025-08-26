@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
@@ -95,9 +96,15 @@ export const useNotifications = (): UseNotificationsReturn => {
       const available = await checkAvailability();
       if (!available) return null;
 
-      const { data } = await Notifications.getExpoPushTokenAsync({
-        projectId: 'your-project-id', // Replace with actual project ID
-      });
+      // Use EAS projectId for Expo push tokens (this is NOT the Firebase projectId)
+      const easProjectId =
+        (Constants as any)?.expoConfig?.extra?.eas?.projectId ||
+        (Constants as any)?.easConfig?.projectId ||
+        process.env.EXPO_PUBLIC_EAS_PROJECT_ID;
+
+      const { data } = easProjectId
+        ? await Notifications.getExpoPushTokenAsync({ projectId: easProjectId })
+        : await Notifications.getExpoPushTokenAsync();
       
       setPushToken(data);
       return data;

@@ -20,7 +20,7 @@ const settingsOptions: SettingsOption[] = [
   { icon: require('../../../assets/images/refer_icon.png'), text: 'Refer a friend' },
   { icon: require('../../../assets/images/settings_icon.png'), text: 'Account settings' },
   { icon: require('../../../assets/images/gift_icon.png'), text: 'Gift a free year' },
-  { icon: require('../../../assets/images/edit_con.png'), text: 'Create Journaling Account' },
+  { icon: require('../../../assets/images/edit_icon.png'), text: 'Create Journaling Account' },
   { icon: require('../../../assets/images/people_icon.png'), text: 'Family sharing' },
   { icon: 'log-out', text: 'Logout' }, // Using correct Feather icon name
 ];

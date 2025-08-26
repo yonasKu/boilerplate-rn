@@ -68,19 +68,24 @@ service cloud.firestore {
       allow read, list: if isOwner(userId) || isFamilyMember(userId) || isBackendFunction();
 
       // Allow owner to update their document.
-      // Full accounts can update any fields; viewer accounts are restricted to name/profileImageUrl/updatedAt.
+      // Full accounts can update any fields EXCEPT 'subscription' (server-only); viewer accounts are restricted to name/profileImageUrl/updatedAt.
       // Family members retain limited updates as listed below.
+      // Backend functions may update only the 'subscription' and 'updatedAt' fields.
       allow update: if
         (
-          isOwner(userId) && (
-            isFullAccount() ||
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'profileImageUrl', 'updatedAt'])
-          )
-        ) ||
-        (
+          // Owner updates (full account) but cannot modify 'subscription'
+          isOwner(userId) && isFullAccount() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscription'])
+        ) || (
+          // Owner updates (viewer account) limited to profile fields
+          isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'profileImageUrl', 'updatedAt'])
+        ) || (
+          // Family member limited updates
           isFamilyMember(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'profile', 'permissions', 'updatedAt', 'subscriptionStatus', 'children'
           ])
+        ) || (
+          // Backend-only update for subscription snapshot
+          isBackendFunction() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subscription', 'updatedAt'])
         );
       
       // Only the owner can delete their own document
@@ -106,6 +111,12 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
       
+    }
+
+    // ===== WEBHOOK AUDIT LOGS =====
+    // Store raw RevenueCat events for debugging/audit. Backend-only.
+    match /revenuecatEvents/{eventId} {
+      allow read, write: if isBackendFunction();
     }
 
     // ===== NOTIFICATIONS COLLECTION =====

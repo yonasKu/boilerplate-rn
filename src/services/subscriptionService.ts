@@ -1,11 +1,5 @@
-import { collection, doc, getDoc, updateDoc, Timestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp, setDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase/firebaseConfig';
-
-export interface AICredits {
-  userId: string;
-  credits: number;
-  updatedAt: Date;
-}
 
 export interface FeatureFlags {
   userId: string;
@@ -19,61 +13,72 @@ export interface FeatureFlags {
   updatedAt: Date;
 }
 
+// Normalized snapshot written by backend webhook into users/{uid}.subscription
+export interface SubscriptionSnapshot {
+  status: 'active' | 'trial' | 'inactive' | 'cancelled';
+  plan?: string | null;
+  productId?: string | null;
+  platform?: string | null;
+  willRenew?: boolean | null;
+  expirationDate?: Date | null;
+  originalPurchaseDate?: Date | null;
+  isSandbox?: boolean;
+  updatedAt?: Date | null;
+}
+
 export const SubscriptionService = {
-  aiCreditsCollection: 'aiCredits',
   featureFlagsCollection: 'featureFlags',
 
-  getAICredits: async (userId: string): Promise<AICredits> => {
+  // Read normalized subscription status written by backend webhook
+  getSubscriptionStatus: async (userId: string): Promise<SubscriptionSnapshot | null> => {
     try {
-      const docRef = doc(db, 'aiCredits', userId);
-      const docSnap = await getDoc(docRef);
+      const userRef = doc(db, 'users', userId);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) return null;
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        return {
-          userId,
-          credits: data.credits,
-          updatedAt: data.updatedAt.toDate(),
-        };
-      }
+      const data: any = userSnap.data();
+      const s = data.subscription || {};
 
-      // Create default credits for new users (demo mode - unlimited)
-      const defaultCredits = {
-        userId,
-        credits: 9999, // Demo: unlimited credits
-        updatedAt: new Date(),
+      const toDate = (v: any): Date | null => {
+        if (!v) return null;
+        if (typeof v?.toDate === 'function') return v.toDate();
+        const d = new Date(v);
+        return isNaN(d.getTime()) ? null : d;
       };
 
-      await setDoc(docRef, {
-        userId,
-        credits: 9999,
-        updatedAt: Timestamp.now(),
-      });
-      
-      return defaultCredits;
+      const snap: SubscriptionSnapshot = {
+        status: (s.status as SubscriptionSnapshot['status']) || 'inactive',
+        plan: s.plan ?? null,
+        productId: s.productId ?? null,
+        platform: s.platform ?? null,
+        willRenew: typeof s.willRenew === 'boolean' ? s.willRenew : null,
+        expirationDate: toDate(s.expirationDate),
+        originalPurchaseDate: toDate(s.originalPurchaseDate),
+        isSandbox: !!s.isSandbox,
+        updatedAt: toDate(s.updatedAt),
+      };
+
+      return snap;
     } catch (error) {
-      console.error('Error getting AI credits:', error);
-      // Return demo credits on error
-      return {
-        userId,
-        credits: 9999,
-        updatedAt: new Date(),
-      };
+      console.error('Error getting subscription status:', error);
+      return null;
     }
   },
 
-  updateAICredits: async (userId: string, credits: number): Promise<void> => {
+  // Convenience helper for gating
+  hasActiveSubscription: async (userId: string): Promise<boolean> => {
     try {
-      const docRef = doc(db, 'aiCredits', userId);
-      await setDoc(docRef, {
-        credits,
-        updatedAt: Timestamp.now(),
-      }, { merge: true });
+      const sub = await SubscriptionService.getSubscriptionStatus(userId);
+      if (!sub) return false;
+      const now = new Date();
+      const notExpired = !sub.expirationDate || sub.expirationDate > now;
+      return (sub.status === 'active' || sub.status === 'trial') && notExpired;
     } catch (error) {
-      console.error('Error updating AI credits:', error);
-      throw new Error('Failed to update AI credits');
+      console.error('Error checking active subscription:', error);
+      return false;
     }
   },
+
 
   getFeatureFlags: async (userId: string): Promise<FeatureFlags> => {
     try {
@@ -81,11 +86,11 @@ export const SubscriptionService = {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        const data = docSnap.data();
+        const data: any = docSnap.data();
         return {
           userId,
           features: data.features,
-          updatedAt: data.updatedAt.toDate(),
+          updatedAt: data?.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(),
         };
       }
 
@@ -129,25 +134,10 @@ export const SubscriptionService = {
   hasFeatureAccess: async (userId: string, feature: keyof FeatureFlags['features']): Promise<boolean> => {
     try {
       const flags = await SubscriptionService.getFeatureFlags(userId);
-      return flags.features[feature];
+      return !!flags.features[feature];
     } catch (error) {
       console.error('Error checking feature access:', error);
       // Demo mode: return true for all features
-      return true;
-    }
-  },
-
-  useAICredit: async (userId: string, amount: number = 1): Promise<boolean> => {
-    try {
-      const credits = await SubscriptionService.getAICredits(userId);
-      if (credits.credits >= amount) {
-        await SubscriptionService.updateAICredits(userId, credits.credits - amount);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error using AI credit:', error);
-      // Demo mode: always allow
       return true;
     }
   },

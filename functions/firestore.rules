@@ -33,6 +33,16 @@ service cloud.firestore {
       return request.auth == null;
     }
 
+    // Account type from custom claims: treat missing value as 'full' for backward compatibility
+    function isFullAccount() {
+      return isAuthenticated() && (request.auth.token.accountType == 'full' || request.auth.token.accountType == null);
+    }
+
+    // Shared access check using predictable doc id: `${ownerId}_${viewerId}` stored in `sharedAccess/{id}`
+    function hasSharedAccessToOwner(ownerId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/sharedAccess/$(ownerId + '_' + request.auth.uid));
+    }
+
     // ===== USERS COLLECTION =====
     match /users/{userId} {
       // Allow create if the user is creating their own document and passes validation
@@ -57,11 +67,26 @@ service cloud.firestore {
       // Backend functions can list all users.
       allow read, list: if isOwner(userId) || isFamilyMember(userId) || isBackendFunction();
 
-      // Allow owner to update their document. A more specific rule for family sharing updates is also included.
-      allow update: if isOwner(userId) ||
-        (isFamilyMember(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'profile', 'permissions', 'updatedAt', 'subscriptionStatus'
-        ]));
+      // Allow owner to update their document.
+      // Full accounts can update any fields EXCEPT 'subscription' (server-only); viewer accounts are restricted to name/profileImageUrl/updatedAt.
+      // Family members retain limited updates as listed below.
+      // Backend functions may update only the 'subscription' and 'updatedAt' fields.
+      allow update: if
+        (
+          // Owner updates (full account) but cannot modify 'subscription'
+          isOwner(userId) && isFullAccount() && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['subscription'])
+        ) || (
+          // Owner updates (viewer account) limited to profile fields
+          isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'profileImageUrl', 'updatedAt'])
+        ) || (
+          // Family member limited updates
+          isFamilyMember(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'profile', 'permissions', 'updatedAt', 'subscriptionStatus', 'children'
+          ])
+        ) || (
+          // Backend-only update for subscription snapshot
+          isBackendFunction() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['subscription', 'updatedAt'])
+        );
       
       // Only the owner can delete their own document
       allow delete: if isOwner(userId);
@@ -86,13 +111,22 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
       
-      // --- Sub-collection for in-app notifications ---
-      match /notifications/{notificationId} {
-        // Owner can read and update (e.g., mark as read) their notifications.
-        allow read, update: if isOwner(userId);
-        // Notifications should only be created by the backend, not the client.
-        allow create, delete: if false;
-      }
+    }
+
+    // ===== WEBHOOK AUDIT LOGS =====
+    // Store raw RevenueCat events for debugging/audit. Backend-only.
+    match /revenuecatEvents/{eventId} {
+      allow read, write: if isBackendFunction();
+    }
+
+    // ===== NOTIFICATIONS COLLECTION =====
+    match /notifications/{notificationId} {
+      // Allow read access for authenticated users who own the notification
+      allow read, update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // Allow list for queries by the owner
+      allow list: if isAuthenticated();
+      // Notifications should only be created by the backend, not the client.
+      allow create, delete: if isBackendFunction();
     }
 
     // ========== CHILDREN COLLECTION ==========
@@ -106,8 +140,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasAll(['parentId', 'name', 'dateOfBirth', 'gender', 'createdAt', 'updatedAt'])
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
-        && request.resource.data.dateOfBirth is timestamp
-        && request.resource.data.gender in ['male', 'female', 'other', 'prefer_not_to_say'];
+        && (request.resource.data.dateOfBirth is timestamp || request.resource.data.dateOfBirth is string)
+        && request.resource.data.gender in ['Boy', 'Girl', 'other', 'prefer_not_to_say', "Don't know yet"];
 
       // Users can update or delete children documents they own
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.parentId;
@@ -116,7 +150,7 @@ service cloud.firestore {
     // ===== JOURNAL ENTRIES COLLECTION =====
     match /journalEntries/{entryId} {
       // A user can create an entry if they are logged in and the entry's `userId` field matches their own ID.
-      allow create: if isOwner(request.resource.data.userId)
+      allow create: if isOwner(request.resource.data.userId) && isFullAccount()
         && request.resource.data.keys().hasAll(['userId', 'childIds', 'text', 'createdAt', 'updatedAt'])
         && request.resource.data.childIds is list
         && request.resource.data.childIds.size() > 0
@@ -126,27 +160,27 @@ service cloud.firestore {
         && request.resource.data.isFavorited is bool
         && request.resource.data.media is list;
       
-      // A user can read an entry if they are a family member, or backend can read them.
-      allow read: if isFamilyMember(resource.data.userId) || isBackendFunction();
+      // Read if owner or has shared access to the owner's timeline, or backend can read them.
+      allow read: if isOwner(resource.data.userId) || hasSharedAccessToOwner(resource.data.userId) || isBackendFunction();
       
       // A user can update their own entry's content and tags.
       // Family members can also update likes and favorites.
-      allow update: if (isOwner(resource.data.userId) && 
+      allow update: if ((isOwner(resource.data.userId) && isFullAccount() && 
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes', 'childIds', 'childAgeAtEntry'])) ||
-                      (isFamilyMember(resource.data.userId) && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited']));
+                      (hasSharedAccessToOwner(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited'])));
       
       // A user can delete their own entry
-      allow delete: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId) && isFullAccount();
     }
 
     // ===== RECAPS COLLECTION =====
     match /recaps/{recapId} {
-      // A user can read an entry if they are a family member, or backend can read them.
-      allow read: if isFamilyMember(resource.data.userId) || isBackendFunction();
+      // Read if owner or has shared access to the owner's timeline, or backend can read them.
+      allow read: if isOwner(resource.data.userId) || hasSharedAccessToOwner(resource.data.userId) || isBackendFunction();
 
-      // Owners or the backend can create recaps
-      allow create: if isOwner(request.resource.data.userId) || isBackendFunction()
+      // Owners (full accounts) or the backend can create recaps
+      allow create: if ((isOwner(request.resource.data.userId) && isFullAccount()) || isBackendFunction())
         && request.resource.data.keys().hasAll(['userId', 'childId', 'type', 'period', 'status', 'createdAt', 'imageMetadata'])
         && request.resource.data.type in ['daily', 'weekly', 'monthly', 'yearly']
         && request.resource.data.status in ['generating', 'completed', 'failed']
@@ -158,26 +192,39 @@ service cloud.firestore {
         && request.resource.data.imageMetadata.imageTypes is list;
 
       // Owners can update content, family members can update interactions.
-      allow update: if (isOwner(resource.data.userId) && 
+      allow update: if ((isOwner(resource.data.userId) && isFullAccount() && 
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'status', 'isFavorited', 'updatedAt', 'isMilestone'])) ||
-                      (isFamilyMember(resource.data.userId) && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited', 'commentCount']));
+                      (hasSharedAccessToOwner(resource.data.userId) && 
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited', 'commentCount'])));
 
       // Owners can delete their recaps
-      allow delete: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId) && isFullAccount();
     }
 
     // ===== RECAP COMMENTS COLLECTION =====
     match /recapComments/{commentId} {
-      // Any authenticated user can read comake sure the mments.
-      allow read: if isAuthenticated();
+      // Only users who can read the parent recap can read its comments.
+      allow read: if isAuthenticated()
+        && exists(/databases/$(database)/documents/recaps/$(resource.data.recapId))
+        && (isOwner(get(/databases/$(database)/documents/recaps/$(resource.data.recapId)).data.userId)
+            || hasSharedAccessToOwner(get(/databases/$(database)/documents/recaps/$(resource.data.recapId)).data.userId)
+            || isBackendFunction());
 
       // Users can create comments for a recap if they are authenticated and own the comment.
+      // Validate optional image-specific fields when present.
       allow create: if isAuthenticated()
         && request.resource.data.userId == request.auth.uid
         && exists(/databases/$(database)/documents/recaps/$(request.resource.data.recapId))
-        && request.resource.data.keys().hasAll(['userId', 'recapId', 'text', 'createdAt', 'userName'])
-        && request.resource.data.text is string && request.resource.data.text.size() > 0;
+        && (isOwner(get(/databases/$(database)/documents/recaps/$(request.resource.data.recapId)).data.userId)
+            || hasSharedAccessToOwner(get(/databases/$(database)/documents/recaps/$(request.resource.data.recapId)).data.userId)
+            || isBackendFunction())
+        && request.resource.data.keys().hasAll(['userId', 'recapId', 'text', 'createdAt'])
+        && request.resource.data.text is string && request.resource.data.text.size() > 0
+        // Optional image fields
+        && (!('imageUrl' in request.resource.data) || request.resource.data.imageUrl is string)
+        && (!('imageThumbUrl' in request.resource.data) || request.resource.data.imageThumbUrl is string)
+        && (!('imageIndex' in request.resource.data) || request.resource.data.imageIndex is int)
+        && (!('imageStoragePath' in request.resource.data) || request.resource.data.imageStoragePath is string);
 
       // Users can delete their own comments.
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
@@ -185,32 +232,66 @@ service cloud.firestore {
 
     // ===== FAMILY SHARING COLLECTIONS =====
     
-
-    // Invitations for family sharing
-    match /invitations/{invitationId} {
-      allow create: if isAuthenticated() 
-        && request.resource.data.senderUserId == request.auth.uid
-        && request.resource.data.invitationType in ['family_view', 'upgrade']
-        && request.resource.data.status == 'pending'
-        && request.resource.data.keys().hasAll(['senderUserId', 'recipientEmail', 'invitationType', 'status', 'createdAt'])
-        && request.resource.data.createdAt is timestamp;
-      allow read: if isOwner(resource.data.senderUserId) || 
-        (isAuthenticated() && request.auth.token.email == resource.data.recipientEmail);
-      allow update: if isAuthenticated() && 
-        request.resource.data.status in ['accepted', 'declined'] 
-        && request.auth.uid == resource.data.recipientUserId;
-      allow delete: if isOwner(resource.data.senderUserId);
+    // Helper functions for family sharing
+    function hasSharedAccess(ownerId, viewerId) {
+      return exists(/databases/$(database)/documents/sharedAccess/$(ownerId)_$(viewerId));
+    }
+    
+    function hasScope(ownerId, viewerId, requiredScope) {
+      return hasSharedAccess(ownerId, viewerId) && 
+             get(/databases/$(database)/documents/sharedAccess/$(ownerId)_$(viewerId)).data.scopes != null &&
+             requiredScope in get(/databases/$(database)/documents/sharedAccess/$(ownerId)_$(viewerId)).data.scopes;
     }
 
-    // Shared access permissions
+    // Invitations for family sharing (new model)
+    match /invitations/{invitationId} {
+      // Allow creation by inviter (owner)
+      allow create: if isAuthenticated() 
+        && request.resource.data.inviterId == request.auth.uid
+        && request.resource.data.role == 'viewer'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasAll(['inviterId', 'inviteeContact', 'role', 'status', 'inviteCode', 'expiresAt', 'createdAt', 'updatedAt'])
+        && request.resource.data.inviteCode is string
+        && request.resource.data.inviteCode.size() >= 6
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      
+      // Allow read by inviter
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.inviterId;
+      
+      // Allow acceptance via backend functions only (status update)
+      allow update: if isBackendFunction() && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['accepted', 'revoked'];
+      
+      // Allow deletion by inviter
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.inviterId;
+    }
+
+    // Shared access permissions (new model)
     match /sharedAccess/{accessId} {
-      allow read: if isOwner(resource.data.granteeUserId) || 
-        isOwner(resource.data.grantorUserId);
-      allow create: if isOwner(request.resource.data.grantorUserId)
-        && request.resource.data.keys().hasAll(['grantorUserId', 'granteeUserId', 'permissions', 'createdAt'])
-        && request.resource.data.createdAt is timestamp;
-      allow update: if isOwner(resource.data.grantorUserId);
-      allow delete: if isOwner(resource.data.grantorUserId);
+      // Allow read by owner or viewer
+      allow read: if isAuthenticated() && 
+        (request.auth.uid == resource.data.ownerId || request.auth.uid == resource.data.viewerId);
+      
+      // Allow creation by backend functions only
+      allow create: if isBackendFunction()
+        && request.resource.data.keys().hasAll(['ownerId', 'viewerId', 'scopes', 'createdAt', 'updatedAt'])
+        && request.resource.data.ownerId is string
+        && request.resource.data.viewerId is string
+        && request.resource.data.scopes is list
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      
+      // Allow updates by owner via backend functions only
+      allow update: if isBackendFunction() && 
+        request.resource.data.ownerId == resource.data.ownerId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scopes', 'updatedAt']);
+      
+      // Allow deletion by owner via backend functions only
+      allow delete: if isBackendFunction() && 
+        request.auth.uid == resource.data.ownerId;
     }
 
     // ===== REFERRAL PROGRAM COLLECTIONS =====

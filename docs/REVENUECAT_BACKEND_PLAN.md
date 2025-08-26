@@ -60,16 +60,16 @@ Optional:
 ---
 
 ## Webhook Endpoint (Firebase HTTPS Function)
-- Create an HTTPS function, e.g., `revenueCatWebhook`.
+- Create an HTTPS function, e.g., `revenuecatWebhook`.
 - Configure RevenueCat → Webhooks to POST to:
-  - `https://<region>-<project-id>.cloudfunctions.net/revenueCatWebhook`
+  - `https://<region>-<project-id>.cloudfunctions.net/revenuecatWebhook`
 - Security:
-  - Require a secret token/signature header from RevenueCat.
-  - In the function, verify header value or signature against an env var (e.g., `RC_WEBHOOK_SECRET`). Reject if invalid.
+  - Require Authorization header: `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`.
+  - In the function, verify the Bearer token against env var `REVENUECAT_WEBHOOK_SECRET`. Reject if invalid.
   - Only accept `application/json` and limit body size.
 
 Environment variables (Firebase Functions config):
-- `RC_WEBHOOK_SECRET` = shared secret/token for webhook validation.
+- `REVENUECAT_WEBHOOK_SECRET` = shared secret/token used in the Authorization header for webhook validation.
 - `APP_ENV` = 'dev' | 'prod' (for routing/guardrails).
 - (Optional) `ALLOWED_ENVIRONMENTS` if you want to ignore sandbox in prod, etc.
 
@@ -159,12 +159,12 @@ Notes:
 ---
 
 ## Deliverables (when implementing)
-- Firebase HTTPS function `revenueCatWebhook` with:
-  - Secret validation
+- Firebase HTTPS function `revenuecatWebhook` with:
+  - Authorization token validation
   - Idempotency guard
   - Event parsing and Firestore updates
 - Firestore security rules updated (if needed) to allow the function to write `users/{uid}/subscription` while keeping client writes restricted.
-- Documentation on how to rotate `RC_WEBHOOK_SECRET`.
+- Documentation on how to rotate `REVENUECAT_WEBHOOK_SECRET`.
 
 ---
 

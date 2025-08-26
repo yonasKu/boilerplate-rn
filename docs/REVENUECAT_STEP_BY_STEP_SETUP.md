@@ -114,7 +114,7 @@ Set up a secure webhook endpoint to receive RevenueCat events and update Firesto
 
 Steps:
 1. Left nav: Integrations → Webhooks → + Add webhook → paste your HTTPS endpoint URL → Save.
-2. Copy the signing secret and verify signatures in your server (keep secret out of the client).
+2. Add an Authorization header: `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`; the server validates this token. Do not use signature headers.
 3. Handle events (e.g., INITIAL_PURCHASE, RENEWAL, EXPIRATION, CANCELLATION) idempotently.
 4. Upsert `users/{uid}/subscription` using the Firebase UID (the `appUserID` you pass to RevenueCat).
 
@@ -170,7 +170,7 @@ RevenueCat:
 - Entitlement not unlocking across devices:
   - Ensure you identify users with stable `appUserID` (Firebase UID) and avoid anonymous installations.
 - Backend not reflecting status:
-  - Verify webhook signature, event handling, and Firestore write rules; check `lastEventId` usage.
+  - Verify Authorization Bearer token, event handling, and Firestore write rules; check `lastEventId` usage.
 
 ---
 

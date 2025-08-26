@@ -32,10 +32,10 @@ This guide covers how to integrate the newly created Firestore services into the
 ### 4. Subscription Service (`subscriptionService.ts`)
 **Purpose**: Handle subscriptions and feature access
 **Key Methods**:
-- `getSubscriptionStatus()` - Check subscription status
-- `getAICredits()` - Get user's AI credits
-- `updateAICredits()` - Add/remove AI credits
-- `getFeatureFlags()` - Check enabled features
+- `getSubscriptionStatus(userId)` - Read normalized subscription snapshot from `users/{uid}.subscription`
+- `hasActiveSubscription(userId)` - Boolean gating for active/trial and not expired
+- `getFeatureFlags(userId)` - Read optional feature flags document
+- `hasFeatureAccess(userId, featureKey)` - Boolean gating for a single feature flag
 
 ## Integration Steps
 
@@ -44,7 +44,7 @@ This guide covers how to integrate the newly created Firestore services into the
 import { aiRecapService } from '../services/aiRecapService';
 import { familyService } from '../services/familyService';
 import { referralService } from '../services/referralService';
-import { subscriptionService } from '../services/subscriptionService';
+import { SubscriptionService } from '../services/subscriptionService';
 ```
 
 ### Step 2: Basic Usage Examples
@@ -93,14 +93,15 @@ const codes = await referralService.getPromoCodes();
 
 #### Subscriptions
 ```typescript
-// Check subscription status
-const status = await subscriptionService.getSubscriptionStatus(userId);
+// Check subscription status (read-only; written by backend webhook)
+const sub = await SubscriptionService.getSubscriptionStatus(userId);
 
-// Update AI credits
-await subscriptionService.updateAICredits(userId, 10);
+// Gate access based on subscription
+const allowed = await SubscriptionService.hasActiveSubscription(userId);
 
-// Check feature flags
-const flags = await subscriptionService.getFeatureFlags();
+// Feature flags (optional)
+const flags = await SubscriptionService.getFeatureFlags(userId);
+const canExport = await SubscriptionService.hasFeatureAccess(userId, 'exportData');
 ```
 
 ### Step 3: Error Handling
@@ -132,7 +133,7 @@ try {
 - All services respect Firestore security rules
 - User ID is required for most operations
 - Permissions are validated server-side
-- Demo mode provides unlimited credits for testing
+- In demo/dev builds, feature flags may default to enabled for testing
 
 ## Next Steps
 1. Integrate services into existing screens

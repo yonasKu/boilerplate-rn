@@ -11,6 +11,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { admin } = require('./firebaseAdmin');
 const { validateEnvironment } = require('./utils/environmentValidator');
 const { generateUniqueInviteCode } = require('./utils/inviteCode');
+const { revenuecatWebhook } = require('./functions/revenuecatWebhook');
 
 // Validate environment variables with better error handling
 try {
@@ -35,6 +36,9 @@ const { onJournalEntryCreated } = require('./functions/onJournalEntry');
 
 // Export the journal entry trigger
 exports.onJournalEntryCreated = onJournalEntryCreated;
+
+// RevenueCat webhook endpoint
+exports.revenuecatWebhook = revenuecatWebhook;
 
 // generateRecapsForAllUsers function was removed
 
