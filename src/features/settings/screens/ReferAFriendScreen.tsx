@@ -1,16 +1,80 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 import ReferFriendModal from '../components/ReferFriendModal';
 import { Colors } from '../../../theme/colors';
+import { ReferralService } from '../../../services/referralService';
 
 const ReferAFriendScreen = () => {
   const insets = useSafeAreaInsets();
-  const referralLink = 'https://sproutbook.design';
+  const BASE_LINK = 'https://sproutbook.design';
   const [isModalVisible, setModalVisible] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralLink, setReferralLink] = useState<string>(BASE_LINK);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [stats, setStats] = useState<{ totalReferrals: number; successfulReferrals: number; lastReferralDate: string | null }>({
+    totalReferrals: 0,
+    successfulReferrals: 0,
+    lastReferralDate: null,
+  });
 
-  const handleShare = () => {
+  useEffect(() => {
+    // Fetch stats and code on mount
+    fetchStatsAndCode();
+  }, []);
+
+  const ensureReferralCode = async () => {
+    try {
+      setLoading(true);
+      // Ensure we have an authenticated user (allow anonymous)
+      const { getAuth, signInAnonymously } = await import('firebase/auth');
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+      const code = await ReferralService.generateReferralCode();
+      setReferralCode(code);
+      setReferralLink(`${BASE_LINK}?ref=${encodeURIComponent(code)}`);
+    } catch (e) {
+      console.log('[ReferAFriend] Failed to generate referral code, using base link', e);
+      setReferralCode(null);
+      setReferralLink(BASE_LINK);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStatsAndCode = async () => {
+    try {
+      setLoading(true);
+      const { getAuth, signInAnonymously } = await import('firebase/auth');
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+      const res = await ReferralService.getReferralStats();
+      if (res?.referralStats) setStats(res.referralStats);
+      const code: string | undefined = res?.referralCode;
+      if (code) {
+        setReferralCode(code);
+        setReferralLink(`${BASE_LINK}?ref=${encodeURIComponent(code)}`);
+      } else {
+        // Generate if not present
+        await ensureReferralCode();
+      }
+    } catch (e) {
+      console.log('[ReferAFriend] getReferralStats failed, fallback to generate', e);
+      await ensureReferralCode();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!referralCode) {
+      await ensureReferralCode();
+    }
     setModalVisible(true);
   };
 
@@ -41,6 +105,17 @@ const ReferAFriendScreen = () => {
           <TouchableOpacity onPress={handleShare} style={styles.linkIconButton}>
             <Image source={require('../../../assets/images/copy_link_icon.png')} style={styles.linkIcon} />
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.statsContainer}>
+          <Text style={styles.statsTitle}>Your referral code</Text>
+          <View style={styles.codeBadge}>
+            <Text style={styles.codeText}>{referralCode ?? '—'}</Text>
+          </View>
+          <View style={styles.statsRow}>
+            <Text style={styles.statsItem}>Total sent: {stats.totalReferrals}</Text>
+            <Text style={styles.statsItem}>Successful: {stats.successfulReferrals}</Text>
+          </View>
         </View>
 
         <Text style={styles.footerText}>
@@ -142,6 +217,40 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     tintColor: Colors.primary,
+  },
+  statsContainer: {
+    marginTop: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  statsTitle: {
+    fontSize: 14,
+    color: Colors.black,
+    marginBottom: 8,
+    fontFamily: 'Poppins-Regular',
+  },
+  codeBadge: {
+    backgroundColor: Colors.lightPink2,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+  codeText: {
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.primary,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 8,
+  },
+  statsItem: {
+    fontSize: 13,
+    color: Colors.mediumGrey,
+    fontFamily: 'Poppins-Regular',
   },
   footerText: {
     fontSize: 12,

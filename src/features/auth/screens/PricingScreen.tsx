@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, StatusBar, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, StatusBar, TouchableOpacity, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Colors } from '../../../theme/colors';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
+import { PromoCodeModal } from '@/features/subscriptions/components/PromoCodeModal';
 
 const PricingScreen = () => {
   const router = useRouter();
@@ -12,6 +13,7 @@ const PricingScreen = () => {
   const [loadingOfferings, setLoadingOfferings] = useState(false);
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [billingError, setBillingError] = useState<string | undefined>();
+  const [showPromoModal, setShowPromoModal] = useState(false);
 
   useEffect(() => {
     // Try to load offerings defensively. Will fail gracefully if SDK not configured yet
@@ -65,6 +67,17 @@ const PricingScreen = () => {
     } catch (e) {
       // ignore
     }
+  };
+
+  const onOpenRedeem = () => {
+    console.log('[PricingScreen] promo:openModal');
+    setShowPromoModal(true);
+  };
+
+  const onRedeemSuccess = () => {
+    console.log('[PricingScreen] promo:success');
+    Alert.alert('Success', 'Promo code applied successfully.');
+    setShowPromoModal(false);
   };
 
   const Feature = ({ text }: { text: string }) => (
@@ -180,11 +193,16 @@ const PricingScreen = () => {
         <View style={styles.footer}>
           <Text style={styles.footerInfoText}>Get 10 days free before being charged</Text>
           <Text style={styles.promoText}>
-            Have a promo code? <Text style={styles.redeemText}>Redeem code</Text>
+            Have a promo code? <Text onPress={onOpenRedeem} style={styles.redeemText}>Redeem code</Text>
           </Text>
         </View>
       </ScrollView>
 
+      <PromoCodeModal
+        isOpen={showPromoModal}
+        onClose={() => setShowPromoModal(false)}
+        onSuccess={onRedeemSuccess}
+      />
     </SafeAreaView>
   );
 };

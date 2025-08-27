@@ -73,13 +73,23 @@ This checklist tells you EXACTLY what is already implemented, what you must conf
   - Add plugin to `app.json`: `"plugins": ["react-native-purchases"]`
   - Identify with Firebase UID via `Purchases.logIn(uid)`
   - Fetch offerings, render paywall, purchase/restore flows
-  - Gate premium features off `useSubscription()` (`status === 'active' || status === 'trial'`)
-
-## Quick Punch List
-- [ ] Set `functions/.env` with `PROJECT_ID`, `OPENAI_API_KEY`, `REVENUECAT_WEBHOOK_SECRET`
-- [ ] Update emulator env keys to `AUTH_EMULATOR_HOST`/`STORAGE_EMULATOR_HOST` if needed
-- [ ] `firebase functions:secrets:set REVENUECAT_WEBHOOK_SECRET` (prod)
-- [ ] Configure RevenueCat webhook URL + Authorization header
+  - Gate premium features off `useSubscription()`
+    - `src/hooks/useSubscription.ts` already honors `subscription.compUntil`:
+      - User is considered active if `Date.now() < compUntil` OR status is `active|trial`.
+      - This enables premium access immediately after promo/gift redemption.
 - [ ] `firebase deploy --only firestore:rules`
 - [ ] `firebase deploy --only functions:revenuecatWebhook`
 - [ ] Build frontend subscription service and gating
+
+## Anonymous redeem -> Link account (Promo/Gift flow)
+- Frontend redemption flow (`src/features/subscriptions/components/PromoCodeModal.tsx`):
+  - If the user is not authenticated, it performs `signInAnonymously()` and then calls the backend callable `redeemPromoCode`.
+  - The backend (Admin SDK) writes `users/{uid}.subscription.compUntil` and related fields.
+- Linking preserves comp: when the user later chooses Apple/Google/Email, link the provider to the current anonymous user to keep the same UID.
+  - Apple: `src/features/auth/services/appleAuthService.ts` uses `linkWithCredential` when `auth.currentUser.isAnonymous`.
+  - Google & Email: `src/lib/firebase/auth.ts` links when anonymous; otherwise signs in.
+- Gating: `src/hooks/useSubscription.ts` treats the user as active if `compUntil` is in the future, unlocking premium immediately post-redeem.
+
+References:
+- Backend callable: `functions/index.js` -> `exports.redeemPromoCode`
+- Firestore rules: `firestore.rules` (only backend can update `users/{uid}.subscription`)

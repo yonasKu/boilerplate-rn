@@ -1,6 +1,6 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { auth } from '@/lib/firebase/firebaseConfig';
-import { signInWithCredential, OAuthProvider } from 'firebase/auth';
+import { OAuthProvider } from 'firebase/auth';
+import { signInOrLinkWithCredential } from '@/services/auth/signInOrLink';
 
 export class AppleAuthService {
   static async signInWithApple() {
@@ -19,8 +19,8 @@ export class AppleAuthService {
         rawNonce: credential.authorizationCode || undefined,
       });
 
-      // Sign in with Firebase
-      const userCredential = await signInWithCredential(auth, firebaseCredential);
+      // Sign in or link with Firebase (preserve UID if currently anonymous)
+      const userCredential = await signInOrLinkWithCredential(firebaseCredential);
 
       // Ensure the users/{uid} document exists with required fields
       try {

@@ -3,6 +3,8 @@ import { auth } from '../lib/firebase/firebaseConfig';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { checkOnboardingStatus, OnboardingStatus } from '../services/userService';
 import { NotificationService } from '@/services/notifications/NotificationService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ReferralService } from '@/services/referralService';
 
 // Define the shape of the context data
 interface AuthContextType {
@@ -49,6 +51,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Attempt to process any referral code captured before auth
+  const applyPendingReferralIfAny = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@pendingReferralCode');
+      const code = (stored || '').trim();
+      if (!code) return;
+      console.log('[AuthContext] Found @pendingReferralCode, attempting to process');
+      try {
+        await ReferralService.processReferral(code);
+        console.log('[AuthContext] Referral processed successfully');
+      } catch (e) {
+        console.error('[AuthContext] Failed to process referral code:', e);
+      } finally {
+        await AsyncStorage.removeItem('@pendingReferralCode');
+      }
+    } catch (e) {
+      console.error('[AuthContext] Error reading @pendingReferralCode:', e);
+    }
+  };
+
   useEffect(() => {
     // onAuthStateChanged returns an unsubscribe function
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -60,6 +82,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Skip onboarding check for unverified users to prevent permission errors
         if (currentUser.emailVerified) {
           await refreshOnboardingStatus();
+          // Process any pending referral captured pre-auth (deep link or manual entry)
+          await applyPendingReferralIfAny();
         } else {
           console.log('User not verified, skipping onboarding check');
           setOnboardingStatus({

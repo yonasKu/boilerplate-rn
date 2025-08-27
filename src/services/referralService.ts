@@ -123,4 +123,62 @@ export const ReferralService = {
       return false;
     }
   },
+
+  /**
+   * Returns the first pending referral document ID matching the given code, or undefined
+   */
+  getPendingReferralIdByCode: async (code: string): Promise<string | undefined> => {
+    try {
+      const q = query(
+        collection(db, 'referrals'),
+        where('referralCode', '==', code),
+        where('status', '==', 'pending')
+      );
+
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) return undefined;
+      return snapshot.docs[0].id;
+    } catch (error) {
+      console.error('Error querying referral by code:', error);
+      return undefined;
+    }
+  },
+
+  // --- Callable wrappers ---
+  /**
+   * Calls backend `generateReferralCode` to get or create the user's referral code (idempotent).
+   */
+  generateReferralCode: async (): Promise<string> => {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const callable = httpsCallable(functions, 'generateReferralCode');
+    const res: any = await callable({});
+    const code = res?.data?.referralCode as string | undefined;
+    if (!code) throw new Error('Failed to generate referral code');
+    return code;
+  },
+
+  /**
+   * Calls backend `processReferral` to apply referral benefits at signup/first-run.
+   */
+  processReferral: async (code: string): Promise<any> => {
+    const trimmed = (code || '').trim().toUpperCase();
+    if (!trimmed) throw new Error('Referral code is required');
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const callable = httpsCallable(functions, 'processReferral');
+    const res: any = await callable({ referralCode: trimmed });
+    return res?.data;
+  },
+
+  /**
+   * Calls backend `getReferralStats` for UI (code, totals, recent referrals).
+   */
+  getReferralStats: async (): Promise<any> => {
+    const { getFunctions, httpsCallable } = await import('firebase/functions');
+    const functions = getFunctions();
+    const callable = httpsCallable(functions, 'getReferralStats');
+    const res: any = await callable({});
+    return res?.data;
+  },
 };

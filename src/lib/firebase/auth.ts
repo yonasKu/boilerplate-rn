@@ -2,15 +2,15 @@ import { auth, db } from './firebaseConfig';
 import { 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithCredential,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User,
   UserCredential,
   sendEmailVerification,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
 } from 'firebase/auth';
+import { signInOrLinkWithCredential, linkIfAnonymousWithEmail, isCurrentUserAnonymous } from '@/services/auth/signInOrLink';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
@@ -50,44 +50,30 @@ interface UserProfile {
  * @returns {Promise<UserCredential>} - The created user credential.
  */
 export const signUpWithEmail = async (email: string, password: string, firstName: string, lastName: string) => {
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-  const user = userCredential.user;
-
-  // Send verification email
-  await sendEmailVerification(user);
-  
-  // Create user profile in Firestore
   const fullName = `${firstName} ${lastName}`.trim();
-  const now = new Date();
-  
-  try {
-    const { doc, setDoc } = await import('firebase/firestore');
-    const { db } = await import('./firebaseConfig');
-    
-    await setDoc(doc(db, 'users', user.uid), {
-      uid: user.uid,
-      name: fullName,
-      email: email,
-      lifestage: null, // Will be set in AddProfileScreen
-      subscription: {
-        plan: 'free',
-        status: 'trial',
-        startDate: now,
-        trialEndDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000) // 10 days trial
-      },
-      children: [],
-      createdAt: now,
-      updatedAt: now,
-      onboarded: false
-    });
-    
-    console.log('User profile created successfully in Firestore');
-  } catch (error) {
-    console.error('Error creating user profile:', error);
-    // Don't throw here - profile creation failure shouldn't prevent signup
+  let userCredential: UserCredential;
+
+  if (isCurrentUserAnonymous()) {
+    // Link email/password to the existing anonymous user to preserve UID
+    const linked = await linkIfAnonymousWithEmail(email, password);
+    if (!linked) throw new Error('Failed to link email/password to anonymous user');
+    userCredential = linked;
+  } else {
+    // Create a brand new account
+    userCredential = await createUserWithEmailAndPassword(auth, email, password);
   }
-  
-  // Keep user signed in for verification screen
+
+  // Send verification email in both cases
+  await sendEmailVerification(userCredential.user);
+
+  // Ensure minimal user document exists (avoid client writing subscription fields)
+  try {
+    const { ensureUserDocumentExists } = await import('../../services/userService');
+    await ensureUserDocumentExists(userCredential.user.uid, fullName, email);
+  } catch (error) {
+    console.error('Error ensuring user profile after email sign up/link:', error);
+  }
+
   return userCredential;
 };
 
@@ -106,8 +92,10 @@ export const resetPassword = async (email: string) => {
  * @param {string} password - The user's password.
  * @returns {Promise<UserCredential>} - The signed-in user credential.
  */
-export const signInWithEmail = (email: string, password: string) => {
-  return signInWithEmailAndPassword(auth, email, password);
+export const signInWithEmail = async (email: string, password: string) => {
+  const linked = await linkIfAnonymousWithEmail(email, password);
+  if (linked) return linked;
+  return await signInWithEmailAndPassword(auth, email, password);
 };
 
 /**
@@ -141,7 +129,7 @@ export const useGoogleSignIn = () => {
       if (response?.type === 'success') {
         const { id_token } = response.params;
         const credential = GoogleAuthProvider.credential(id_token);
-        const userCredential = await signInWithCredential(auth, credential);
+        const userCredential: UserCredential = await signInOrLinkWithCredential(credential);
 
         // Ensure the users/{uid} document exists with required fields
         try {

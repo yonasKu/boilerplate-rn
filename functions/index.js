@@ -11,6 +11,7 @@ const { onRequest } = require('firebase-functions/v2/https');
 const { admin } = require('./firebaseAdmin');
 const { validateEnvironment } = require('./utils/environmentValidator');
 const { generateUniqueInviteCode } = require('./utils/inviteCode');
+const { generateUniqueReferralCode } = require('./utils/referralCode');
 const { revenuecatWebhook } = require('./functions/revenuecatWebhook');
 
 // Validate environment variables with better error handling
@@ -39,6 +40,353 @@ exports.onJournalEntryCreated = onJournalEntryCreated;
 
 // RevenueCat webhook endpoint
 exports.revenuecatWebhook = revenuecatWebhook;
+
+// --- Promo / Referral: Redeem Promo Code (callable) ---
+// Grants compensated access by setting users/{uid}.subscription.compUntil and marking referral/promo usage
+exports.redeemPromoCode = functions.https.onCall(async (data, context) => {
+  try {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Sign in required');
+    }
+
+    const rawCode = String(data?.code || '').trim().toUpperCase();
+    if (!rawCode || rawCode.length < 3) {
+      throw new functions.https.HttpsError('invalid-argument', 'A valid promo/referral code is required');
+    }
+
+    const uid = context.auth.uid;
+    const db = admin.firestore();
+
+    // Idempotency: prevent redeeming the same code multiple times by the same user
+    const redemptionId = `${uid}_${rawCode}`;
+    const redemptionRef = db.collection('promoRedemptions').doc(redemptionId);
+
+    // Settings
+    const COMP_DAYS = Number(process.env.PROMO_COMP_DAYS || 30); // default 30 days
+    const nowMs = Date.now();
+
+    const result = await db.runTransaction(async (tx) => {
+      // Enforce idempotency
+      const redemptionSnap = await tx.get(redemptionRef);
+      if (redemptionSnap.exists) {
+        throw new functions.https.HttpsError('already-exists', 'This code was already redeemed');
+      }
+
+      // 1) Try referral for this user
+      const referralQuery = await db
+        .collection('referrals')
+        .where('referralCode', '==', rawCode)
+        .where('status', '==', 'pending')
+        .where('referredUserId', '==', uid)
+        .limit(1)
+        .get();
+
+      let source = '';
+      let referralDocRef = null;
+      if (!referralQuery.empty) {
+        source = 'referral';
+        referralDocRef = referralQuery.docs[0].ref;
+      }
+
+      // 2) If not referral, try promoCodes (supports promo and gift card variants)
+      let promoDocRef = null;
+      let promoData = null; // capture for compDays override and gift checks
+      if (!source) {
+        const promoQuery = await db
+          .collection('promoCodes')
+          .where('code', '==', rawCode)
+          .limit(1)
+          .get();
+        if (!promoQuery.empty) {
+          const promoDoc = promoQuery.docs[0];
+          const promo = promoDoc.data() || {};
+          const isActive = !!promo.isActive;
+          const now = nowMs;
+          const validFromMs = promo.validFrom?.toMillis?.() ?? (promo.validFrom ? new Date(promo.validFrom).getTime() : undefined);
+          const validUntilMs = promo.validUntil?.toMillis?.() ?? (promo.validUntil ? new Date(promo.validUntil).getTime() : undefined);
+          const withinWindow = (
+            (validFromMs ? now >= validFromMs : true) &&
+            (validUntilMs ? now <= validUntilMs : true)
+          );
+          const isGift = (promo.type === 'gift') || (promo.isGiftCard === true);
+          if (isGift) {
+            const alreadyRedeemed = !!promo.redeemedBy;
+            if (alreadyRedeemed) {
+              // If previously redeemed by same user, treat as already-exists; otherwise generic already redeemed
+              if (promo.redeemedBy === uid) {
+                throw new functions.https.HttpsError('already-exists', 'This code was already redeemed');
+              }
+              throw new functions.https.HttpsError('failed-precondition', 'Gift card already redeemed');
+            }
+            if (isActive && withinWindow) {
+              source = 'gift';
+              promoDocRef = promoDoc.ref;
+              promoData = promo;
+            }
+          } else {
+            const maxUses = typeof promo.maxUses === 'number' ? promo.maxUses : undefined;
+            const currentUses = typeof promo.currentUses === 'number' ? promo.currentUses : 0;
+            const hasCapacity = (typeof maxUses === 'number') ? (currentUses < maxUses) : true;
+            if (isActive && withinWindow && hasCapacity) {
+              source = 'promo';
+              promoDocRef = promoDoc.ref;
+              promoData = promo;
+            }
+          }
+        }
+      }
+
+      if (!source) {
+        throw new functions.https.HttpsError('failed-precondition', 'Invalid or expired code');
+      }
+
+      // Determine effective comp days (allow per-code override) and update user subscription compUntil
+      const userRef = db.collection('users').doc(uid);
+      const nowTs = admin.firestore.Timestamp.now();
+      const effectiveDays = (typeof promoData?.compDays === 'number' && promoData.compDays > 0)
+        ? promoData.compDays
+        : COMP_DAYS;
+      const compUntilDate = new Date(nowMs + effectiveDays * 24 * 60 * 60 * 1000);
+      const compUntilTs = admin.firestore.Timestamp.fromDate(compUntilDate);
+      tx.set(userRef, {
+        subscription: {
+          plan: 'comp',
+          status: 'trial',
+          compUntil: compUntilTs,
+          updatedAt: nowTs,
+        },
+        updatedAt: nowTs,
+      }, { merge: true });
+
+      // Mark referral completed or increment promo usage
+      if (source === 'referral' && referralDocRef) {
+        tx.update(referralDocRef, {
+          status: 'completed',
+          completedAt: nowTs,
+        });
+      } else if (source === 'promo' && promoDocRef) {
+        tx.update(promoDocRef, {
+          currentUses: admin.firestore.FieldValue.increment(1),
+          updatedAt: nowTs,
+        });
+      } else if (source === 'gift' && promoDocRef) {
+        tx.update(promoDocRef, {
+          redeemedBy: uid,
+          redeemedAt: nowTs,
+          updatedAt: nowTs,
+        });
+      }
+
+      // Write redemption record for idempotency/audit
+      tx.set(redemptionRef, {
+        uid,
+        code: rawCode,
+        source,
+        compDays: effectiveDays,
+        compUntil: compUntilTs,
+        createdAt: nowTs,
+      }, { merge: false });
+
+      return { source, compUntil: compUntilDate.toISOString(), compDays: effectiveDays };
+    });
+
+    return { success: true, ...result };
+  } catch (error) {
+    console.error('redeemPromoCode error:', error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError('internal', 'Internal Server Error');
+  }
+});
+
+// --- Referral Program Callables ---
+// Generate a unique referral code for the authenticated user (idempotent)
+exports.generateReferralCode = functions.https.onCall(async (data, context) => {
+  try {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Sign in required');
+    }
+    const uid = context.auth.uid;
+    const db = admin.firestore();
+    const userRef = db.collection('users').doc(uid);
+    const userSnap = await userRef.get();
+    const userData = userSnap.exists ? (userSnap.data() || {}) : {};
+
+    if (userData.referralCode && typeof userData.referralCode === 'string' && userData.referralCode.trim().length >= 4) {
+      return { referralCode: userData.referralCode };
+    }
+
+    const newCode = await generateUniqueReferralCode(6);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    await userRef.set({
+      referralCode: newCode,
+      referralStats: userData.referralStats || {
+        totalReferrals: 0,
+        successfulReferrals: 0,
+        lastReferralDate: null,
+      },
+      updatedAt: now,
+    }, { merge: true });
+
+    return { referralCode: newCode };
+  } catch (error) {
+    console.error('generateReferralCode error:', error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError('internal', 'Internal Server Error');
+  }
+});
+
+// Process a referral code for the current user at signup/link time (idempotent)
+// Applies comp days immediately and records referral + redemption
+exports.processReferral = functions.https.onCall(async (data, context) => {
+  try {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Sign in required');
+    }
+    const rawCode = String(data?.referralCode || data?.code || '').trim().toUpperCase();
+    if (!rawCode || rawCode.length < 3) {
+      throw new functions.https.HttpsError('invalid-argument', 'A valid referral code is required');
+    }
+    const uid = context.auth.uid;
+    const db = admin.firestore();
+    const COMP_DAYS = Number(process.env.REFERRAL_COMP_DAYS || process.env.PROMO_COMP_DAYS || 30);
+    const nowMs = Date.now();
+
+    // Idempotency key aligned with redeemPromoCode to avoid double-applying
+    const redemptionId = `${uid}_${rawCode}`;
+    const redemptionRef = db.collection('promoRedemptions').doc(redemptionId);
+
+    const result = await db.runTransaction(async (tx) => {
+      const redemptionSnap = await tx.get(redemptionRef);
+      if (redemptionSnap.exists) {
+        throw new functions.https.HttpsError('already-exists', 'This code was already redeemed');
+      }
+
+      // Find referrer by users.referralCode
+      const referrerSnap = await db
+        .collection('users')
+        .where('referralCode', '==', rawCode)
+        .limit(1)
+        .get();
+      if (referrerSnap.empty) {
+        throw new functions.https.HttpsError('not-found', 'Invalid referral code');
+      }
+      const referrerDoc = referrerSnap.docs[0];
+      const referrerUserId = referrerDoc.id;
+      if (referrerUserId === uid) {
+        throw new functions.https.HttpsError('failed-precondition', 'You cannot use your own referral code');
+      }
+
+      // Prevent duplicate referral doc for this pair
+      const referralId = `${referrerUserId}_${uid}`;
+      const referralRef = db.collection('referrals').doc(referralId);
+      const existingReferral = await tx.get(referralRef);
+
+      const nowTs = admin.firestore.Timestamp.now();
+      const compUntilDate = new Date(nowMs + COMP_DAYS * 24 * 60 * 60 * 1000);
+      const compUntilTs = admin.firestore.Timestamp.fromDate(compUntilDate);
+
+      // Apply subscription comp to referred user
+      const userRef = db.collection('users').doc(uid);
+      tx.set(userRef, {
+        referredBy: rawCode,
+        subscription: {
+          plan: 'comp',
+          status: 'trial',
+          compUntil: compUntilTs,
+          updatedAt: nowTs,
+        },
+        updatedAt: nowTs,
+      }, { merge: true });
+
+      // Create or update referral record as completed
+      if (existingReferral.exists) {
+        tx.update(referralRef, {
+          status: 'completed',
+          referralCode: rawCode,
+          completedAt: nowTs,
+          updatedAt: nowTs,
+        });
+      } else {
+        tx.set(referralRef, {
+          referralId,
+          referrerUserId,
+          referredUserId: uid,
+          referralCode: rawCode,
+          status: 'completed',
+          rewardType: 'extended_trial',
+          rewardValue: { trialExtensionDays: COMP_DAYS },
+          createdAt: nowTs,
+          completedAt: nowTs,
+          updatedAt: nowTs,
+          metadata: { source: 'signup' },
+        });
+      }
+
+      // Increment referrer's stats
+      tx.set(referrerDoc.ref, {
+        referralStats: {
+          totalReferrals: admin.firestore.FieldValue.increment(1),
+          successfulReferrals: admin.firestore.FieldValue.increment(1),
+          lastReferralDate: nowTs,
+        },
+        updatedAt: nowTs,
+      }, { merge: true });
+
+      // Record redemption for idempotency / audit
+      tx.set(redemptionRef, {
+        uid,
+        code: rawCode,
+        source: 'referral-signup',
+        compDays: COMP_DAYS,
+        compUntil: compUntilTs,
+        createdAt: nowTs,
+      });
+
+      return { referrerUserId, compUntil: compUntilDate.toISOString(), compDays: COMP_DAYS };
+    });
+
+    return { success: true, ...result };
+  } catch (error) {
+    console.error('processReferral error:', error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError('internal', 'Internal Server Error');
+  }
+});
+
+// Get referral stats and recent referrals for current user
+exports.getReferralStats = functions.https.onCall(async (data, context) => {
+  try {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Sign in required');
+    }
+    const uid = context.auth.uid;
+    const db = admin.firestore();
+    const userSnap = await db.collection('users').doc(uid).get();
+    if (!userSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'User not found');
+    }
+    const user = userSnap.data() || {};
+
+    // Recent referrals as referrer
+    const recentSnap = await db
+      .collection('referrals')
+      .where('referrerUserId', '==', uid)
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .get();
+    const recentReferrals = recentSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    return {
+      referralCode: user.referralCode || null,
+      referralStats: user.referralStats || { totalReferrals: 0, successfulReferrals: 0, lastReferralDate: null },
+      recentReferrals,
+    };
+  } catch (error) {
+    console.error('getReferralStats error:', error);
+    if (error instanceof functions.https.HttpsError) throw error;
+    throw new functions.https.HttpsError('internal', 'Internal Server Error');
+  }
+});
 
 // generateRecapsForAllUsers function was removed
 

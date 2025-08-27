@@ -15,6 +15,7 @@ export type SubscriptionSnapshot = {
   originalPurchaseDate?: Date | null;
   isSandbox?: boolean;
   updatedAt?: Date | null;
+  compUntil?: Date | null;
 };
 
 /**
@@ -69,6 +70,7 @@ export function useSubscription() {
             originalPurchaseDate: toDate(s.originalPurchaseDate),
             isSandbox: !!s.isSandbox,
             updatedAt: toDate(s.updatedAt),
+            compUntil: toDate(s.compUntil),
           };
 
           setSnapshot(sub);
@@ -92,7 +94,11 @@ export function useSubscription() {
     };
   }, []);
 
-  const isActive = status === 'active' || status === 'trial';
+  const compIsActive = (() => {
+    const d = snapshot?.compUntil;
+    return !!(d && Date.now() < d.getTime());
+  })();
+  const isActive = (status === 'active' || status === 'trial') || compIsActive;
 
   return { status, isActive, snapshot, loading, error } as const;
 }

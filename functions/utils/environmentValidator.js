@@ -34,6 +34,10 @@ const envSchema = Joi.object({
   MAX_REQUESTS_PER_HOUR: Joi.number().integer().min(1).default(1000),
   BURST_LIMIT: Joi.number().integer().min(1).default(10),
   
+  // Promo/Referral configuration
+  PROMO_COMP_DAYS: Joi.number().integer().min(1).default(30), // default for promos and fallback for referrals
+  REFERRAL_COMP_DAYS: Joi.number().integer().min(1).optional(), // optional override for referrals
+  
   // Image processing limits
   MAX_IMAGE_SIZE_BYTES: Joi.number().integer().min(1024).default(10485760), // 10MB
   MAX_IMAGES_PER_ENTRY: Joi.number().integer().min(1).default(10),
@@ -135,7 +139,11 @@ function getOptionalVariables() {
     SKIP_AI_GENERATION: false,
     SKIP_FIRESTORE_QUERIES: false,
     ENABLE_DETAILED_LOGGING: true,
-    ENABLE_PERFORMANCE_MONITORING: true
+    ENABLE_PERFORMANCE_MONITORING: true,
+    // Promo/Referral
+    PROMO_COMP_DAYS: 30,
+    // Leave REFERRAL_COMP_DAYS undefined here to indicate optional override
+    // REFERRAL_COMP_DAYS: 30
   };
 }
 
@@ -181,6 +189,8 @@ function getConfigSummary() {
     skipFirestoreQueries: process.env.SKIP_FIRESTORE_QUERIES === 'true',
     detailedLogging: process.env.ENABLE_DETAILED_LOGGING === 'true',
     performanceMonitoring: process.env.ENABLE_PERFORMANCE_MONITORING === 'true',
+    promoCompDays: parseInt(process.env.PROMO_COMP_DAYS) || 30,
+    referralCompDays: process.env.REFERRAL_COMP_DAYS ? parseInt(process.env.REFERRAL_COMP_DAYS) : null,
     emulatorMode: isEmulatorMode()
   };
 }

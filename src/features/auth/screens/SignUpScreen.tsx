@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, StatusBar, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Link } from 'expo-router';
 import { useSignUp } from '../hooks/useSignUp';
 import { FontAwesome } from '@expo/vector-icons';
 import { Button } from '../../../components/Button';
@@ -116,6 +116,16 @@ const SignUpScreen = () => {
                             Already have an account? <Text style={styles.linkText}>Sign In</Text>
                         </Text>
                     </TouchableOpacity>
+                    <View style={{ alignItems: 'center', marginTop: 8 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.signInText}>Have a referral code? </Text>
+                            <Link href={{ pathname: '/(auth)/enter-referral-code' } as any} asChild>
+                                <TouchableOpacity>
+                                    <Text style={[styles.signInText, styles.linkText]}>Enter it here</Text>
+                                </TouchableOpacity>
+                            </Link>
+                        </View>
+                    </View>
                     <View style={styles.footerTextContainer}>
                         <Text style={styles.termsText}>By clicking continue you agree to our</Text>
                         <Text style={styles.termsText}>

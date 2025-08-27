@@ -2,31 +2,31 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, StatusBar, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FamilyService } from '../../../services/familyService';
-import { useAuth } from '../../../context/AuthContext';
-import { Colors } from '../../../theme/colors';
+import { useAuth } from '@/context/AuthContext';
+import { ReferralService } from '@/services/referralService';
+import { Colors } from '@/theme/colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const EnterInviteCodeScreen = () => {
-  const [inviteCode, setInviteCode] = useState('');
+const EnterReferralCodeScreen = () => {
+  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { user } = useAuth();
 
-  const handleAcceptInvite = async () => {
-    if (!inviteCode.trim()) {
-      Alert.alert('Required', 'Please enter an invite code.');
+  const handleProcessReferral = async () => {
+    const code = referralCode.trim().toUpperCase();
+    if (!code) {
+      Alert.alert('Required', 'Please enter a referral code.');
       return;
     }
 
-    // If not authenticated, store code and route to signup/login
     if (!user) {
       try {
-        await AsyncStorage.setItem('@pendingInviteCode', inviteCode.trim());
-        Alert.alert('Almost there', 'Create an account or log in to accept your invite.');
+        await AsyncStorage.setItem('@pendingReferralCode', code);
+        Alert.alert('Almost there', 'Create an account or log in to apply your referral.');
         router.replace('/(auth)/signup');
       } catch (e) {
-        console.error('Error storing pending invite code:', e);
+        console.error('Error storing pending referral code:', e);
         Alert.alert('Error', 'Could not proceed. Please try again.');
       }
       return;
@@ -34,12 +34,12 @@ const EnterInviteCodeScreen = () => {
 
     setLoading(true);
     try {
-      await FamilyService.acceptInvitation(inviteCode.trim());
-      Alert.alert('Success', 'Invitation accepted! You now have access.');
-      router.replace('/(main)/(tabs)/journal');
+      await ReferralService.processReferral(code);
+      Alert.alert('Success', 'Referral applied!');
+      router.replace('/(auth)/pricing');
     } catch (error: any) {
-      console.error('Error accepting invitation:', error);
-      Alert.alert('Error', error.message || 'Failed to accept invitation. Please check the code and try again.');
+      console.error('Error processing referral:', error);
+      Alert.alert('Error', error?.message || 'Failed to apply referral. Please check the code and try again.');
     } finally {
       setLoading(false);
     }
@@ -51,39 +51,39 @@ const EnterInviteCodeScreen = () => {
       <View style={styles.content}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../../../assets/images/Logo_Icon.png')}
+            source={require('@/assets/images/Logo_Icon.png')}
             style={styles.logo}
             resizeMode="contain"
           />
         </View>
 
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>Enter Family Invite Code</Text>
+          <Text style={styles.title}>Enter Referral Code</Text>
           <Text style={styles.description}>
-            This is only for Family Sharing. Enter the family invite code to join and access shared Recaps.
+            Enter a referral code to unlock complimentary days
           </Text>
         </View>
 
         <View style={styles.footerContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Enter family invite code"
-            value={inviteCode}
+            placeholder="Enter referral code"
+            value={referralCode}
             placeholderTextColor={Colors.mediumGrey}
-            onChangeText={setInviteCode}
+            onChangeText={setReferralCode}
             autoCapitalize="characters"
             autoCorrect={false}
           />
 
           <TouchableOpacity
             style={[styles.button, styles.primaryButton]}
-            onPress={handleAcceptInvite}
+            onPress={handleProcessReferral}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text style={styles.primaryButtonText}>Accept invite</Text>
+              <Text style={styles.primaryButtonText}>Continue</Text>
             )}
           </TouchableOpacity>
 
@@ -181,5 +181,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default EnterInviteCodeScreen;
-
+export default EnterReferralCodeScreen;

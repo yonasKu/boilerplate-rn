@@ -126,6 +126,72 @@ Tips:
 
 ---
 
+## 3.1) Google Play — Store Listing and App Content (Sproutbook)
+
+The selections below are recommended based on this codebase’s current functionality and configuration.
+
+1. __App Identity__
+   - App name: Sproutbook
+   - Package name: `com.palex.sproutbook` (from `app.json` → `android.package`)
+
+2. **Category**
+   - Application type: App (not Game)
+   - Category: Parenting
+   - Tags (optional): journaling, family, memories
+
+3. **Target Audience and Families**
+   - Target age groups: 18 and over
+   - Primarily directed to children: No
+   - Designed for Families program: No (app is for parents/caregivers)
+
+4. **Content Rating (questionnaire guidance)**
+   - Violence: No
+   - Sexual content: No
+   - Profanity: No
+   - Alcohol/tobacco/drugs: No
+   - Gambling: No simulated or real gambling
+   - User interaction: Limited to private family use; no public social features
+   - Location access: No precise/coarse location permissions in code
+   - Result expectation: Everyone (IARC) — adjust if business needs differ
+
+5. **Ads and Monetization**
+   - Contains ads: No (no ad SDKs present)
+   - In-app purchases: Yes (subscriptions via RevenueCat / `react-native-purchases`)
+
+6. **App Permissions (from `app.json`)**
+   - Declared on Android: `POST_NOTIFICATIONS`
+   - Disclosure suggestion: Notifications are used to send reminders and recap updates
+
+7. **Data Safety (collection/sharing mapping)**
+   - Data collection: Yes (account and content features)
+   - Data shared with third parties: Yes — service providers only
+     - Firebase (Authentication/Firestore/Storage)
+     - RevenueCat (purchase/entitlement state)
+   - Categories collected (examples to select):
+     - Personal info: Name, Email address
+     - Photos/Video: User-uploaded child/profile photos
+     - App activity: Purchase status/entitlements (functional)
+     - Device or other IDs: Push notification token (expo-notifications)
+   - Purposes: App functionality, Account management, Purchase management, Communications
+   - Data is encrypted in transit: Yes
+   - Data deletion: Provide user data deletion on request; in‑app account deletion not implemented yet (update once added)
+
+8. **Privacy Policy**
+   - URL: <provide your hosted privacy policy URL>
+   - Must cover Firebase, RevenueCat, notifications, and user-generated content storage
+
+9. **App Access (for review)**
+   - All core features are available after sign up/login; no special credentials required
+   - Optionally provide a demo account for faster review: `<demo_email>` / `<demo_password>`
+
+10. **Store Listing Disclosures**
+    - Add “In-app purchases” disclosure (Play adds this automatically when products exist)
+    - Recommended short explanation: “Subscriptions unlock premium recaps and features. No ads.”
+
+Review this section with Product/Legal and adjust if business decisions differ (e.g., audience, family program participation, account deletion availability).
+
+---
+
 ## 4) RevenueCat Setup
 
 1. Create a RevenueCat Project
