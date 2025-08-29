@@ -1,3 +1,6 @@
+/* CheckoutScreen disabled - not used. Keeping file as placeholder only.
+   Original implementation commented out on 2025-08-27T22:06:26+03:00.
+
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, TextInput, StatusBar, TouchableOpacity } from 'react-native';
 import { Button } from '../../../components/Button';
@@ -125,3 +128,8 @@ const styles = StyleSheet.create({
 });
 
 export default CheckoutScreen;
+*/
+
+// Placeholder export while checkout is disabled
+const CheckoutScreenPlaceholder = () => null;
+export default CheckoutScreenPlaceholder;

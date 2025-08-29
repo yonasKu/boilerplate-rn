@@ -17,9 +17,19 @@ exports.revenuecatWebhook = onRequest(
         return res.status(405).json({ error: 'Method Not Allowed' });
       }
 
-      const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
+      // Secret resolution:
+      // - In production: injected from Secret Manager as REVENUECAT_WEBHOOK_SECRET
+      // - In local emulators: allow fallback to LOCAL_REVENUECAT_WEBHOOK_SECRET to avoid deploy conflicts
+      const isEmulator =
+        process.env.FUNCTIONS_EMULATOR === 'true' ||
+        !!process.env.FIRESTORE_EMULATOR_HOST ||
+        !!process.env.AUTH_EMULATOR_HOST ||
+        !!process.env.STORAGE_EMULATOR_HOST;
+      const secret =
+        process.env.REVENUECAT_WEBHOOK_SECRET ||
+        (isEmulator ? process.env.LOCAL_REVENUECAT_WEBHOOK_SECRET : undefined);
       if (!secret) {
-        console.error('REVENUECAT_WEBHOOK_SECRET not configured');
+        console.error('RevenueCat webhook secret not configured');
         return res.status(500).json({ error: 'Server misconfiguration' });
       }
 

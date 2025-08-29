@@ -84,6 +84,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           await refreshOnboardingStatus();
           // Process any pending referral captured pre-auth (deep link or manual entry)
           await applyPendingReferralIfAny();
+          // Initialize and register notifications for this user
+          try {
+            await NotificationService.initAndRegister(currentUser.uid);
+          } catch (e) {
+            console.error('Error initializing notifications:', e);
+          }
         } else {
           console.log('User not verified, skipping onboarding check');
           setOnboardingStatus({
@@ -104,17 +110,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const handleSignOut = async () => {
     if (user) {
       try {
-        // Get current push token and remove via cloud function
-        const token = await NotificationService.getPushToken();
-        if (token) {
-          await NotificationService.removeDeviceToken(user.uid, token);
-        }
+        // Best-effort unregister of the current device's token via backend
+        await NotificationService.unregisterCurrentDevice(user.uid);
       } catch (error) {
-        console.error('Error removing push token during sign out:', error);
+        console.error('Error unregistering device during sign out:', error);
       }
     }
     try {
-            await signOut(auth);
+      await signOut(auth);
     } catch (error) {
       console.error('Error signing out:', error);
     }

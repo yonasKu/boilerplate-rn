@@ -83,6 +83,23 @@ export const ActiveTimelineProvider: React.FC<{ children: React.ReactNode }> = (
     }
   }, [availableTimelines, activeOwnerId, user?.uid, persistActiveOwner]);
 
+  // If account is view-only, auto-switch to the inviter's owner timeline
+  useEffect(() => {
+    // Only proceed if logged in and account is view-only
+    if (!user?.uid) return;
+    if ((accountType ?? 'full') !== 'view-only') return;
+
+    // If currently viewing self but we have shared owners, switch to the first shared owner
+    const isViewingSelf = !activeOwnerId || activeOwnerId === user.uid;
+    if (isViewingSelf && sharedAccess && sharedAccess.length > 0) {
+      const ownerId = sharedAccess[0]?.ownerId;
+      if (ownerId && availableTimelines.includes(ownerId)) {
+        setActiveOwnerId(ownerId);
+        persistActiveOwner(ownerId);
+      }
+    }
+  }, [user?.uid, accountType, sharedAccess, availableTimelines, activeOwnerId, persistActiveOwner]);
+
   const isViewingOthers = useMemo(() => {
     if (!user?.uid || !activeOwnerId) return false;
     return activeOwnerId !== user.uid;

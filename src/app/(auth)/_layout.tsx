@@ -30,12 +30,6 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen
-        name="checkout"
-        options={{
-          header: () => <CustomHeader title="Checkout" />,
-        }}
-      />
-      <Stack.Screen
         name="login"
         options={{
           headerShown: false,
@@ -63,6 +57,13 @@ export default function AuthLayout() {
       />
       <Stack.Screen
         name="enter-invite"
+        options={{
+          headerShown: false,
+          // header: () => <CustomHeader title="Enter Invite Code" />,
+        }}
+      />
+      <Stack.Screen
+        name="enter-referral-code"
         options={{
           headerShown: false,
           // header: () => <CustomHeader title="Enter Invite Code" />,

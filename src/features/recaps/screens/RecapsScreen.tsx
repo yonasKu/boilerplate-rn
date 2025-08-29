@@ -3,12 +3,14 @@ import { View, StyleSheet, StatusBar, FlatList, Alert, Text, Image, TouchableOpa
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
+import { useActiveTimeline } from '@/context/ActiveTimelineContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { getInitials, generateAvatarColor } from '@/utils/avatarUtils';
 
 import { RecapCard } from '../components/RecapCard';
+import FamilySharingBubbles from '../components/FamilySharingBubbles';
 import ShareBottomSheet from '../../journal/components/ShareBottomSheet';
 import FilterTabs from '../components/FilterTabs';
 import { useRecaps } from '../hooks/useRecaps';
@@ -36,7 +38,12 @@ const RecapsScreen = () => {
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
-  const { recaps: rawRecaps, loading } = useRecaps();
+  const { activeOwnerId } = useActiveTimeline();
+  // Determine if selected item is a child vs owner; pass childId only for child
+  const childIdForQuery = selectedChild && activeOwnerId && selectedChild.id !== activeOwnerId
+    ? selectedChild.id
+    : undefined;
+  const { recaps: rawRecaps, loading } = useRecaps(activeOwnerId || undefined, childIdForQuery);
 
   // Helper functions for child selection
   const getItemName = (item: Child | null) => {
@@ -52,12 +59,12 @@ const RecapsScreen = () => {
   // Fetch user profile and children
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (user) {
+      if (activeOwnerId) {
         try {
           const { doc, getDoc } = await import('firebase/firestore');
           const { db } = await import('@/lib/firebase/firebaseConfig');
           
-          const userDocRef = doc(db, 'users', user.uid);
+          const userDocRef = doc(db, 'users', activeOwnerId);
           const userDoc = await getDoc(userDocRef);
           if (userDoc.exists()) {
             const userData = userDoc.data();
@@ -102,12 +109,12 @@ const RecapsScreen = () => {
             console.log('Processed children data:', childrenData);
             setChildren(childrenData);
             
-            // Set selected child to first child or user profile
+            // Set selected child to first child or owner profile
             if (childrenData.length > 0) {
               setSelectedChild(childrenData[0]);
             } else {
               setSelectedChild({
-                id: user.uid,
+                id: activeOwnerId,
                 name: userData.name || 'User',
                 profileImageUrl: userData.profileImageUrl || ''
               });
@@ -115,6 +122,15 @@ const RecapsScreen = () => {
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
+          // Fallback: if we can't read owner profile (permissions), still set selection to owner
+          if (activeOwnerId) {
+            setSelectedChild({
+              id: activeOwnerId,
+              name: 'Owner',
+              profileImageUrl: ''
+            });
+            setChildren([]);
+          }
         } finally {
           setLoadingProfile(false);
         }
@@ -122,7 +138,7 @@ const RecapsScreen = () => {
     };
 
     fetchUserProfile();
-  }, [user]);
+  }, [activeOwnerId]);
 
   // Fetch unread notifications count - skip if permissions issue
   useEffect(() => {
@@ -237,21 +253,20 @@ const RecapsScreen = () => {
             </Text>
             <Ionicons name={showChildDropdown ? 'chevron-up' : 'chevron-down'} size={20} color="#2F4858" />
           </TouchableOpacity>
+          <View style={styles.headerMiddle} pointerEvents="box-none">
+            <FamilySharingBubbles />
+          </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
               <View style={styles.notificationContainer}>
-                <Ionicons name="notifications-outline" size={24} color="#2F4858" />
-                {/* {unreadNotifications > 0 && (
-                  <View style={styles.notificationBadge}>
-                    <Text style={styles.notificationCount}>
-                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                    </Text>
-                  </View>
-                )} */}
+                <Ionicons name="notifications-outline" size={22} color="#2F4858" />
+                {unreadNotifications > 0 && (
+                  <View style={styles.notificationDot} />
+                )}
               </View>
             </TouchableOpacity>
             <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
-              <Ionicons name="settings-outline" size={24} color="#2F4858" />
+              <Ionicons name="settings-outline" size={22} color="#2F4858" />
             </TouchableOpacity>
           </View>
         </View>
@@ -299,6 +314,7 @@ const RecapsScreen = () => {
             />
           </View>
         )}
+        
       </View>
       <FilterTabs
         onAgePress={handleAgePress}
@@ -316,7 +332,7 @@ const RecapsScreen = () => {
         )}
         keyExtractor={(item) => item.id!}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 16, paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 16 }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No recaps found</Text>
@@ -348,11 +364,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    position: 'relative',
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flexShrink: 1,
   },
   headerTitle: {
     fontSize: 18,
@@ -364,12 +382,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  headerMiddle: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
   headerButton: {
-    padding: 8,
+    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 8,
   },
   notificationContainer: {
     position: 'relative',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.error,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   notificationBadge: {
     position: 'absolute',

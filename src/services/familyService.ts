@@ -1,4 +1,5 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { auth } from '../lib/firebase/firebaseConfig';
+import { signInAnonymously } from 'firebase/auth';
 
 export interface Invitation {
   id?: string;
@@ -20,6 +21,16 @@ export interface SharedAccess {
   scopes: string[];
   createdAt: string;
   updatedAt: string;
+  viewer?: {
+    uid: string;
+    name: string;
+    profileImageUrl: string;
+  };
+  owner?: {
+    uid: string;
+    name: string;
+    profileImageUrl: string;
+  };
 }
 
 export type AccountType = 'full' | 'view-only';
@@ -37,7 +48,30 @@ export interface FamilyMember {
   };
 }
 
-const functions = getFunctions();
+// HTTP helpers (mirrors referralService.ts)
+const buildFunctionUrl = (name: string) => {
+  const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error('Missing EXPO_PUBLIC_FIREBASE_PROJECT_ID');
+  return `https://us-central1-${projectId}.cloudfunctions.net/${name}`;
+};
+
+const getIdTokenOrAnon = async (): Promise<string> => {
+  try {
+    const user = auth.currentUser || (await signInAnonymously(auth)).user;
+    const token = await user.getIdToken(true);
+    console.log('[FamilyService] Using ID token prefix:', token?.slice(0, 12), 'len:', token?.length ?? 0);
+    return token;
+  } catch (e) {
+    const cred = await signInAnonymously(auth);
+    const token = await cred.user.getIdToken(true);
+    console.log('[FamilyService] Using ID token prefix:', token?.slice(0, 12), 'len:', token?.length ?? 0);
+    return token;
+  }
+};
+
+const safeJson = async (resp: any) => {
+  try { return await resp.json(); } catch { return undefined; }
+};
 
 export const FamilyService = {
   createInvitation: async (data: {
@@ -45,17 +79,24 @@ export const FamilyService = {
     scopes?: string[];
   }): Promise<{ invitationId: string; inviteCode: string; expiresAt: string; scopes: string[] }> => {
     try {
-      const createInvitationCallable = httpsCallable<{
-        inviteeContact: string;
-        scopes?: string[];
-      }, { invitationId: string; inviteCode: string; expiresAt: string; scopes: string[] }>(functions, 'family-createInvitation');
-      
-      const result = await createInvitationCallable({
-        inviteeContact: data.inviteeContact,
-        scopes: data.scopes || ['recaps:read'],
-      });
-
-      return result.data;
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyCreateInvitation');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          inviteeContact: data.inviteeContact,
+          scopes: data.scopes || ['recaps:read'],
+        }),
+      } as any);
+      if (!(resp as any).ok) {
+        const err = await safeJson(resp);
+        throw new Error(err?.error || 'Failed to create invitation');
+      }
+      return await (resp as any).json();
     } catch (error) {
       console.error('Error creating invitation:', error);
       throw error;
@@ -64,9 +105,23 @@ export const FamilyService = {
 
   getInvitations: async (): Promise<Invitation[]> => {
     try {
-      const getInvitationsCallable = httpsCallable<void, { invitations: Invitation[] }>(functions, 'family-getInvitations');
-      const result = await getInvitationsCallable();
-      return result.data.invitations;
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyGetInvitations');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      } as any);
+      if (!(resp as any).ok) {
+        const err = await safeJson(resp);
+        throw new Error(err?.error || 'Failed to fetch invitations');
+      }
+      const data = await (resp as any).json();
+      console.log('🔍 familyGetInvitations response:', data);
+      return data.invitations as Invitation[];
     } catch (error) {
       console.error('Error getting invitations:', error);
       throw error;
@@ -75,9 +130,21 @@ export const FamilyService = {
 
   acceptInvitation: async (inviteCode: string): Promise<{ success: boolean; ownerId: string; viewerId: string; accessId: string; scopes: string[] }> => {
     try {
-      const acceptInvitationCallable = httpsCallable<{ inviteCode: string }, { success: boolean; ownerId: string; viewerId: string; accessId: string; scopes: string[] }>(functions, 'family-acceptInvitation');
-      const result = await acceptInvitationCallable({ inviteCode });
-      return result.data;
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyAcceptInvitation');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ inviteCode }),
+      } as any);
+      if (!(resp as any).ok) {
+        const err = await safeJson(resp);
+        throw new Error(err?.error || 'Failed to accept invitation');
+      }
+      return await (resp as any).json();
     } catch (error) {
       console.error('Error accepting invitation:', error);
       throw error;
@@ -86,9 +153,21 @@ export const FamilyService = {
 
   updatePermissions: async (viewerId: string, scopes: string[]): Promise<{ success: boolean; accessId: string; scopes: string[] }> => {
     try {
-      const updatePermissionsCallable = httpsCallable<{ viewerId: string, scopes: string[] }, { success: boolean; accessId: string; scopes: string[] }>(functions, 'family-updatePermissions');
-      const result = await updatePermissionsCallable({ viewerId, scopes });
-      return result.data;
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyUpdatePermissions');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ viewerId, scopes }),
+      } as any);
+      if (!(resp as any).ok) {
+        const err = await safeJson(resp);
+        throw new Error(err?.error || 'Failed to update permissions');
+      }
+      return await (resp as any).json();
     } catch (error) {
       console.error('Error updating permissions:', error);
       throw error;
@@ -97,9 +176,21 @@ export const FamilyService = {
 
   revokeAccess: async (viewerId: string): Promise<{ success: boolean; accessId: string; alreadyRevoked?: boolean }> => {
     try {
-      const revokeAccessCallable = httpsCallable<{ viewerId: string }, { success: boolean; accessId: string; alreadyRevoked?: boolean }>(functions, 'family-revokeAccess');
-      const result = await revokeAccessCallable({ viewerId });
-      return result.data;
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyRevokeAccess');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ viewerId }),
+      } as any);
+      if (!(resp as any).ok) {
+        const err = await safeJson(resp);
+        throw new Error(err?.error || 'Failed to revoke access');
+      }
+      return await (resp as any).json();
     } catch (error) {
       console.error('Error revoking access:', error);
       throw error;
@@ -108,9 +199,23 @@ export const FamilyService = {
 
   getSharedAccess: async (): Promise<SharedAccess[]> => {
     try {
-      const getSharedAccessCallable = httpsCallable<void, { sharedAccess: SharedAccess[] }>(functions, 'family-getSharedAccess');
-      const result = await getSharedAccessCallable();
-      return result.data.sharedAccess;
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyGetSharedAccess');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ includeProfiles: true }),
+      } as any);
+      if (!(resp as any).ok) {
+        const err = await safeJson(resp);
+        throw new Error(err?.error || 'Failed to fetch shared access');
+      }
+      const data = await (resp as any).json();
+      console.log('🔍 familyGetSharedAccess response:', data);
+      return data.sharedAccess as SharedAccess[];
     } catch (error) {
       console.error('Error getting shared access:', error);
       throw error;
@@ -119,9 +224,23 @@ export const FamilyService = {
 
   getAccountStatus: async (): Promise<{ accountType: AccountType; sharedAccess: SharedAccess[] }> => {
     try {
-      const getAccountStatusCallable = httpsCallable<void, { accountType: AccountType; sharedAccess: SharedAccess[] }>(functions, 'family-getAccountStatus');
-      const result = await getAccountStatusCallable();
-      return result.data;
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyGetAccountStatus');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ includeProfiles: true }),
+      } as any);
+      if (!(resp as any).ok) {
+        const err = await safeJson(resp);
+        throw new Error(err?.error || 'Failed to fetch account status');
+      }
+      const data = await (resp as any).json();
+      console.log('🔍 familyGetAccountStatus response:', data);
+      return data;
     } catch (error) {
       console.error('Error getting account status:', error);
       throw error;
@@ -130,9 +249,21 @@ export const FamilyService = {
 
   isViewer: async (): Promise<boolean> => {
     try {
-      const getSharedAccessCallable = httpsCallable<void, { sharedAccess: SharedAccess[] }>(functions, 'family-getSharedAccess');
-      const result = await getSharedAccessCallable();
-      return result.data.sharedAccess && result.data.sharedAccess.length > 0;
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyGetSharedAccess');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      } as any);
+      if (!(resp as any).ok) {
+        return false;
+      }
+      const data = await (resp as any).json();
+      return Array.isArray(data.sharedAccess) && data.sharedAccess.length > 0;
     } catch (error) {
       console.error('Error checking viewer status:', error);
       return false;

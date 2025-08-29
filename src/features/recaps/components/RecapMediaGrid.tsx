@@ -201,19 +201,22 @@ const styles = StyleSheet.create({
   },
   dateOverlayText: {
     color: Colors.white,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_400Regular',
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 1, height: 1 },
+    // textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    // textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+    fontSize: 20,
+    lineHeight: 28,
   },
   dateOverlayTextLarge: {
     fontSize: 36,
     lineHeight: 40,
+    fontFamily: 'Poppins_600SemiBold',
   },
   overlayText: {
     color: Colors.white,
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: 'bold',
   },
 });

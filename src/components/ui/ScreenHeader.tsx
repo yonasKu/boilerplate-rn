@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 
 import { useRouter } from 'expo-router';
-import { Colors } from '@/theme';
+import { Colors } from '../../theme/colors';
 
 interface ScreenHeaderProps {
   title: string;
@@ -36,7 +36,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = tru
       )}
             <View style={styles.titleContainer}>
                 {showCalendarIcon && <Image source={require('../../assets/images/calendar.png')} style={styles.calendarIcon} />}
-        <Text style={styles.headerTitle}>{title}</Text>
+        <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }]}>{title}</Text>
       </View>
       {rightComponent ? (
         rightComponent
@@ -72,7 +72,6 @@ const styles = StyleSheet.create({
     titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
     calendarIcon: {
     width: 20,

@@ -109,9 +109,16 @@ const SearchScreen = () => {
               if (item.type === 'entry') {
                 return (
                   <View style={styles.cardContainer}>
-                    <TouchableOpacity onPress={() => router.push(`/journal/${item.data.id}` as any)}>
-                      <JournalEntryCard entry={item.data} selectedChildId={item.data.childId || ''} />
-                    </TouchableOpacity>
+                    <JournalEntryCard 
+                      entry={item.data} 
+                      selectedChildId={item.data.childId || ''}
+                      onLike={() => {}}
+                      onShare={() => {}}
+                      onEdit={() => {}}
+                      onDelete={() => {}}
+                      onToggleMilestone={() => {}}
+                      onPress={() => router.push(`/journal/${item.data.id}` as any)}
+                    />
                   </View>
                 );
               } else {

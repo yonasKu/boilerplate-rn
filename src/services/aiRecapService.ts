@@ -106,6 +106,39 @@ export const RecapService = {
       });
     } catch (error) {
       console.error('Error getting recaps by child:', error);
+      // If composite index is missing, fall back to fetching by user and filter client-side
+      const err = error as any;
+      if (err?.code === 'failed-precondition') {
+        try {
+          const userOnly = query(
+            collection(db, RecapService.collectionName),
+            where('userId', '==', userId),
+            orderBy('period.endDate', 'desc')
+          );
+          const snapshot = await getDocs(userOnly);
+          return snapshot.docs
+            .map(doc => {
+              const data = doc.data();
+              return {
+                id: doc.id,
+                ...data,
+                media: {
+                  highlightPhotos: data.media?.highlightPhotos || data.summary?.media?.highlightPhotos || []
+                },
+                period: {
+                  startDate: data.period.startDate.toDate(),
+                  endDate: data.period.endDate.toDate(),
+                },
+                createdAt: data.createdAt ? data.createdAt.toDate() : undefined,
+                generatedAt: data.generatedAt ? data.generatedAt.toDate() : undefined,
+              } as Recap;
+            })
+            .filter(r => (r as any).childId === childId);
+        } catch (fallbackErr) {
+          console.error('Fallback fetch by user failed:', fallbackErr);
+          throw new Error('Failed to get recaps by child');
+        }
+      }
       throw new Error('Failed to get recaps by child');
     }
   },

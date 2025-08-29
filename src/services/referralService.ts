@@ -1,5 +1,6 @@
 import { collection, doc, addDoc, getDocs, updateDoc, query, where, Timestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase/firebaseConfig';
+import { db, auth } from '../lib/firebase/firebaseConfig';
+import { signInAnonymously } from 'firebase/auth';
 
 export interface Referral {
   id?: string;
@@ -146,39 +147,115 @@ export const ReferralService = {
 
   // --- Callable wrappers ---
   /**
-   * Calls backend `generateReferralCode` to get or create the user's referral code (idempotent).
+   * Calls backend HTTP `generateReferralCode` to get or create the user's referral code (idempotent).
    */
   generateReferralCode: async (): Promise<string> => {
-    const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
-    const callable = httpsCallable(functions, 'generateReferralCode');
-    const res: any = await callable({});
-    const code = res?.data?.referralCode as string | undefined;
+    const token = await getIdTokenOrAnon();
+    const url = buildFunctionUrl('generateReferralCode');
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+    if (!resp.ok) {
+      const err = await safeJson(resp);
+      throw new Error(err?.error || 'Failed to generate referral code');
+    }
+    const data = await resp.json();
+    const code = data?.referralCode as string | undefined;
     if (!code) throw new Error('Failed to generate referral code');
     return code;
   },
 
   /**
-   * Calls backend `processReferral` to apply referral benefits at signup/first-run.
+   * Calls backend HTTP `processReferral` to apply referral benefits at signup/first-run.
    */
   processReferral: async (code: string): Promise<any> => {
     const trimmed = (code || '').trim().toUpperCase();
     if (!trimmed) throw new Error('Referral code is required');
-    const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
-    const callable = httpsCallable(functions, 'processReferral');
-    const res: any = await callable({ referralCode: trimmed });
-    return res?.data;
+    const token = await getIdTokenOrAnon();
+    const url = buildFunctionUrl('processReferral');
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ referralCode: trimmed }),
+    });
+    if (!resp.ok) {
+      const err = await safeJson(resp);
+      throw new Error(err?.error || 'Failed to process referral');
+    }
+    return await resp.json();
   },
 
   /**
-   * Calls backend `getReferralStats` for UI (code, totals, recent referrals).
+   * Calls backend HTTP `getReferralStats` for UI (code, totals, recent referrals).
    */
   getReferralStats: async (): Promise<any> => {
-    const { getFunctions, httpsCallable } = await import('firebase/functions');
-    const functions = getFunctions();
-    const callable = httpsCallable(functions, 'getReferralStats');
-    const res: any = await callable({});
-    return res?.data;
+    const token = await getIdTokenOrAnon();
+    const url = buildFunctionUrl('getReferralStats');
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+    if (!resp.ok) {
+      const err = await safeJson(resp);
+      throw new Error(err?.error || 'Failed to fetch referral stats');
+    }
+    return await resp.json();
   },
+
+  /**
+   * Calls backend HTTP `redeemPromoCode` for promo or gift codes.
+   */
+  redeemPromoCode: async (code: string): Promise<any> => {
+    const trimmed = (code || '').trim().toUpperCase();
+    if (!trimmed) throw new Error('Code is required');
+    const token = await getIdTokenOrAnon();
+    const url = buildFunctionUrl('redeemPromoCode');
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ code: trimmed }),
+    });
+    if (!resp.ok) {
+      const err = await safeJson(resp);
+      throw new Error(err?.error || 'Failed to redeem code');
+    }
+    return await resp.json();
+  },
+};
+
+// --- Helpers ---
+const buildFunctionUrl = (name: string) => {
+  const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
+  if (!projectId) throw new Error('Missing EXPO_PUBLIC_FIREBASE_PROJECT_ID');
+  return `https://us-central1-${projectId}.cloudfunctions.net/${name}`;
+};
+
+const getIdTokenOrAnon = async (): Promise<string> => {
+  try {
+    const user = auth.currentUser || (await signInAnonymously(auth)).user;
+    return await user.getIdToken();
+  } catch (e) {
+    // Fallback: try anonymous sign-in again explicitly
+    const cred = await signInAnonymously(auth);
+    return await cred.user.getIdToken();
+  }
+};
+
+const safeJson = async (resp: any) => {
+  try { return await resp.json(); } catch { return undefined; }
 };

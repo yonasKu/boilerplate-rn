@@ -69,7 +69,7 @@ const SettingsScreen = () => {
     fetchUserProfile();
   }, [user]);
 
-  // Detect account type to tailor Settings options for viewers
+  // Detect account type to tailor Settings options
   useEffect(() => {
     let cancelled = false;
     const loadAccountType = async () => {
@@ -93,7 +93,7 @@ const SettingsScreen = () => {
 
   const optionsToRender = accountType === 'view-only'
     ? settingsOptions.filter(o => ['Gift a free year', 'Create Journaling Account', 'Logout'].includes(o.text))
-    : settingsOptions;
+    : settingsOptions.filter(o => o.text !== 'Create Journaling Account');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

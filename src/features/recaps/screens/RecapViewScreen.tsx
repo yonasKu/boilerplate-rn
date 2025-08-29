@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Carousel from 'react-native-reanimated-carousel';
 import ImageViewing from 'react-native-image-viewing';
 import FullScreenImageFooter from '../components/FullScreenImageFooter';
+import FamilySharingBubbles from '../components/FamilySharingBubbles';
 import CommentsSection from '../components/comments/CommentsSection';
 import ShareBottomSheet from '../../journal/components/ShareBottomSheet';
 import { useRecap } from '../hooks/useRecap';
@@ -153,6 +154,9 @@ const RecapViewScreen = () => {
                         <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
                             <Ionicons name="chevron-back" size={24} color={Colors.white} />
                         </TouchableOpacity>
+                        <View style={styles.headerMiddle} pointerEvents="box-none">
+                            <FamilySharingBubbles />
+                        </View>
                         <TouchableOpacity onPress={handleSharePress} style={styles.iconButton}>
                             <Ionicons name="arrow-redo-outline" size={24} color={Colors.white} />
                         </TouchableOpacity>
@@ -198,6 +202,9 @@ const RecapViewScreen = () => {
                     <TouchableOpacity onPress={() => router.back()} style={styles.iconButton}>
                         <Ionicons name="chevron-back" size={24} color={Colors.white} />
                     </TouchableOpacity>
+                    <View style={styles.headerMiddle} pointerEvents="box-none">
+                        <FamilySharingBubbles />
+                    </View>
                     <TouchableOpacity onPress={handleSharePress} style={styles.iconButton}>
                         <Ionicons name="arrow-redo-outline" size={24} color={Colors.white} />
                     </TouchableOpacity>
@@ -337,6 +344,14 @@ const styles = StyleSheet.create({
         right: 12,
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    headerMiddle: {
+        flex: 1,
+        alignItems: 'flex-end',
+        marginRight: 16,
+        justifyContent: 'center',
+        paddingHorizontal: 8,
     },
     iconButton: {
         width: 40,

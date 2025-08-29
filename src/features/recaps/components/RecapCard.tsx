@@ -110,7 +110,7 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
 
     const formattedDate = displayDate ? {
         line1: 'WEEK OF',
-        line2: displayDate.toLocaleDateString('en-US', { month: 'long' }).toUpperCase(),
+        line2: displayDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
         line3: displayDate.getDate(),
         line4: displayDate.getFullYear(),
     } : undefined;
@@ -128,8 +128,8 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
                 <Text style={styles.ageText}>{age}</Text>
                 <View style={styles.footerIcons}>
                     <TouchableOpacity onPress={handleLikePress} style={styles.iconButton}>
-                        <Ionicons name={isLiked ? "heart" : "heart-outline"} size={22} color={isLiked ? Colors.red : Colors.grey} />
-                        {likesCount > 0 && <Text style={styles.countText}>{likesCount}</Text>}
+                        <Ionicons name={isLiked ? "heart" : "heart-outline"} size={22} color={isLiked ? '#F68B7F' : Colors.grey} />
+                        {/* {likesCount > 0 && <Text style={styles.countText}>{likesCount}</Text>} */}
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleMilestoneToggle} style={styles.iconButton}>
                         <Ionicons name={isMilestone ? "trophy" : "trophy-outline"} size={20} color={isMilestone ? Colors.golden : Colors.grey} />

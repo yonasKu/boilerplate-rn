@@ -14,10 +14,10 @@ const RecapsHeader = () => {
       </View>
       <View style={styles.headerRight}>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
-          <Ionicons name="notifications-outline" size={24} color={Colors.darkGrey} />
+          <Ionicons name="notifications-outline" size={22} color={Colors.darkGrey} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
-          <Ionicons name="settings-outline" size={24} color={Colors.darkGrey} />
+          <Ionicons name="settings-outline" size={22} color={Colors.darkGrey} />
         </TouchableOpacity>
       </View>
     </View>
@@ -46,9 +46,18 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   headerButton: {
-    marginLeft: 16,
+    padding :4, 
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
+    backgroundColor: Colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

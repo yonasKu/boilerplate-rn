@@ -1,60 +1,43 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import TimelineDropdown, { TimelineOption } from './TimelineDropdown';
 import { Colors } from '@/theme';
 
 interface JournalFilterProps {
   onAgePress: () => void;
   onFilterChange: (filter: string) => void;
   activeFilter: string;
-  onTimelineChange: (timeline: TimelineOption) => void;
-  activeTimeline: TimelineOption;
 }
 
 const JournalFilter: React.FC<JournalFilterProps> = ({ 
   onAgePress, 
   onFilterChange, 
-  activeFilter, 
-  onTimelineChange,
-  activeTimeline,
+  activeFilter,
 }) => {
   const FILTERS = ['All', 'Favorites', 'Milestones', 'Age'];
-  const [dropdownVisible, setDropdownVisible] = useState(false);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
-  const allFilterRef = useRef<View | null>(null);
 
   const handleFilterPress = (filter: string) => {
     if (filter === 'Age') {
       onAgePress();
     } else if (filter === 'All') {
-      onFilterChange('All'); // Ensure 'All' filter is active
-      allFilterRef.current?.measureInWindow((x: number, y: number, _width: number, height: number) => {
-        setDropdownPosition({ top: y + height, left: x });
-        setDropdownVisible(true);
-      });
+      // Skip the dropdown and just apply 'All' filter directly
+      onFilterChange('All');
     } else {
       onFilterChange(filter);
     }
-  };
-
-  const handleTimelineSelect = (timeline: TimelineOption) => {
-    onTimelineChange(timeline);
-    setDropdownVisible(false);
   };
 
   return (
     <View style={styles.container}>
       {FILTERS.map((filter) => (
         <TouchableOpacity
-          ref={filter === 'All' ? allFilterRef : null}
           key={filter}
           style={[styles.chip, activeFilter === filter && styles.activeChip]}
           onPress={() => handleFilterPress(filter)}
         >
           <View style={styles.chipContent}>
             <Text style={[styles.chipText, activeFilter === filter && styles.activeChipText]}>
-              {filter === 'All' && activeTimeline !== 'All' ? activeTimeline : filter}
+              {filter}
             </Text>
             {filter === 'Age' && (
               <Ionicons 
@@ -67,24 +50,6 @@ const JournalFilter: React.FC<JournalFilterProps> = ({
           </View>
         </TouchableOpacity>
       ))}
-
-      {dropdownVisible && (
-        <Modal
-          transparent={true}
-          animationType="none"
-          visible={dropdownVisible}
-          onRequestClose={() => setDropdownVisible(false)}
-        >
-          <Pressable style={styles.backdrop} onPress={() => setDropdownVisible(false)} />
-          <TimelineDropdown
-            options={['All', 'Weekly', 'Monthly']}
-            selectedValue={activeTimeline}
-            onSelect={handleTimelineSelect}
-            onClose={() => setDropdownVisible(false)}
-            position={dropdownPosition}
-          />
-        </Modal>
-      )}
     </View>
   );
 };

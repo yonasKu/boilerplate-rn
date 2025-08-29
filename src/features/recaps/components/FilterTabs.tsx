@@ -96,6 +96,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     backgroundColor: Colors.offWhite,
+    marginTop: 16,
   },
   chip: {
     paddingVertical: 6,

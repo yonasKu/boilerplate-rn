@@ -85,6 +85,10 @@ const JournalEntryViewScreen = () => {
     const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date();
     const allMedia = entry.media || [];
     const imagesForViewer = allMedia.map(item => ({ uri: item.url }));
+    // Derive age text from the first child on this entry (to match feed behavior)
+    const ageText = Array.isArray(entry.childIds) && entry.childIds.length > 0
+        ? (entry as any).childAgeAtEntry?.[entry.childIds[0]] ?? ''
+        : '';
 
     const handleImagePress = (index: number) => {
         setCurrentImageIndex(index);
@@ -158,7 +162,11 @@ const JournalEntryViewScreen = () => {
                         </View>
                     </TouchableOpacity>
                     <View style={styles.bottomContentContainer}>
-                        <Text style={styles.locationText}>{entry.location}</Text>
+                        {ageText ? (
+                            <Text style={styles.ageText}>{ageText}</Text>
+                        ) : (
+                            <View />
+                        )}
                         <View style={styles.actionButtonsGroup}>
                             <TouchableOpacity
                                 style={styles.actionButton}
@@ -245,6 +253,7 @@ const styles = StyleSheet.create({
     },
     imageCarouselContainer: {
         width: '100%',
+        marginLeft: -2,
         height: 350, // Reduced height
         position: 'relative',
         marginBottom: 8, // Added margin bottom
@@ -288,35 +297,35 @@ const styles = StyleSheet.create({
         marginBottom: 15,
     },
     dateContainer: {
-        width: 50, // Fixed width for the date container
+        width: 60, // Slightly wider for larger date number
         alignItems: 'flex-end',
         marginRight: 16,
         paddingTop: 5,
     },
     dateDay: {
-        fontSize: 14,
-        fontFamily: 'Poppins-SemiBold',
+        fontSize: 18,
+        fontFamily: 'Poppins',
         color: Colors.darkGrey,
         lineHeight: 18,
-        letterSpacing: 2.2,
+        letterSpacing: 3.5,
     },
     dateNumber: {
-        fontSize: 24,
-        fontFamily: 'Poppins-Bold',
+        fontSize: 32, // Larger per wires
+        fontFamily: 'Poppins', // Remove bold
         color: Colors.black,
-        lineHeight: 34,
+        lineHeight: 36,
     },
     dateMonth: {
-        fontSize: 14,
-        fontFamily: 'Poppins-Regular', // Un-bolded month
-        color: Colors.mediumGrey,
+        fontSize: 18,
+        fontFamily: 'Poppins', // Regular
+        color: Colors.darkGrey,
         lineHeight: 18,
-        letterSpacing: 0.25,
+        letterSpacing: 0.5,
     },
     textWrapper: {
         flex: 1,
-        marginLeft: -66, // -(dateContainer.width + dateContainer.marginRight)
-        paddingLeft: 66,
+        marginLeft: -76, // -(dateContainer.width + dateContainer.marginRight)
+        paddingLeft: 76,
     },
     entryText: {
         fontSize: 14,
@@ -331,9 +340,9 @@ const styles = StyleSheet.create({
         marginTop: 10,
         marginBottom: 20,
     },
-    locationText: {
+    ageText: {
         fontSize: 14,
-        fontFamily: 'Poppins',
+        fontFamily: 'Poppins-SemiBold',
         color: Colors.mediumGrey,
     },
     actionButtonsGroup: {

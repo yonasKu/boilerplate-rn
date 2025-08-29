@@ -80,6 +80,17 @@ export const useLogin = () => {
         try {
             const userCredential = await signInWithEmail(email, password);
             if (userCredential.user) {
+                // Ensure user document exists (handles migrated users without a doc)
+                try {
+                    const { ensureUserDocumentExists } = await import('../../../services/userService');
+                    await ensureUserDocumentExists(
+                        userCredential.user.uid,
+                        null,
+                        userCredential.user.email ?? email
+                    );
+                } catch (e) {
+                    console.warn('ensureUserDocumentExists after email sign-in failed (non-fatal):', e);
+                }
                 await registerForPushNotifications(userCredential.user.uid);
             }
             

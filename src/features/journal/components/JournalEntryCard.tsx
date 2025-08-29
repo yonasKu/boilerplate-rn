@@ -1,8 +1,13 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Pressable, ActionSheetIOS, Platform, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MediaGrid from './MediaGrid';
 import { Colors } from '../../../theme/colors';
+import { calculateChildAgeAtDate } from '@/services/journalService';
+import { getChild } from '@/services/childService';
+
+// Simple in-module cache to avoid re-fetching DOB for the same childId
+const childDobCache = new Map<string, Date>();
 
 interface JournalEntryCardProps {
   entry: {
@@ -42,11 +47,50 @@ const formatDate = (date: any) => {
 const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, selectedChildId, onLike, onShare, onEdit, onDelete, onToggleMilestone, onPress, isPreview = false }) => {
   const isLiked = entry.isFavorited;
   const formattedDate = formatDate(entry.createdAt);
+  const entryDate = useMemo(() => (entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt)), [entry.createdAt]);
+  const [computedAge, setComputedAge] = useState<string>('');
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const computeAge = async () => {
+      if (!selectedChildId || !entryDate) {
+        setComputedAge('');
+        return;
+      }
+
+      try {
+        let dob = childDobCache.get(selectedChildId);
+        if (!dob) {
+          const child = await getChild(selectedChildId);
+          if (child?.dateOfBirth) {
+            dob = child.dateOfBirth;
+            childDobCache.set(selectedChildId, dob);
+          }
+        }
+        if (!dob) {
+          // No DOB available; rely on stored age if any
+          setComputedAge('');
+          return;
+        }
+        const ageStr = calculateChildAgeAtDate(dob, entryDate);
+        if (!isCancelled) setComputedAge(ageStr);
+      } catch (e) {
+        // Fallback to stored value on error
+        if (!isCancelled) setComputedAge('');
+      }
+    };
+
+    computeAge();
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedChildId, entryDate]);
   
   // Display age for the selected child
-  const childAge = selectedChildId && entry.childAgeAtEntry && entry.childAgeAtEntry[selectedChildId] 
-    ? entry.childAgeAtEntry[selectedChildId] 
-    : '';
+  const childAge = computedAge || (selectedChildId && entry.childAgeAtEntry && entry.childAgeAtEntry[selectedChildId]
+    ? entry.childAgeAtEntry[selectedChildId]
+    : '');
 
   const handleLongPress = () => {
     if (isPreview) return;
@@ -93,13 +137,13 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, selectedChil
         <View style={styles.topSection}>
 
           <View style={styles.contentContainer}>
-            <View style={{ flexDirection: 'row', flexShrink: 1, width: '100%', overflow: 'hidden', alignItems: 'center' }}>
-              <View style={styles.dateContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, width: '100%', minWidth: 0 }}>
+              <View style={[styles.dateContainer, { width: 60 }]}>
                 <Text style={styles.dateDayOfWeek}>{formattedDate.dayOfWeek}</Text>
                 <Text style={styles.dateDay}>{formattedDate.day}</Text>
                 <Text style={styles.dateMonth}>{formattedDate.month}</Text>
               </View>
-              <Text style={styles.entryText} numberOfLines={3}>{entry.text}</Text>
+              <Text style={[styles.entryText, { flexShrink: 1, flexGrow: 1, minWidth: 0 }]} numberOfLines={3} ellipsizeMode="tail">{entry.text}</Text>
             </View>
           </View>
         </View>
@@ -115,7 +159,7 @@ const JournalEntryCard: React.FC<JournalEntryCardProps> = ({ entry, selectedChil
                 <Ionicons
                   name={isLiked ? 'heart' : 'heart-outline'}
                   size={22}
-                  color={isLiked ? Colors.error : Colors.lightGrey}
+                  color={isLiked ? '#F68B7F' : Colors.lightGrey}
                   style={styles.actionIcon}
                 />
               </TouchableOpacity>
@@ -165,7 +209,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   dateContainer: {
-    alignSelf: 'center',
+    // alignSelf: 'center',
     alignItems: 'flex-end',
     //justifyContent: 'center',
     marginRight: 6,
@@ -173,23 +217,24 @@ const styles = StyleSheet.create({
     //width: 50,
   },
   dateDayOfWeek: {
-    fontSize: 12,
+    fontSize: 14,
     color: Colors.darkGrey,
     fontFamily: 'Poppins',
+    letterSpacing: 3.5,
     lineHeight: 14,
   },
   dateDay: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 24,
     color: Colors.black,
     fontFamily: 'Poppins',
-    lineHeight: 24,
+    lineHeight: 36,
   },
   dateMonth: {
-    fontSize: 10,
+    fontSize: 14,
     color: Colors.darkGrey,
     fontFamily: 'Poppins',
     lineHeight: 14,
+    letterSpacing: 0.5,
   },
   contentContainer: {
     flex: 1,
@@ -228,6 +273,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: Colors.darkGrey,
     fontFamily: 'Poppins',
+    textAlign: 'left',
+    marginLeft: 0,
+    flex: 1,
   },
   videoOverlay: {
     position: 'absolute',

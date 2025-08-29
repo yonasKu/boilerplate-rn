@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/theme/colors';
 
 type TimeUnit = 'Weeks' | 'Months' | 'Years';
 
@@ -176,7 +177,7 @@ const styles = StyleSheet.create({
     width: 100,
   },
   selectedPickerItem: {
-    color: '#333',
+    color: Colors.primary,
     fontWeight: 'bold',
     fontSize: 22,
   },
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   saveButton: {
-    backgroundColor: '#6D9C74',
+    backgroundColor: Colors.primary,
   },
   cancelButtonText: {
     color: '#333',
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   saveButtonText: {
-    color: 'white',
+    color: Colors.white,
     fontWeight: 'bold',
     fontSize: 16,
   },

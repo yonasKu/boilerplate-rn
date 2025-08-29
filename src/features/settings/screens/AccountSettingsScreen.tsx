@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, ActivityIndicator, SafeAreaView, Platform, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 import { Feather } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { getUserProfile, UserProfile } from '../../../services/userService';
 import NotificationService from '../../../services/notifications/NotificationService';
 import { Colors } from '../../../theme/colors';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface AccordionSectionProps {
   title: string;
@@ -63,6 +64,7 @@ const AccountSettingsScreen = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const { snapshot: subscription, loading: subLoading } = useSubscription();
 
   const [reminders, setReminders] = useState({
     dailyEntries: true,
@@ -144,9 +146,16 @@ const AccountSettingsScreen = () => {
     // Backend will handle scheduling based on preferences
   };
 
-  if (loading) {
+  const manageSubscription = () => {
+    const url = Platform.OS === 'ios'
+      ? 'https://apps.apple.com/account/subscriptions'
+      : 'https://play.google.com/store/account/subscriptions';
+    Linking.openURL(url);
+  };
+
+  if (loading || subLoading) {
     return (
-      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}> 
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
@@ -181,9 +190,26 @@ const AccountSettingsScreen = () => {
         </AccordionSection>
 
         <AccordionSection title="Manage Subscription" defaultExpanded={true}>
-          <InfoRow label="Current Plan" value="Sproutbook Monthly" />
-          <InfoRow label="Next Billing Date" value="22 August 2025" />
-          <InfoRow label="Amount" value="5.99/mo" isLast={true} />
+          <InfoRow label="Status" value={(subscription?.status ?? 'inactive').toString()} />
+          <InfoRow label="Plan" value={subscription?.plan ?? subscription?.productId ?? '—'} />
+          {!!subscription?.platform && (
+            <InfoRow label="Platform" value={subscription.platform} />
+          )}
+          {subscription?.willRenew != null && (
+            <InfoRow label="Will Renew" value={subscription.willRenew ? 'Yes' : 'No'} />
+          )}
+          {subscription?.expirationDate && (
+            <InfoRow
+              label={subscription.willRenew ? 'Renews On' : 'Expires On'}
+              value={new Date(subscription.expirationDate).toLocaleDateString()}
+            />
+          )}
+          <TouchableOpacity onPress={manageSubscription}>
+            <View style={[styles.row, styles.rowLast]}> 
+              <Text style={[styles.rowLabel, { color: Colors.primary }]}>Manage in {Platform.OS === 'ios' ? 'App Store' : 'Google Play'}</Text>
+              <Feather name="external-link" size={18} color={Colors.primary} />
+            </View>
+          </TouchableOpacity>
         </AccordionSection>
       </ScrollView>
     </SafeAreaView>

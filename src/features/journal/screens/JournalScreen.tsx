@@ -108,8 +108,13 @@ const JournalScreen = () => {
             try {
                 const { collection, query, where, getDocs } = await import('firebase/firestore');
                 const { db } = await import('@/lib/firebase/firebaseConfig');
-                const notificationsRef = collection(db, 'users', user.uid, 'notifications');
-                const unreadQuery = query(notificationsRef, where('read', '==', false));
+                // Query top-level notifications collection scoped to this user
+                const notificationsRef = collection(db, 'notifications');
+                const unreadQuery = query(
+                    notificationsRef,
+                    where('userId', '==', user.uid),
+                    where('read', '==', false)
+                );
                 const querySnapshot = await getDocs(unreadQuery);
                 setUnreadNotifications(querySnapshot.size);
             } catch (error) {
@@ -125,8 +130,13 @@ const JournalScreen = () => {
         const setupListener = async () => {
             const { collection, query, where, onSnapshot } = await import('firebase/firestore');
             const { db } = await import('@/lib/firebase/firebaseConfig');
-            const notificationsRef = collection(db, 'users', user.uid, 'notifications');
-            const unreadQuery = query(notificationsRef, where('read', '==', false));
+            // Real-time listener on top-level notifications for this user
+            const notificationsRef = collection(db, 'notifications');
+            const unreadQuery = query(
+                notificationsRef,
+                where('userId', '==', user.uid),
+                where('read', '==', false)
+            );
             
             unsubscribe = onSnapshot(unreadQuery, (snapshot) => {
                 setUnreadNotifications(snapshot.size);
@@ -168,7 +178,8 @@ const JournalScreen = () => {
     const filteredEntries = useMemo(() => {
         let filtered = entries;
 
-        // Filter by timeline (monthly/weekly)
+        // Filter by timeline (monthly/weekly) - COMMENTED OUT: These filters are for recaps, not journal entries
+        /*
         if (activeTimeline !== 'All') {
             const now = new Date();
             
@@ -200,6 +211,7 @@ const JournalScreen = () => {
                 });
             }
         }
+        */
 
         // Filter by selected child
         if (selectedChild) {
@@ -351,18 +363,14 @@ const JournalScreen = () => {
                     <View style={styles.headerRight}>
                         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
                             <View style={styles.notificationContainer}>
-                                <Ionicons name="notifications-outline" size={24} color="#2F4858" />
+                                <Ionicons name="notifications-outline" size={22} color="#2F4858" />
                                 {unreadNotifications > 0 && (
-                                    <View style={styles.notificationBadge}>
-                                        <Text style={styles.notificationCount}>
-                                            {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                                        </Text>
-                                    </View>
+                                    <View style={styles.notificationDot} />
                                 )}
                             </View>
                         </TouchableOpacity>
                         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
-                            <Ionicons name="settings-outline" size={24} color="#2F4858" />
+                            <Ionicons name="settings-outline" size={22} color="#2F4858" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -415,8 +423,8 @@ const JournalScreen = () => {
             {entries.length > 0 && (
                 <JournalFilter 
                     onAgePress={() => setShowAgeModal(true)} 
-                    activeTimeline={activeTimeline}
-                    onTimelineChange={setActiveTimeline}
+                    //activeTimeline={activeTimeline}
+                    //onTimelineChange={setActiveTimeline}
                     onFilterChange={(filter) => {
                         if (filter === 'All') {
                             setFilterTags([]);
@@ -604,7 +612,15 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     headerButton: {
-        padding: 4,
+        padding :4,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: Colors.lightGrey,
+        backgroundColor: Colors.white,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     centeredContent: {
         flex: 1,
@@ -676,6 +692,17 @@ const styles = StyleSheet.create({
     },
     notificationContainer: {
         position: 'relative',
+    },
+    notificationDot: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: Colors.error,
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
     },
     notificationBadge: {
         position: 'absolute',

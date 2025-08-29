@@ -39,9 +39,6 @@ Enable parents to invite friends/family as free, view-only accounts. Viewers can
   - List viewers, invite, manage scopes, revoke
 - Onboarding upgrade path for viewers → upgrade to full account
 
-## Notifications
-- Send to owner when invite accepted
-- Send to viewers when new recaps available
 
 ## TODOs
 - [ ] Define and add rules for shared reads on recaps/journal

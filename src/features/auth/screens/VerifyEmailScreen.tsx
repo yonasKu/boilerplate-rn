@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { sendEmailVerification } from 'firebase/auth';
-import { auth } from '@/lib/firebase/firebaseConfig';
+import { auth, db } from '@/lib/firebase/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../../theme/colors';
 import { useAccount } from '@/context/AccountContext';
@@ -36,6 +37,8 @@ export default function VerifyEmailScreen() {
         }
     }, []);
 
+    const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
     const handleContinue = async () => {
         setIsChecking(true);
         setVerificationStatus(null);
@@ -49,12 +52,22 @@ export default function VerifyEmailScreen() {
             await user.reload();
 
             if (user.emailVerified) {
-                // Harden: route view-only accounts straight to main app (skip pricing)
-                if (accountType === 'view-only') {
-                    router.replace('/(main)/(tabs)/journal');
-                } else {
-                    router.replace('/(auth)/pricing');
+                // Poll Firestore briefly for accountType propagation after accept-invite flows
+                // Try up to 6 times over ~3 seconds
+                const userRef = doc(db, 'users', user.uid);
+                for (let i = 0; i < 6; i++) {
+                    try {
+                        const snap = await getDoc(userRef);
+                        const data: any = snap.data() || {};
+                        if (data.accountType === 'view-only') {
+                            router.replace('/(main)/(tabs)/journal');
+                            return;
+                        }
+                    } catch {}
+                    await sleep(500);
                 }
+                // Fallback: pricing for non-viewers
+                router.replace('/(auth)/pricing');
             } else {
                 setVerificationStatus('Please check your email and verify before continuing.');
             }

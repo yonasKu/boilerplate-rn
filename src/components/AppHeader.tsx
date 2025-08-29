@@ -86,10 +86,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({ showBackButton = false }) => {
       </View>
       <View style={styles.rightContainer}>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
-          <Ionicons name="notifications-outline" size={24} color="#2F4858" />
+          <Ionicons name="notifications-outline" size={22} color="#2F4858" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
-          <Ionicons name="settings-outline" size={24} color="#2F4858" />
+          <Ionicons name="settings-outline" size={22} color="#2F4858" />
         </TouchableOpacity>
       </View>
     </View>
@@ -146,7 +146,15 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   headerButton: {
-    padding: 4,
+    padding :4,  
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

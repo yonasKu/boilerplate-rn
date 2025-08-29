@@ -1,7 +1,7 @@
 export const Colors = {
   // Primary Palette
   primary: '#2E7E78',
-  golden: '#FFD700',
+  golden: '#C4A96A',
   secondary: '#F68B7F',
   background: '#F9F6F4',
   accent: '#FFD8CD',

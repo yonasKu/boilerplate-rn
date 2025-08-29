@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Colors } from '../../../theme/colors';
+import { ReferralService } from '../../../services/referralService';
 
 interface PromoCodeModalProps {
   isOpen: boolean;
@@ -23,24 +24,13 @@ export const PromoCodeModal: React.FC<PromoCodeModalProps> = ({ isOpen, onClose,
     setError('');
 
     try {
-      // Ensure we have an authenticated user (Plan A: anonymous sign-in if needed)
-      const { getAuth, signInAnonymously } = await import('firebase/auth');
-      const auth = getAuth();
-      if (!auth.currentUser) {
-        console.log('[PromoCodeModal] No user, signing in anonymously for redemption');
-        await signInAnonymously(auth);
-      }
-
       const trimmed = code.trim().toUpperCase();
       console.log('[PromoCodeModal] redeem:start', { code: trimmed });
 
-      const { getFunctions, httpsCallable } = await import('firebase/functions');
-      const functions = getFunctions();
-      const redeem = httpsCallable(functions, 'redeemPromoCode');
-      const res: any = await redeem({ code: trimmed });
-      console.log('[PromoCodeModal] redeem:success', res?.data);
+      const res = await ReferralService.redeemPromoCode(trimmed);
+      console.log('[PromoCodeModal] redeem:success', res);
 
-      onSuccess?.(res?.data);
+      onSuccess?.(res);
       setCode('');
       onClose();
     } catch (err) {
@@ -75,11 +65,12 @@ export const PromoCodeModal: React.FC<PromoCodeModalProps> = ({ isOpen, onClose,
     <Modal
       visible={isOpen}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <View style={styles.modal}>
+        <View style={styles.sheet}>
+          {/* <View style={styles.handle} /> */}
           <Text style={styles.title}>Redeem Promo Code</Text>
           
           <TextInput
@@ -131,15 +122,23 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
+    alignItems: 'stretch',
   },
-  modal: {
+  sheet: {
     backgroundColor: Colors.white,
-    borderRadius: 16,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     padding: 20,
-    width: '85%',
-    maxWidth: 420,
+    width: '100%',
+  },
+  handle: {
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.lightGrey,
+    marginBottom: 12,
   },
   title: {
     fontSize: 22,

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { auth } from '../../../lib/firebase/firebaseConfig';
 import { RecapService, Recap } from '../../../services/aiRecapService';
 
-export const useRecaps = (childId?: string) => {
+export const useRecaps = (ownerId?: string, childId?: string) => {
   const [recaps, setRecaps] = useState<Recap[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +26,9 @@ export const useRecaps = (childId?: string) => {
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        fetchRecaps(user.uid);
+      const target = ownerId || user?.uid;
+      if (target) {
+        fetchRecaps(target);
       } else {
         setRecaps([]);
         setLoading(false);
@@ -35,7 +36,7 @@ export const useRecaps = (childId?: string) => {
     });
 
     return () => unsubscribe();
-  }, [fetchRecaps]);
+  }, [fetchRecaps, ownerId]);
 
   return { recaps, loading, error, refresh: fetchRecaps };
 };

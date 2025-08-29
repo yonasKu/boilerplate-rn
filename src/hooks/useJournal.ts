@@ -46,7 +46,7 @@ export const useJournal = () => {
     isMilestone: boolean;
     childIds: string[];
     childAgeAtEntry: Record<string, string>;
-  }) => {
+  }): Promise<string> => {
     if (!user) throw new Error('User not authenticated');
     setIsLoading(true);
     try {
@@ -59,7 +59,7 @@ export const useJournal = () => {
       );
       
       // 2. Create the entry with the returned URLs
-      await journalService.createJournalEntry({
+      const newEntryId = await journalService.createJournalEntry({
         userId: user.uid,
         ...entryData,
         media: mediaUrls,
@@ -68,6 +68,9 @@ export const useJournal = () => {
       // 3. Refresh local state (optional, for immediate UI update)
       const updatedEntries = await journalService.fetchUserJournalEntries(user.uid);
       setEntries(updatedEntries);
+      
+      // 4. Return the newly created entry ID for navigation
+      return newEntryId;
 
     } catch (e) {
       setError('Failed to save entry.');

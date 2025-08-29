@@ -1,3 +1,6 @@
+/* SuccessScreen disabled - not used. Keeping file as placeholder only.
+   Original implementation commented out on 2025-08-28T22:53:20+03:00.
+
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Image, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -65,3 +68,8 @@ const styles = StyleSheet.create({
 });
 
 export default SuccessScreen;
+*/
+
+// Placeholder export while success is disabled
+const SuccessScreenPlaceholder = () => null;
+export default SuccessScreenPlaceholder;

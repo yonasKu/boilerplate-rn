@@ -261,7 +261,8 @@ const NewEntryScreen = () => {
           isMilestone
         });
         console.log('✅ Entry updated successfully');
-        console.log('🎯 Navigating back to journal...');
+        console.log('🎯 Navigating to entry detail...');
+        router.replace({ pathname: '/(main)/journal/[entryId]', params: { entryId: entryId as string } });
       } else {
         console.log('📝 Creating new entry...');
         const entryData = {
@@ -273,13 +274,13 @@ const NewEntryScreen = () => {
           childAgeAtEntry
         };
         console.log('📝 Entry data to save:', entryData);
-        await addEntry(entryData);
-        console.log('✅ New entry created successfully');
+        const newEntryId = await addEntry(entryData);
+        console.log('✅ New entry created successfully with ID:', newEntryId);
+        console.log('🎯 Navigating to entry detail...');
+        router.replace({ pathname: '/(main)/journal/[entryId]', params: { entryId: newEntryId } });
       }
 
-      console.log('🎯 Navigating back to journal...');
-      router.replace('/(main)/(tabs)/journal');
-    } catch (error) {
+      } catch (error) {
       console.error('❌ Save failed with error:', error);
       console.error('❌ Error stack:', (error as Error).stack);
       

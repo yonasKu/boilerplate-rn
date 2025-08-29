@@ -66,16 +66,25 @@ const NotificationScreen = () => {
       console.log('📱 Notifications loaded:', snapshot.size, 'notifications');
       snapshot.forEach((doc) => {
         const data = doc.data();
-        console.log('🔔 Notification:', {
+        console.log('🔔 Notification (raw):', {
           id: doc.id,
           type: data.type,
           title: data.title,
           body: data.body,
           date: data.date
         });
+        const rawType = (data.type as string) || 'comment';
+        const normalizedType: NotificationItem['type'] =
+          rawType === 'reccap_like' || rawType === 'recap_like'
+            ? 'recap_love'
+            : rawType === 'recap_comment'
+            ? 'comment'
+            : (['recap_love', 'comment', 'reminder', 'streak', 'recap_ready'] as string[]).includes(rawType)
+            ? (rawType as NotificationItem['type'])
+            : 'comment';
         notificationsData.push({
           id: doc.id,
-          type: data.type || 'comment',
+          type: normalizedType,
           users: data.users || [],
           recap: data.recap,
           comment: data.comment,

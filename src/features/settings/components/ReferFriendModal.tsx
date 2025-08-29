@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, Dimensions, Share } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, Dimensions, Share, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../../theme/colors';
+import * as Clipboard from 'expo-clipboard';
 
 interface ReferFriendModalProps {
   visible: boolean;
@@ -20,6 +21,15 @@ const ReferFriendModal: React.FC<ReferFriendModalProps> = ({ visible, onClose, s
       });
     } catch (e) {
       // no-op
+    }
+  };
+  const onPressCopy = async () => {
+    try {
+      const text = shareMessage || 'Download the Sproutbook app! https://sproutbook.design';
+      await Clipboard.setStringAsync(text);
+      Alert.alert('Copied', 'Text copied to clipboard');
+    } catch (e) {
+      Alert.alert('Copy unavailable');
     }
   };
   return (
@@ -47,7 +57,7 @@ const ReferFriendModal: React.FC<ReferFriendModalProps> = ({ visible, onClose, s
         <View style={styles.bottomSheet}>
           <Text style={styles.shareTitle}>Share To</Text>
           <View style={styles.shareOptionsContainer}>
-            <TouchableOpacity style={styles.shareOption}>
+            <TouchableOpacity style={styles.shareOption} onPress={onPressCopy}>
               <View style={styles.shareIconCircle}>
                 <Image source={require('../../../assets/images/copy_link_icon.png')} style={styles.copyIcon} />
               </View>

@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ScreenHeader from '../../../components/ui/ScreenHeader';
 import ReferFriendModal from '../components/ReferFriendModal';
 import { Colors } from '../../../theme/colors';
 import { ReferralService } from '../../../services/referralService';
+import * as Clipboard from 'expo-clipboard';
 
 const ReferAFriendScreen = () => {
   const insets = useSafeAreaInsets();
-  const BASE_LINK = 'https://sproutbook.design';
   const [isModalVisible, setModalVisible] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
-  const [referralLink, setReferralLink] = useState<string>(BASE_LINK);
   const [loading, setLoading] = useState<boolean>(false);
   const [stats, setStats] = useState<{ totalReferrals: number; successfulReferrals: number; lastReferralDate: string | null }>({
     totalReferrals: 0,
@@ -24,7 +23,7 @@ const ReferAFriendScreen = () => {
     fetchStatsAndCode();
   }, []);
 
-  const ensureReferralCode = async () => {
+  const ensureReferralCode = async (): Promise<string | null> => {
     try {
       setLoading(true);
       // Ensure we have an authenticated user (allow anonymous)
@@ -35,11 +34,11 @@ const ReferAFriendScreen = () => {
       }
       const code = await ReferralService.generateReferralCode();
       setReferralCode(code);
-      setReferralLink(`${BASE_LINK}?ref=${encodeURIComponent(code)}`);
+      return code;
     } catch (e) {
-      console.log('[ReferAFriend] Failed to generate referral code, using base link', e);
+      console.log('[ReferAFriend] Failed to generate referral code', e);
       setReferralCode(null);
-      setReferralLink(BASE_LINK);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -58,7 +57,6 @@ const ReferAFriendScreen = () => {
       const code: string | undefined = res?.referralCode;
       if (code) {
         setReferralCode(code);
-        setReferralLink(`${BASE_LINK}?ref=${encodeURIComponent(code)}`);
       } else {
         // Generate if not present
         await ensureReferralCode();
@@ -78,6 +76,24 @@ const ReferAFriendScreen = () => {
     setModalVisible(true);
   };
 
+  const handleCopyCode = async () => {
+    // Step 1: ensure we have a code
+    let code = referralCode;
+    if (!code) {
+      try {
+        code = await ensureReferralCode();
+      } catch (e) {
+        console.error('[ReferAFriend] ensureReferralCode threw:', e);
+      }
+    }
+    if (!code) {
+      Alert.alert('Unavailable', 'Referral code not ready. Try again.');
+      return;
+    }
+
+    await Clipboard.setStringAsync(code);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
@@ -85,7 +101,7 @@ const ReferAFriendScreen = () => {
       <ReferFriendModal
         visible={isModalVisible}
         onClose={() => setModalVisible(false)}
-        shareMessage={`Download the Sproutbook app! ${referralLink}`}
+        shareMessage={`Download the Sproutbook app and use my Sproutbook referral code: ${referralCode ?? ''}`}
       />
       <View style={styles.content}>
         <Image source={require('../../../assets/images/Logo_Icon.png')} style={styles.logo} />
@@ -99,13 +115,13 @@ const ReferAFriendScreen = () => {
           <Text style={styles.promoText}>1 free month</Text>
         </TouchableOpacity>
 
-        <Text style={styles.shareLinkTitle}>Share link</Text>
-        <View style={styles.linkContainer}>
-          <Text style={styles.linkText}>{referralLink}</Text>
-          <TouchableOpacity onPress={handleShare} style={styles.linkIconButton}>
+        <Text style={styles.shareLinkTitle}>Referral code</Text>
+        <TouchableOpacity activeOpacity={0.8} style={styles.linkContainer} onPress={handleCopyCode}>
+          <Text style={styles.linkText}>{referralCode ?? '—'}</Text>
+          <TouchableOpacity onPress={handleCopyCode} style={styles.linkIconButton}>
             <Image source={require('../../../assets/images/copy_link_icon.png')} style={styles.linkIcon} />
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.statsContainer}>
           <Text style={styles.statsTitle}>Your referral code</Text>
@@ -119,7 +135,7 @@ const ReferAFriendScreen = () => {
         </View>
 
         <Text style={styles.footerText}>
-          Give One Month Free To Anyone Who Signs Up Using Your Personalized Referral Link. Must Be A New User To Claim Free Month.
+          Give One Month Free To Anyone Who Signs Up Using Your Referral Code. Must Be A New User To Claim Free Month.
         </Text>
       </View>
     </View>

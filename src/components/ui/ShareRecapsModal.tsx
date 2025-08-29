@@ -1,14 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 
 interface ShareRecapsModalProps {
     visible: boolean;
     onClose: () => void;
+    title?: string;
+    description?: string;
+    label?: string;
+    value?: string;
+    onCopy?: () => void;
 }
 
-const ShareRecapsModal: React.FC<ShareRecapsModalProps> = ({ visible, onClose }) => {
-    const shareLink = 'https://sproutbook.design';
+const ShareRecapsModal: React.FC<ShareRecapsModalProps> = ({ visible, onClose, title, description, label, value, onCopy }) => {
+    const shareLink = value || 'https://sproutbook.design';
 
     return (
         <Modal
@@ -23,19 +29,30 @@ const ShareRecapsModal: React.FC<ShareRecapsModalProps> = ({ visible, onClose })
                         <Ionicons name="close" size={20} color="#A0A0A0" />
                     </TouchableOpacity>
                     <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>Share your Recaps</Text>
+                        <Text style={styles.modalTitle}>{title || 'Share your Recaps'}</Text>
                         <Text style={styles.modalText}>
-                            Copy and share this link with friends and family who you want to share your Recaps with. Friends and family will have access to view your weekly and monthly Recaps, comment, like, and get notifications when ne...
+                            {description || 'Copy and share this link with friends and family who you want to share your Recaps with. Friends and family will have access to view your weekly and monthly Recaps, comment, like, and get notifications when new Recaps are ready.'}
                         </Text>
 
-                        <Text style={styles.shareLinkTitle}>Share link</Text>
+                        <Text style={styles.shareLinkTitle}>{label || 'Share link'}</Text>
                         <View style={styles.shareLinkContainer}>
                             <TextInput
                                 style={styles.shareLinkInput}
                                 value={shareLink}
                                 editable={false}
                             />
-                            <TouchableOpacity style={styles.copyButton}>
+                            <TouchableOpacity
+                                style={styles.copyButton}
+                                onPress={async () => {
+                                    if (onCopy) return onCopy();
+                                    try {
+                                        await Clipboard.setStringAsync(shareLink);
+                                        Alert.alert('Copied', 'Copied to clipboard');
+                                    } catch (e) {
+                                        Alert.alert('Copy unavailable');
+                                    }
+                                }}
+                            >
                                 <Ionicons name="copy-outline" size={22} color="#A0A0A0" />
                             </TouchableOpacity>
                         </View>
