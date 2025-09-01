@@ -150,7 +150,7 @@ service cloud.firestore {
     // ===== JOURNAL ENTRIES COLLECTION =====
     match /journalEntries/{entryId} {
       // A user can create an entry if they are logged in and the entry's `userId` field matches their own ID.
-      allow create: if isOwner(request.resource.data.userId) && isFullAccount()
+      allow create: if isOwner(request.resource.data.userId)
         && request.resource.data.keys().hasAll(['userId', 'childIds', 'text', 'createdAt', 'updatedAt'])
         && request.resource.data.childIds is list
         && request.resource.data.childIds.size() > 0

@@ -48,6 +48,7 @@ export const createJournalEntry = async (entryData: {
   isMilestone: boolean;
   childAgeAtEntry: Record<string, string>;
   likes?: Record<string, boolean>;
+  occurredAt: Date;
 }) => {
   try {
     console.log('Creating journal entry with data:', {
@@ -64,6 +65,7 @@ export const createJournalEntry = async (entryData: {
       childIds: entryData.childIds,
       likes: entryData.likes || {},
       childAgeAtEntry: entryData.childAgeAtEntry,
+      occurredAt: Timestamp.fromDate(entryData.occurredAt),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });

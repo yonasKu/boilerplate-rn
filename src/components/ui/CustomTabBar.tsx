@@ -20,6 +20,10 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
 
   const getIcon = (routeName: string, isActive: boolean) => {
     switch (routeName) {
+      case 'home':
+        return isActive
+          ? require('@/assets/images/home_icon_active.png')
+          : require('@/assets/images/home_icon_inactive.png');
       case 'journal':
         return isActive
           ? require('@/assets/images/journal_icon_active.png')
@@ -37,7 +41,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
     }
   };
 
-  const visibleRoutes = ['journal', 'recaps', 'search'];
+  const visibleRoutes = ['home', 'journal', 'recaps', 'search'];
 
 
 
@@ -79,7 +83,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
         ])
       ).start();
     }
-    return () => {};
+    return () => { };
   }, [entries.length]);
 
   const handleNewEntryPress = () => {
@@ -131,11 +135,13 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
                 <Image
                   source={getIcon(route.name, isFocused)}
                   style={
-                    route.name === 'journal'
-                      ? (isFocused ? styles.journalIconActive : styles.journalIcon)
-                      : route.name === 'recaps'
-                        ? (isFocused ? styles.recapsIconActive : styles.recapsIcon)
-                        : (isFocused ? styles.searchIconActive : styles.searchIcon)
+                    route.name === 'home'
+                      ? (isFocused ? styles.homeIconActive : styles.homeIcon)
+                      : route.name === 'journal'
+                        ? (isFocused ? styles.journalIconActive : styles.journalIcon)
+                        : route.name === 'recaps'
+                          ? (isFocused ? styles.recapsIconActive : styles.recapsIcon)
+                          : (isFocused ? styles.searchIconActive : styles.searchIcon)
                   }
                   resizeMode="contain"
                 />
@@ -218,7 +224,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     shadowColor: Colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -229,8 +235,8 @@ const styles = StyleSheet.create({
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    gap: 4,
+    paddingHorizontal: 10,
+  
   },
   journalIcon: {
     width: 22,
@@ -259,6 +265,17 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   searchIconActive: {
+    width: 22,
+    height: 22,
+    opacity: 1,
+  },
+  homeIcon: {
+    width: 22,
+    height: 22,
+    opacity: 0.7,
+    padding: 2,
+  },
+  homeIconActive: {
     width: 22,
     height: 22,
     opacity: 1,

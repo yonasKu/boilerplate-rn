@@ -16,6 +16,8 @@ import FilterTabs from '../components/FilterTabs';
 import { useRecaps } from '../hooks/useRecaps';
 import { Recap } from '../../../services/aiRecapService';
 import { TimelineOption } from '../components/TimelineDropdown';
+import WeeklyRecapPreviewCard from '@/features/home/components/WeeklyRecapPreviewCard';
+import ShareWithLovedOnesCard from '@/features/home/components/ShareWithLovedOnesCard';
 
 interface Child {
   id: string;
@@ -44,6 +46,7 @@ const RecapsScreen = () => {
     ? selectedChild.id
     : undefined;
   const { recaps: rawRecaps, loading } = useRecaps(activeOwnerId || undefined, childIdForQuery);
+  const hasAnyRecap = (rawRecaps || []).length > 0;
 
   // Helper functions for child selection
   const getItemName = (item: Child | null) => {
@@ -316,29 +319,33 @@ const RecapsScreen = () => {
         )}
         
       </View>
-      <FilterTabs
-        onAgePress={handleAgePress}
-        onFilterChange={setActiveFilter}
-        activeFilter={activeFilter}
-        onTimelineChange={setActiveTimeline}
-        activeTimeline={activeTimeline}
-      />
-      <FlatList
-        data={filteredRecaps}
-        renderItem={({ item }) => (
-          <View style={styles.cardContainer}>
-            <RecapCard recap={item as Recap} onShare={handleSharePress} />
-          </View>
-        )}
-        keyExtractor={(item) => item.id!}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No recaps found</Text>
-          </View>
-        }
-      />
+      {hasAnyRecap ? (
+        <>
+          <FilterTabs
+            onAgePress={handleAgePress}
+            onFilterChange={setActiveFilter}
+            activeFilter={activeFilter}
+            onTimelineChange={setActiveTimeline}
+            activeTimeline={activeTimeline}
+          />
+          <FlatList
+            data={filteredRecaps}
+            renderItem={({ item }) => (
+              <View style={styles.cardContainer}>
+                <RecapCard recap={item as Recap} onShare={handleSharePress} />
+              </View>
+            )}
+            keyExtractor={(item) => item.id!}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          />
+        </>
+      ) : (
+        <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 12 }}>
+          <WeeklyRecapPreviewCard />
+          <ShareWithLovedOnesCard />
+        </View>
+      )}
       <ShareBottomSheet 
         isVisible={isShareSheetVisible}
         onClose={() => setShareSheetVisible(false)}
@@ -374,7 +381,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Poppins_500Medium',
     color: Colors.blacktext,
     marginRight: 4,
   },
@@ -468,11 +475,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 12,
     color: Colors.blacktext,
-    fontWeight: '500',
+    fontFamily: 'Poppins_500Medium',
   },
   dropdownItemTextActive: {
     color: Colors.primary,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
   },
   dropdownItemTextInactive: {
     color: Colors.blacktext,

@@ -217,23 +217,23 @@ const styles = StyleSheet.create({
     //width: 50,
   },
   dateDayOfWeek: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.darkGrey,
     fontFamily: 'Poppins',
     letterSpacing: 3.5,
-    lineHeight: 14,
+    lineHeight: 10,
   },
   dateDay: {
-    fontSize: 24,
+    fontSize: 20,
     color: Colors.black,
     fontFamily: 'Poppins',
     lineHeight: 36,
   },
   dateMonth: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.darkGrey,
     fontFamily: 'Poppins',
-    lineHeight: 14,
+    lineHeight: 10,
     letterSpacing: 0.5,
   },
   contentContainer: {

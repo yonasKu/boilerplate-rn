@@ -12,6 +12,7 @@ const WelcomeScreen = () => {
 
         // router.push('/pricing');
         // router.push('/signup');
+        // router.push('/add-child-details');
         router.push('/login');
     };
 

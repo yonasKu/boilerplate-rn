@@ -113,7 +113,6 @@ const FamilySharingScreen = () => {
     try {
       await Clipboard.setStringAsync(shareModalValue);
     } catch (e) {
-      // silent fail
     }
   };
 

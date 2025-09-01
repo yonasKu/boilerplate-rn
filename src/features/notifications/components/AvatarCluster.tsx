@@ -9,9 +9,12 @@ interface User {
 
 interface AvatarClusterProps {
   users: User[];
+  // Optional override colors for fallback avatars (no image provided)
+  // Index 0 applies to the first/left avatar, index 1 to the second/right avatar
+  colors?: string[];
 }
 
-const AvatarCluster = ({ users }: AvatarClusterProps) => {
+const AvatarCluster = ({ users, colors }: AvatarClusterProps) => {
   if (!users || users.length === 0) {
     return null;
   }
@@ -23,7 +26,11 @@ const AvatarCluster = ({ users }: AvatarClusterProps) => {
     return firstUser.avatar ? (
       <Image source={firstUser.avatar} style={styles.avatar} />
     ) : (
-      <View style={[styles.avatar, generateAvatarStyle(firstUser.name)]}>
+      <View style={[
+        styles.avatar,
+        generateAvatarStyle(firstUser.name),
+        colors && colors[0] ? { backgroundColor: colors[0] } : null,
+      ]}>
         <Text style={styles.initials}>{getInitials(firstUser.name)}</Text>
       </View>
     );
@@ -34,14 +41,24 @@ const AvatarCluster = ({ users }: AvatarClusterProps) => {
       {firstUser.avatar ? (
         <Image source={firstUser.avatar} style={[styles.avatar, styles.avatarLeft]} />
       ) : (
-        <View style={[styles.avatar, styles.avatarLeft, generateAvatarStyle(firstUser.name)]}>
+        <View style={[
+          styles.avatar,
+          styles.avatarLeft,
+          generateAvatarStyle(firstUser.name),
+          colors && colors[0] ? { backgroundColor: colors[0] } : null,
+        ]}>
           <Text style={styles.initials}>{getInitials(firstUser.name)}</Text>
         </View>
       )}
       {secondUser.avatar ? (
         <Image source={secondUser.avatar} style={[styles.avatar, styles.avatarRight]} />
       ) : (
-        <View style={[styles.avatar, styles.avatarRight, generateAvatarStyle(secondUser.name)]}>
+        <View style={[
+          styles.avatar,
+          styles.avatarRight,
+          generateAvatarStyle(secondUser.name),
+          colors && colors[1] ? { backgroundColor: colors[1] } : null,
+        ]}>
           <Text style={styles.initials}>{getInitials(secondUser.name)}</Text>
         </View>
       )}

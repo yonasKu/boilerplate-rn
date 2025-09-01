@@ -9,6 +9,7 @@ import * as journalService from '@/services/journalService';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { getAuth } from 'firebase/auth';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { Colors } from '@/theme/colors';
@@ -43,6 +44,8 @@ const NewEntryScreen = () => {
   const [isPreview, setIsPreview] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     if (timelineLoading) return;
@@ -222,7 +225,7 @@ const NewEntryScreen = () => {
       selectedChildren.forEach(childId => {
         const child = children.find(c => c.id === childId);
         if (child) {
-          const age = journalService.calculateChildAgeAtDate(new Date(child.dateOfBirth), new Date());
+          const age = journalService.calculateChildAgeAtDate(new Date(child.dateOfBirth), selectedDate);
           childAgeAtEntry[childId] = age;
         }
       });
@@ -271,7 +274,8 @@ const NewEntryScreen = () => {
           isFavorited,
           isMilestone,
           childIds: selectedChildren,
-          childAgeAtEntry
+          childAgeAtEntry,
+          occurredAt: selectedDate
         };
         console.log('📝 Entry data to save:', entryData);
         const newEntryId = await addEntry(entryData);
@@ -322,12 +326,8 @@ const NewEntryScreen = () => {
 
     return (
       <View style={styles.headerRightContainer}>
-        <TouchableOpacity
-          style={[styles.actionButton, isDisabled && styles.disabledActionButton]}
-          onPress={handleSave}
-          disabled={isDisabled || isSaving}
-        >
-          <Ionicons name="checkmark" size={20} color={isDisabled ? '#BDBDBD' : '#5D9275'} />
+        <TouchableOpacity onPress={handleSave} disabled={isDisabled || isSaving}>
+          <Text style={[styles.headerSaveText, (isDisabled || isSaving) && styles.headerSaveTextDisabled]}>Save</Text>
         </TouchableOpacity>
       </View>
     );
@@ -350,11 +350,21 @@ const NewEntryScreen = () => {
     );
   };
 
-  const formattedDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
+  const formattedDate = selectedDate.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
     day: 'numeric',
   });
+
+  const onChangeDate = (event: DateTimePickerEvent, date?: Date) => {
+    // Android sends event.type === 'dismissed' or 'set'
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (date) {
+      setSelectedDate(date);
+    }
+  };
 
   useEffect(() => {
     // This is just to ensure the header updates when isFavorited changes
@@ -369,14 +379,22 @@ const NewEntryScreen = () => {
             <ScreenHeader
         title={formattedDate}
         rightComponent={renderHeaderRight()}
-        onBack={() => {
-          if (isPreview) {
-            setIsPreview(false);
-          } else {
-            router.back();
-          }
-        }}
-        showCalendarIcon={true}
+        leftComponent={
+          <TouchableOpacity
+            onPress={() => {
+              if (isPreview) {
+                setIsPreview(false);
+              } else {
+                router.back();
+              }
+            }}
+            style={styles.headerCloseButton}
+          >
+            <Ionicons name="close" size={20} color={Colors.darkGrey} />
+          </TouchableOpacity>
+        }
+        onTitlePress={() => setShowDatePicker(true)}
+        showCalendarIcon={false}
       />
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
@@ -451,6 +469,7 @@ const NewEntryScreen = () => {
         )}
       </ScrollView>
 
+      {/*
       <View style={[styles.toolbar, { paddingBottom: Platform.OS === 'ios' ? 20 : 0 }]}>
         <View style={styles.toolbarActionsLeft}>
           <TouchableOpacity style={styles.toolbarButton} onPress={pickMedia}>
@@ -461,6 +480,16 @@ const NewEntryScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+      */}
+
+      <TouchableOpacity
+        style={[styles.fab, { bottom: insets.bottom + (Platform.OS === 'ios' ? 24 : 16) }]}
+        onPress={pickMedia}
+        activeOpacity={0.85}
+      >
+        <Image source={require('../../../assets/images/gallery_icon.png')} style={styles.fabIcon} />
+      </TouchableOpacity>
+
      </View>
     </TouchableWithoutFeedback>
       <ShareBottomSheet
@@ -468,6 +497,33 @@ const NewEntryScreen = () => {
         onClose={() => setShowShareSheet(false)}
         onShare={handleShare}
       />
+      {showDatePicker && Platform.OS === 'ios' && (
+        <View style={styles.dateOverlay}>
+          <View style={styles.dateSheet}>
+            <View style={styles.dateSheetActions}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.headerSaveText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={selectedDate}
+              mode="date"
+              display="inline"
+              maximumDate={new Date()}
+              onChange={onChangeDate}
+            />
+          </View>
+        </View>
+      )}
+      {showDatePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          maximumDate={new Date()}
+          onChange={onChangeDate}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -663,6 +719,65 @@ const styles = StyleSheet.create({
   },
   disabledHeaderIcon: {
     tintColor: Colors.lightGrey,
+  },
+  headerSaveText: {
+    fontSize: 16,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  headerSaveTextDisabled: {
+    color: Colors.lightGrey,
+  },
+  headerCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.lightGrey,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fabIcon: {
+    width: 24,
+    height: 24,
+    tintColor: Colors.white,
+    resizeMode: 'contain',
+  },
+  dateOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'flex-end',
+  },
+  dateSheet: {
+    backgroundColor: Colors.white,
+    paddingTop: 8,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  dateSheetActions: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    alignItems: 'flex-end',
   },
 });
 

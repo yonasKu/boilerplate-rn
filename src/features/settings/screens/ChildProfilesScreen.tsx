@@ -85,10 +85,11 @@ const ChildProfilesScreen = () => {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }] }>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
-      <ScreenHeader title="Child Profiles" />
+      <ScreenHeader title="My journal" />
       <ScrollView style={styles.scrollView}>
+        <Text style={styles.pageTitle}>{`Who are you\njournaling about?`}</Text>
         <View style={styles.listContainer}>
           {children.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -100,11 +101,8 @@ const ChildProfilesScreen = () => {
               <View key={child.id} style={styles.profileRow}>
                 <View style={styles.childInfo}>
                   <Text style={styles.profileName}>{child.name}</Text>
-                  <Text style={styles.childDetails}>
-                    {formatDate(child.dateOfBirth)}
-                  </Text>
                 </View>
-                <TouchableOpacity onPress={() => router.push(`/(main)/settings/child-profiles/${child.id}`)}>
+                <TouchableOpacity style={styles.editIconContainer} onPress={() => router.push(`/(main)/settings/child-profiles/${child.id}`)}>
                   <Image source={require('../../../assets/images/edit-2_icon.png')} style={styles.editIcon} />
                 </TouchableOpacity>
               </View>
@@ -144,11 +142,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 25,
     borderWidth: 1,
-    borderColor: Colors.offWhite,
+    borderColor: Colors.lightGrey,
+    backgroundColor: Colors.white,
+    height: 55,
     marginTop: 16,
 //    borderBottomWidth: 1,
 //    borderBottomColor: '#F5F5F5',
@@ -156,11 +156,29 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 16,
     color: Colors.black,
+    fontFamily: 'Poppins-Medium',
+  },
+  pageTitle: {
+    textAlign: 'center',
+    fontSize: 28,
+    lineHeight: 34,
+    fontFamily: 'Poppins-Medium',
+    color: Colors.black,
+    marginTop: 32,
+    marginHorizontal: 20,
   },
   editIcon: {
     width: 20,
     height: 20,
     tintColor: Colors.primary,
+  },
+  editIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    // backgroundColor: Colors.offWhite,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonContainer: {
     paddingHorizontal: 20,

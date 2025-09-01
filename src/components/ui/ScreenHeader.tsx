@@ -12,9 +12,11 @@ interface ScreenHeaderProps {
   rightComponent?: React.ReactNode;
   onBack?: () => void;
   showCalendarIcon?: boolean;
+  leftComponent?: React.ReactNode;
+  onTitlePress?: () => void;
 }
 
-const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = true, showShareIcon = false, onSharePress, rightComponent, onBack, showCalendarIcon = false }) => {
+const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = true, showShareIcon = false, onSharePress, rightComponent, onBack, showCalendarIcon = false, leftComponent, onTitlePress }) => {
   const router = useRouter();
 
   const handleBackPress = () => {
@@ -27,16 +29,24 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = tru
 
   return (
     <View style={styles.header}>
-      {showBackButton ? (
+      {leftComponent ? (
+        leftComponent
+      ) : showBackButton ? (
         <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
           <Image source={require('../../assets/images/Chevron_Left_icon.png')} style={styles.backIcon} />
         </TouchableOpacity>
       ) : (
         <View style={styles.headerSpacer} />
       )}
-            <View style={styles.titleContainer}>
-                {showCalendarIcon && <Image source={require('../../assets/images/calendar.png')} style={styles.calendarIcon} />}
-        <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }]}>{title}</Text>
+      <View style={styles.titleContainer}>
+        {showCalendarIcon && <Image source={require('../../assets/images/calendar.png')} style={styles.calendarIcon} />}
+        {onTitlePress ? (
+          <TouchableOpacity onPress={onTitlePress} activeOpacity={0.7}>
+            <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }]}>{title}</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }]}>{title}</Text>
+        )}
       </View>
       {rightComponent ? (
         rightComponent

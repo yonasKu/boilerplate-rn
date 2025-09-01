@@ -18,6 +18,7 @@ export interface JournalEntry extends DocumentData {
   isMilestone: boolean;
   childAgeAtEntry: Record<string, string>; // Map of childId to age string
   likes: Record<string, boolean>;
+  occurredAt: any; // Firestore timestamp representing when the event happened
   createdAt: any; // Firestore timestamp
   updatedAt: any; // Firestore timestamp
 }
@@ -46,6 +47,7 @@ export const useJournal = () => {
     isMilestone: boolean;
     childIds: string[];
     childAgeAtEntry: Record<string, string>;
+    occurredAt: Date;
   }): Promise<string> => {
     if (!user) throw new Error('User not authenticated');
     setIsLoading(true);

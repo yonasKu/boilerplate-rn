@@ -9,6 +9,7 @@ import { useJournal } from '@/hooks/useJournal';
 import JournalEntryCard from '../components/JournalEntryCard';
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import JournalFilter from '../components/JournalFilter';
+import ActionCallout from '../../../components/ui/ActionCallout';
 import AgeFilterModal from '../components/modals/AgeFilterModal';
 import { TimelineOption } from '../components/TimelineDropdown';
 import ShareBottomSheet from '../components/ShareBottomSheet';
@@ -464,20 +465,29 @@ const JournalScreen = () => {
             ) : error ? (
                 <View style={styles.centeredContent}>
                     <Image source={require('../../../assets/images/Logo_Icon.png')} style={styles.mainImage} />
-                    <Text style={styles.promptText}>
-                        {searchQuery || filterTags.length > 0 ? 'No entries match your filters' : "Let's start your first memory"}
-                    </Text>
+                    <Text style={styles.promptText}>Something went wrong</Text>
                     <Text style={[styles.promptText, { fontSize: 14, color: Colors.error, marginTop: 8 }]}>
                         {error}
                     </Text>
                 </View>
             ) : filteredEntries.length === 0 ? (
-                <View style={styles.centeredContent}>
-                    <Image source={require('../../../assets/images/Logo_Icon.png')} style={styles.mainImage} />
-                    <Text style={styles.promptText}>
-                        {searchQuery || filterTags.length > 0 ? 'No entries match your filters' : "Let's start your first memory"}
-                    </Text>
-                </View>
+                entries.length === 0 ? (
+                    <View style={styles.emptyCalloutContainer}>
+                        <ActionCallout
+                            title="Start your journal"
+                            description="Take 30 seconds now to create memories for a lifetime."
+                            ctaLabel="Add first memory"
+                            onPress={() => router.push('/(main)/new-entry')}
+                            dateBadge={new Date()}
+                            backgroundColor={Colors.lightPink2}
+                        />
+                    </View>
+                ) : (
+                    <View style={styles.centeredContent}>
+                        <Image source={require('../../../assets/images/Logo_Icon.png')} style={styles.mainImage} />
+                        <Text style={styles.promptText}>No entries match your filters</Text>
+                    </View>
+                )
             ) : (
                 <FlatList
                     data={filteredEntries}
@@ -629,6 +639,12 @@ const styles = StyleSheet.create({
         padding: 20,
         backgroundColor: Colors.white,
         paddingTop: 0, // Remove top padding to center properly
+    },
+    emptyCalloutContainer: {
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        backgroundColor: Colors.offWhite,
+        flex: 1,
     },
     listContentContainer: {
         paddingHorizontal: 16,

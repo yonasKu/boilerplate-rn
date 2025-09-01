@@ -15,13 +15,15 @@ type SettingsOption = {
 };
 
 const settingsOptions: SettingsOption[] = [
-  { icon: require('../../../assets/images/tabler_mood-kid_icon.png'), text: 'Child Profiles' },
+  { icon: require('../../../assets/images/user.png'), text: 'My profile' },
+  { icon: require('../../../assets/images/tabler_mood-kid_icon.png'), text: 'My journal' },
   { icon: require('../../../assets/images/link_icon.png'), text: 'Partner access' },
+  { icon: require('../../../assets/images/people_icon.png'), text: 'Family sharing' },
+  { icon: require('../../../assets/images/gift_icon.png'), text: 'Gift a free year' },
   { icon: require('../../../assets/images/refer_icon.png'), text: 'Refer a friend' },
   { icon: require('../../../assets/images/settings_icon.png'), text: 'Account settings' },
-  { icon: require('../../../assets/images/gift_icon.png'), text: 'Gift a free year' },
   { icon: require('../../../assets/images/edit_icon.png'), text: 'Create Journaling Account' },
-  { icon: require('../../../assets/images/people_icon.png'), text: 'Family sharing' },
+
   { icon: 'log-out', text: 'Logout' }, // Using correct Feather icon name
 ];
 
@@ -49,10 +51,10 @@ const SettingsScreen = () => {
         try {
           const { doc, getDoc } = await import('firebase/firestore');
           const { db } = await import('@/lib/firebase/firebaseConfig');
-          
+
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
-          
+
           if (userDoc.exists()) {
             setUserProfile(userDoc.data());
           }
@@ -121,28 +123,30 @@ const SettingsScreen = () => {
         <View style={styles.optionsContainer}>
           {optionsToRender.map((option, index) => (
             <TouchableOpacity key={index} style={styles.optionRow} onPress={() => {
-                if (option.text === 'Logout') {
-                  handleLogout();
-                } else if (option.text === 'Child Profiles') {
-                  router.push('/child-profiles');
-                } else if (option.text === 'Partner access') {
-                  router.push('/partner-access');
-                } else if (option.text === 'Refer a friend') {
-                  router.push('/refer-a-friend');
-                } else if (option.text === 'Account settings') {
-                  router.push('/account-settings');
-                } else if (option.text === 'Family sharing') {
-                  router.push('/family-sharing');
-                } else if (option.text === 'Gift a free year') {
-                  router.push('/gift-card');
-                } else if (option.text === 'Create Journaling Account') {
-                  router.push('/(auth)/pricing');
-                } else if (option.text === 'Test Notifications') {
-                  router.push('/notification-test');
-                } else {
-                  console.log('Navigate to:', option.text);
-                }
-              }}>
+              if (option.text === 'Logout') {
+                handleLogout();
+              } else if (option.text === 'My profile') {
+                router.push('/profile');
+              } else if (option.text === 'My journal') {
+                router.push('/child-profiles');
+              } else if (option.text === 'Partner access') {
+                router.push('/partner-access');
+              } else if (option.text === 'Refer a friend') {
+                router.push('/refer-a-friend');
+              } else if (option.text === 'Account settings') {
+                router.push('/account-settings');
+              } else if (option.text === 'Family sharing') {
+                router.push('/family-sharing');
+              } else if (option.text === 'Gift a free year') {
+                router.push('/gift-card');
+              } else if (option.text === 'Create Journaling Account') {
+                router.push('/(auth)/pricing');
+              } else if (option.text === 'Test Notifications') {
+                router.push('/notification-test');
+              } else {
+                console.log('Navigate to:', option.text);
+              }
+            }}>
               <View style={styles.iconBackground}>
                 {typeof option.icon === 'string' ? (
                   <Feather name={option.icon as any} size={20} color={Colors.grey} />

@@ -62,8 +62,8 @@ const RecapLoveNotification = ({ item }: { item: Notification }) => {
     const leading = actors.length === 1
       ? actors[0].name
       : actors.length === 2
-      ? `${actors[0].name} and ${actors[1].name}`
-      : '';
+        ? `${actors[0].name} and ${actors[1].name}`
+        : '';
     if (leading && body.toLowerCase().startsWith(leading.toLowerCase())) {
       return body.slice(leading.length).replace(/^[:,\-]?\s*/, '');
     }
@@ -81,21 +81,21 @@ const RecapLoveNotification = ({ item }: { item: Notification }) => {
           actors[0]?.avatar ? (
             <Image source={actors[0].avatar} style={styles.avatar} />
           ) : (
-            <View style={[styles.avatar, generateAvatarStyle(actors[0]?.name || '?')]}> 
+            <View style={[styles.avatar, generateAvatarStyle(actors[0]?.name || '?')]}>
               <Text style={[styles.initials, { color: getContrastingTextColorForName(actors[0]?.name || '?') }]}>
                 {getInitials(actors[0]?.name || '')}
               </Text>
             </View>
           )
         ) : (
-          <View style={[styles.avatar, generateAvatarStyle('?')]}> 
+          <View style={[styles.avatar, generateAvatarStyle('?')]}>
             <Text style={[styles.initials, { color: getContrastingTextColorForName('?') }]}>
               {getInitials('')}
             </Text>
           </View>
         )}
         <View style={actors.length > 1 ? styles.heartIconContainerCluster : styles.heartIconContainerSingle}>
-          <Ionicons name="heart" size={12} color={'#F68B7F'} />
+          <Ionicons name="heart" size={16} color={'#F68B7F'} />
         </View>
       </View>
       <View style={styles.textContainer}>
@@ -136,8 +136,10 @@ const styles = StyleSheet.create({
   },
   heartIconContainerSingle: {
     position: 'absolute',
-    bottom: -2,
-    right: 0,
+
+    bottom: -4,
+    right: -4,
+
     backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 2,
@@ -150,8 +152,8 @@ const styles = StyleSheet.create({
   heartIconContainerCluster: {
     position: 'absolute',
     bottom: -6,
-    right:-8, // Adjusted for the cluster width
-    backgroundColor:Colors.white,
+    right: -8, // Adjusted for the cluster width
+    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 2,
     borderWidth: 2,

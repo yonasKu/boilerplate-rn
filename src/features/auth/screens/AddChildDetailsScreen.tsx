@@ -210,7 +210,14 @@ const AddChildDetailsScreen = () => {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
+
+
             <ScrollView contentContainerStyle={styles.scrollContainer}>
+
+                <View style={styles.headerTop}>
+                    <Text style={styles.sectionTitle}> Let’s set up your journal</Text>
+                    <Text style={styles.sectionSubtitle}>Tell us who you’re journaling about</Text>
+                </View>
                 <View style={styles.avatarContainer}>
                     <TouchableOpacity onPress={pickChildImage} disabled={isUploadingImage}>
                         {isUploadingImage ? (
@@ -235,7 +242,9 @@ const AddChildDetailsScreen = () => {
                             <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
                         </TouchableOpacity>
                     ) : (
-                        <Text style={styles.addPhotoText}>Add photo</Text>
+                        <TouchableOpacity onPress={pickChildImage}>
+                            <Text style={styles.addPhotoText}>Add photo</Text>
+                        </TouchableOpacity>
                     )}
                 </View>
 
@@ -318,25 +327,22 @@ const AddChildDetailsScreen = () => {
             {showSuccessModal && (
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContainer}>
-                        <View style={styles.successBadge}>
-                            <Text style={styles.successBadgeText}>✓</Text>
-                        </View>
-                        <Text style={styles.modalTitle}>Child profile added</Text>
+                        <Text style={styles.modalTitle}>Journal created!</Text>
 
                         <TouchableOpacity
                             style={[styles.modalButton, styles.primaryButton]}
                             onPress={handleStartJournaling}
-                            accessibilityLabel="Start journaling"
+                            accessibilityLabel="Take me to the app"
                         >
-                            <Text style={styles.primaryButtonText}>Start Journaling</Text>
+                            <Text style={styles.primaryButtonText}>Take me to the app</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[styles.modalButton, styles.secondaryButton]}
+                            style={[styles.modalButton, styles.primaryButton]}
                             onPress={handleAddAnotherChild}
-                            accessibilityLabel="Add another child"
+                            accessibilityLabel="Add another child to my journal"
                         >
-                            <Text style={styles.secondaryButtonText}>Add Another Child</Text>
+                            <Text style={styles.primaryButtonText}>Add another child to my journal</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -356,8 +362,7 @@ const styles = StyleSheet.create({
     },
     avatarContainer: {
         alignItems: 'center',
-        marginVertical: 40,
-
+        marginVertical: 30
     },
     avatar: {
         width: 120,
@@ -588,6 +593,26 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         fontFamily: 'Poppins-Regular',
+    },
+    sectionTitle: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: Colors.black,
+        marginBottom: 8,
+        textAlign: 'center',
+        fontFamily: 'Poppins-medium',
+    },
+    sectionSubtitle: {
+        fontSize: 16,
+        color: Colors.mediumGrey,
+        textAlign: 'center',
+        marginTop: 16,
+        fontFamily: 'Poppins-Regular',
+    },
+    headerTop: {
+        alignItems: 'center',
+        marginTop: 8,
+        marginBottom: 8,
     },
 });
 

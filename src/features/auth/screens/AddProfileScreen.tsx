@@ -29,6 +29,10 @@ const AddProfileScreen = () => {
             <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
             <ScrollView contentContainerStyle={styles.scrollContainer}>
 
+                <View style={styles.headerTop}>
+                    <Text style={styles.sectionTitle}>Let's set up your profile</Text>
+                    <Text style={styles.sectionSubtitle}>Tell us about yourself</Text>
+                </View>
 
                 <View style={styles.avatarContainer}>
                     <TouchableOpacity onPress={pickProfileImage} disabled={isUploadingImage}>
@@ -46,7 +50,7 @@ const AddProfileScreen = () => {
                         )}
                     </TouchableOpacity>
                     {profileImage ? (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.editIconContainer}
                             onPress={pickProfileImage}
                             disabled={isUploadingImage}
@@ -54,7 +58,9 @@ const AddProfileScreen = () => {
                             <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
                         </TouchableOpacity>
                     ) : (
-                        <Text style={styles.addPhotoText}>Add photo</Text>
+                        <TouchableOpacity onPress={pickProfileImage}>
+                            <Text style={styles.addPhotoText}>Add photo</Text>
+                        </TouchableOpacity>
                     )}
                 </View>
 
@@ -123,16 +129,21 @@ const AddProfileScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.white,
+
     },
     scrollContainer: {
         flexGrow: 1,
         paddingHorizontal: 20,
     },
+    headerTop: {
+        alignItems: 'center',
+        marginTop: 8,
+        marginBottom: 8,
+    },
 
     avatarContainer: {
         alignItems: 'center',
-        marginVertical: 40,
+        marginVertical: 30,
     },
     avatar: {
         width: 120,
@@ -156,7 +167,7 @@ const styles = StyleSheet.create({
     editIcon: {
         width: 50,
         height: 50,
-        
+
     },
     addPhotoText: {
         fontSize: 14,
@@ -248,18 +259,18 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     sectionTitle: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: 'bold',
         color: Colors.black,
         marginBottom: 8,
         textAlign: 'center',
-        fontFamily: 'Poppins-Regular',
+        fontFamily: 'Poppins-medium',
     },
     sectionSubtitle: {
         fontSize: 16,
         color: Colors.mediumGrey,
         textAlign: 'center',
-        marginBottom: 30,
+        marginTop: 16,
         fontFamily: 'Poppins-Regular',
     },
     uploadingContainer: {

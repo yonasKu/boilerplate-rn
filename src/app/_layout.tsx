@@ -1,7 +1,7 @@
 import 'react-native-gesture-handler';
 import React, { useEffect, useState } from 'react';
 import { useFonts as useExpoFonts } from 'expo-font';
-import { useFonts, Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
+import { useFonts, Poppins_400Regular, Poppins_500Medium, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { Stack } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
@@ -98,7 +98,7 @@ const InitialLayout = () => {
         // User is authenticated but not in any flow - only redirect to main app
         // Allow auth flow completion (verify-email, pricing, etc.)
         console.log('Authenticated owner, redirecting to main app...');
-        router.replace('/(main)/(tabs)/journal');
+        router.replace('/(main)/(tabs)/home');
       }
     }
 
@@ -119,6 +119,7 @@ const RootLayoutNav = () => {
 
   const [fontsLoaded] = useFonts({
     Poppins_400Regular,
+    Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
   });
