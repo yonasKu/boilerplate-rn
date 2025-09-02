@@ -8,11 +8,15 @@ import ShareBottomSheet from '../components/ShareBottomSheet';
 import { Colors } from '@/theme/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { getChild } from '@/services/childService';
 import Carousel from 'react-native-reanimated-carousel';
 import ImageViewing from 'react-native-image-viewing';
 
 const { width, height } = Dimensions.get('window');
 const heroHeight = width * 1.5; // Reduced height as per user request
+const DATE_GUTTER = 84; // widened gutter to prevent any overlap (date width 60 + gap 16 + extra 8)
+const ENTRY_LINE_HEIGHT = 26; // keep in sync with styles.entryText.lineHeight
+const LINES_BESIDE_DATE = 4; // force-wrap after 4 lines next to the date
 
 const JournalEntryViewScreen = () => {
     const router = useRouter();
@@ -26,6 +30,39 @@ const JournalEntryViewScreen = () => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const scrollViewRef = useRef<ScrollView>(null);
     const insets = useSafeAreaInsets();
+    const [childAgeLabels, setChildAgeLabels] = useState<string[]>([]);
+    const [contentWidth, setContentWidth] = useState(0);
+    const [dateHeight, setDateHeight] = useState(0);
+    const [splitText, setSplitText] = useState<{ prefix: string; suffix: string; linesUsed: number; prefixBottom: number } | null>(null);
+
+
+    useEffect(() => {
+        const loadChildLabels = async () => {
+            if (!entry || !Array.isArray(entry.childIds) || entry.childIds.length === 0) {
+                setChildAgeLabels([]);
+                return;
+            }
+            try {
+                const results = await Promise.all(
+                    entry.childIds.map(async (id) => {
+                        try {
+                            const c = await getChild(id);
+                            const age = entry.childAgeAtEntry?.[id] ?? '';
+                            if (c?.name && age) return `${c.name} — ${age}`;
+                            if (age) return age;
+                            return null;
+                        } catch {
+                            return null;
+                        }
+                    })
+                );
+                setChildAgeLabels(results.filter((x): x is string => Boolean(x)));
+            } catch (e) {
+                setChildAgeLabels([]);
+            }
+        };
+        loadChildLabels();
+    }, [entry?.id, JSON.stringify(entry?.childIds)]);
 
     useEffect(() => {
         if (entryId) {
@@ -85,10 +122,8 @@ const JournalEntryViewScreen = () => {
     const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date();
     const allMedia = entry.media || [];
     const imagesForViewer = allMedia.map(item => ({ uri: item.url }));
-    // Derive age text from the first child on this entry (to match feed behavior)
-    const ageText = Array.isArray(entry.childIds) && entry.childIds.length > 0
-        ? (entry as any).childAgeAtEntry?.[entry.childIds[0]] ?? ''
-        : '';
+
+    
 
     const handleImagePress = (index: number) => {
         setCurrentImageIndex(index);
@@ -149,21 +184,110 @@ const JournalEntryViewScreen = () => {
                 {renderImageCarousel()}
 
                 <View style={styles.contentContainer}>
-                    <TouchableOpacity activeOpacity={0.8} onPress={() => setIsTextExpanded(!isTextExpanded)} style={styles.dateAndTextContainer}>
-                        <View style={styles.dateContainer}>
-                            <Text style={styles.dateDay}>{entryDate.toLocaleString('en-US', { weekday: 'short' }).toUpperCase()}</Text>
-                            <Text style={styles.dateNumber}>{entryDate.getDate()}</Text>
-                            <Text style={styles.dateMonth}>{entryDate.toLocaleString('en-US', { month: 'short' }).toUpperCase()}</Text>
-                        </View>
-                        <View style={styles.textWrapper}>
-                            <Text style={styles.entryText} numberOfLines={isTextExpanded ? undefined : 4}>
-                                {entry.text}
-                            </Text>
-                        </View>
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => {
+                            const next = !isTextExpanded;
+                            setIsTextExpanded(next);
+                            if (!next) setSplitText(null); // reset when collapsing
+                        }}
+                        style={styles.dateAndTextContainer}
+                        onLayout={(e) => setContentWidth(e.nativeEvent.layout.width)}
+                    >
+                        {isTextExpanded ? (
+                            <View style={styles.flowContainer}>
+                                {/* Date overlay */}
+                                <View
+                                    style={[styles.dateContainer, styles.dateOverlay]}
+                                    onLayout={(e) => setDateHeight(e.nativeEvent.layout.height)}
+                                >
+                                    <Text style={styles.dateDay}>{entryDate.toLocaleString('en-US', { weekday: 'short' }).toUpperCase()}</Text>
+                                    <Text style={styles.dateNumber}>{entryDate.getDate()}</Text>
+                                    <Text style={styles.dateMonth}>{entryDate.toLocaleString('en-US', { month: 'short' }).toUpperCase()}</Text>
+                                </View>
+                                {/* Hidden measurer: find split point after exactly 4 lines */}
+                                {contentWidth > 0 && !splitText && (
+                                    <Text
+                                        style={[
+                                            styles.entryText,
+                                            {
+                                                position: 'absolute',
+                                                opacity: 0,
+                                                width: Math.max(20, contentWidth - DATE_GUTTER - 2), // slight extra shrink to mirror visible padding quirks
+                                            },
+                                        ]}
+                                        onTextLayout={(e) => {
+                                            const lines = e.nativeEvent.lines || [] as any[];
+                                            // Always split after 4 lines (or fewer if text is short)
+                                            const fit = Math.max(1, Math.min(LINES_BESIDE_DATE, lines.length));
+
+                                            // Prefer platform-provided end index
+                                            const lastIdx = Math.min(fit - 1, Math.max(0, lines.length - 1));
+                                            const endFromPlatform = (lines as any)[lastIdx]?.end as number | undefined;
+                                            let prefixLen = endFromPlatform ?? 0;
+                                            if (!prefixLen) {
+                                                let prefixText = '';
+                                                for (let i = 0; i < Math.min(fit, lines.length); i++) prefixText += lines[i].text;
+                                                prefixLen = prefixText.length;
+                                            }
+                                            const prefixBottom = (() => {
+                                                const L = lines[lastIdx] as any;
+                                                return (L?.y ?? 0) + (L?.height ?? ENTRY_LINE_HEIGHT);
+                                            })();
+                                            setSplitText({
+                                                prefix: entry.text.slice(0, prefixLen),
+                                                suffix: entry.text.slice(prefixLen),
+                                                linesUsed: fit,
+                                                prefixBottom,
+                                            });
+                                        }}
+                                    >
+                                        {entry.text}
+                                    </Text>
+                                )}
+                                {/* Visible split */}
+                                {splitText ? (
+                                    <>
+                                        <Text style={[styles.entryText, { paddingLeft: DATE_GUTTER }]} numberOfLines={LINES_BESIDE_DATE}>
+                                            {splitText.prefix}
+                                        </Text>
+                                        {/* Spacer to ensure suffix starts strictly below the date block if date is taller than 4 lines */}
+                                        {dateHeight > 0 ? (
+                                            <View style={{ height: Math.max(0, dateHeight - splitText.prefixBottom + 6) }} />
+                                        ) : null}
+                                        {splitText.suffix ? (
+                                            <Text style={styles.entryText}>{splitText.suffix}</Text>
+                                        ) : null}
+                                    </>
+                                ) : (
+                                    // Fallback while measuring: show single block with padding so UI isn't blank
+                                    <Text style={[styles.entryText, { paddingLeft: DATE_GUTTER + 2 }]}>{entry.text}</Text>
+                                )}
+                            </View>
+                        ) : (
+                            // Collapsed: render with the same overlay technique and show 4 lines next to the date
+                            <View style={[styles.flowContainer, { minHeight: Math.max(88, dateHeight) }]}>
+                                <View
+                                    style={[styles.dateContainer, styles.dateOverlay]}
+                                    onLayout={(e) => setDateHeight(e.nativeEvent.layout.height)}
+                                >
+                                    <Text style={styles.dateDay}>{entryDate.toLocaleString('en-US', { weekday: 'short' }).toUpperCase()}</Text>
+                                    <Text style={styles.dateNumber}>{entryDate.getDate()}</Text>
+                                    <Text style={styles.dateMonth}>{entryDate.toLocaleString('en-US', { month: 'short' }).toUpperCase()}</Text>
+                                </View>
+                                <Text style={[styles.entryText, { paddingLeft: DATE_GUTTER }]} numberOfLines={4}>
+                                    {entry.text}
+                                </Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                     <View style={styles.bottomContentContainer}>
-                        {ageText ? (
-                            <Text style={styles.ageText}>{ageText}</Text>
+                        {childAgeLabels.length > 0 ? (
+                            <View>
+                                {childAgeLabels.map((label, idx) => (
+                                    <Text key={idx} style={styles.ageText}>{label}</Text>
+                                ))}
+                            </View>
                         ) : (
                             <View />
                         )}
@@ -322,16 +446,42 @@ const styles = StyleSheet.create({
         lineHeight: 18,
         letterSpacing: 0.5,
     },
+    dateOverlay: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        width: 60,
+        marginRight: 16,
+        paddingTop: 5,
+        paddingBottom: 6,
+        // backgroundColor: 'transparent'
+        zIndex: 2,
+        elevation: 2,
+        pointerEvents: 'none',
+    },
     textWrapper: {
         flex: 1,
-        marginLeft: -76, // -(dateContainer.width + dateContainer.marginRight)
+        marginLeft: -76, // shift text left into the date gutter for collapsed preview
         paddingLeft: 76,
+        marginBottom: 20,
+    },
+    flowContainer: {
+        position: 'relative',
+        marginBottom: 20,
+        width: '100%',
     },
     entryText: {
-        fontSize: 14,
-        fontFamily: 'Poppins-Regular',
+        fontSize: 16,
+        fontFamily: 'Poppins',
         color: Colors.darkGrey,
-        lineHeight: 22.4, // 14 * 1.6
+        lineHeight: 26,
+        textAlign: 'justify',
+        letterSpacing: 0.2,
+    },
+    ageText: {
+        fontSize: 14,
+        fontFamily: 'Poppins-SemiBold',
+        color: Colors.mediumGrey,
     },
     bottomContentContainer: {
         flexDirection: 'row',
@@ -339,11 +489,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 10,
         marginBottom: 20,
-    },
-    ageText: {
-        fontSize: 14,
-        fontFamily: 'Poppins-SemiBold',
-        color: Colors.mediumGrey,
     },
     actionButtonsGroup: {
         flexDirection: 'row',

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet, Share, Alert } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/theme';
 import HomeHeader from '../components/HomeHeader';
@@ -10,6 +11,7 @@ import RecentActivityCard from '../components/RecentActivityCard';
 import StartJournalCard from '../components/StartJournalCard';
 import { useJournal } from '@/hooks/useJournal';
 import JournalEntryPreviewCard from '@/features/journal/components/JournalEntryPreviewCard';
+import ShareBottomSheet from '@/features/journal/components/ShareBottomSheet';
 import ActionCallout from '@/components/ui/ActionCallout';
 import { useRouter } from 'expo-router';
 
@@ -19,6 +21,8 @@ const HomeScreen: React.FC = () => {
   const router = useRouter();
   const { entries, isLoading, updateEntry, toggleLike } = useJournal();
   const latest = entries && entries.length > 0 ? entries[0] : null;
+  const [showShareModal, setShowShareModal] = React.useState(false);
+  const [shareEntry, setShareEntry] = React.useState<any>(null);
 
   const isSameDay = (a?: any, b?: Date) => {
     if (!a || !b) return false;
@@ -56,6 +60,29 @@ const HomeScreen: React.FC = () => {
   }).length;
   const hasEntriesThisWeek = countThisWeek > 0;
   const completedWeekly = countThisWeek >= 3;
+  const handleShare = (entry: any) => {
+    setShareEntry(entry);
+    setShowShareModal(true);
+  };
+
+  const handleShareAction = async (platform: 'copy' | 'system') => {
+    if (!shareEntry) return;
+    try {
+      const message = shareEntry?.aiGenerated
+        ? `Check out this recap on SproutBook: ${shareEntry.aiGenerated.recapText || shareEntry.aiGenerated.summary || ''}`
+        : `Check out this memory from SproutBook: ${shareEntry.text || ''}`;
+
+      if (platform === 'copy') {
+        await Clipboard.setStringAsync(message);
+        Alert.alert('Copied to clipboard');
+      } else {
+        await Share.share({ message });
+      }
+      setShowShareModal(false);
+    } catch (error) {
+      console.error('Error sharing entry:', error);
+    }
+  };
   return (
     <View style={styles.root}>
       <View style={styles.headerGroup}>
@@ -94,6 +121,7 @@ const HomeScreen: React.FC = () => {
             onPress={() => router.push(`/(main)/journal/${todaysLatest.id}` as any)}
             onLike={() => toggleLike(todaysLatest.id)}
             onToggleMilestone={() => updateEntry(todaysLatest.id, { isMilestone: !todaysLatest.isMilestone })}
+            onShare={() => handleShare(todaysLatest)}
           />
         ) : null}
 
@@ -118,7 +146,13 @@ const HomeScreen: React.FC = () => {
           )
         )}
 
-        <WeeklyRecapPreviewCard />
+        <WeeklyRecapPreviewCard onShare={(recap) => handleShare(recap)} />
+
+        <ShareBottomSheet
+          isVisible={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          onShare={handleShareAction}
+        />
 
         {/* Look-back preview (when no entry today, show the most recent past entry) */}
         {!hasToday && latestNonToday ? (
@@ -130,6 +164,7 @@ const HomeScreen: React.FC = () => {
             onEdit={() => router.push(`/(main)/new-entry?entryId=${latestNonToday.id}` as any)}
             onLike={() => toggleLike(latestNonToday.id)}
             onToggleMilestone={() => updateEntry(latestNonToday.id, { isMilestone: !latestNonToday.isMilestone })}
+            onShare={() => handleShare(latestNonToday)}
           />
         ) : null}
         <ShareWithLovedOnesCard />

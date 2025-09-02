@@ -43,7 +43,7 @@ const JournalFilter: React.FC<JournalFilterProps> = ({
               <Ionicons 
                 name="chevron-down" 
                 size={14} 
-                color={activeFilter === filter ? '#FFFFFF' : '#333333'} 
+                color={activeFilter === filter ? '#FFFFFF' : Colors.mediumGrey} 
                 style={styles.chevronIcon}
               />
             )}

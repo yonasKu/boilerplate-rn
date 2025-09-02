@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, StatusBar, FlatList, Alert, Text, Image, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { View, StyleSheet, StatusBar, FlatList, Alert, Text, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
-import { useActiveTimeline } from '@/context/ActiveTimelineContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
-import { getInitials, generateAvatarColor } from '@/utils/avatarUtils';
 
 import { RecapCard } from '../components/RecapCard';
-import FamilySharingBubbles from '../components/FamilySharingBubbles';
 import ShareBottomSheet from '../../journal/components/ShareBottomSheet';
 import FilterTabs from '../components/FilterTabs';
 import { useRecaps } from '../hooks/useRecaps';
@@ -18,12 +15,6 @@ import { Recap } from '../../../services/aiRecapService';
 import { TimelineOption } from '../components/TimelineDropdown';
 import WeeklyRecapPreviewCard from '@/features/home/components/WeeklyRecapPreviewCard';
 import ShareWithLovedOnesCard from '@/features/home/components/ShareWithLovedOnesCard';
-
-interface Child {
-  id: string;
-  name: string;
-  profileImageUrl?: string;
-}
 
 const RecapsScreen = () => {
   const insets = useSafeAreaInsets();
@@ -34,161 +25,55 @@ const RecapsScreen = () => {
   const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [showChildDropdown, setShowChildDropdown] = useState(false);
-  const [headerLeftLayout, setHeaderLeftLayout] = useState<{ x: number; y: number; width: number; height: number }>({ x: 16, y: 0, width: 200, height: 48 });
-  const [children, setChildren] = useState<Child[]>([]);
-  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
-  const { activeOwnerId } = useActiveTimeline();
-  // Determine if selected item is a child vs owner; pass childId only for child
-  const childIdForQuery = selectedChild && activeOwnerId && selectedChild.id !== activeOwnerId
-    ? selectedChild.id
-    : undefined;
-  const { recaps: rawRecaps, loading } = useRecaps(activeOwnerId || undefined, childIdForQuery);
+  const { recaps: rawRecaps, loading } = useRecaps();
   const hasAnyRecap = (rawRecaps || []).length > 0;
-
-  // Helper functions for child selection
-  const getItemName = (item: Child | null) => {
-    if (!item) return 'Loading...';
-    return item.name || 'User';
-  };
-
-  const getItemAvatar = (item: Child | null) => {
-    if (!item) return '';
-    return item.profileImageUrl || '';
-  };
 
   // Fetch user profile and children
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (activeOwnerId) {
-        try {
-          const { doc, getDoc } = await import('firebase/firestore');
-          const { db } = await import('@/lib/firebase/firebaseConfig');
-          
-          const userDocRef = doc(db, 'users', activeOwnerId);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            console.log('User data:', userData);
-            setUserProfile(userData);
-            
-            // Handle children data - fetch actual child documents
-            let childrenData: Child[] = [];
-            if (Array.isArray(userData.children)) {
-              // Children are stored as IDs, fetch each child document
-              const { doc, getDoc } = await import('firebase/firestore');
-              const { db } = await import('@/lib/firebase/firebaseConfig');
-              
-              const childPromises = userData.children.map(async (childId: string) => {
-                try {
-                  const childDocRef = doc(db, 'children', childId);
-                  const childDoc = await getDoc(childDocRef);
-                  if (childDoc.exists()) {
-                    const childData = childDoc.data();
-                    return {
-                      id: childId,
-                      name: childData.name || 'Child',
-                      profileImageUrl: childData.profileImageUrl || '',
-                      dateOfBirth: childData.dateOfBirth || '',
-                      gender: childData.gender || ''
-                    } as Child;
-                  }
-                  return null;
-                } catch (error) {
-                  console.error('Error fetching child:', childId, error);
-                  return null;
-                }
-              });
-              
-              const fetchedChildren = await Promise.all(childPromises);
-              childrenData = fetchedChildren.filter((child): child is Child => child !== null);
-            } else if (userData.children && typeof userData.children === 'object') {
-              // Handle case where children are stored as objects - skip this branch for now
-              // since children are stored as array of IDs
-              childrenData = [];
-            }
-            console.log('Processed children data:', childrenData);
-            setChildren(childrenData);
-            
-            // Set selected child to first child or owner profile
-            if (childrenData.length > 0) {
-              setSelectedChild(childrenData[0]);
-            } else {
-              setSelectedChild({
-                id: activeOwnerId,
-                name: userData.name || 'User',
-                profileImageUrl: userData.profileImageUrl || ''
-              });
-            }
-          }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-          // Fallback: if we can't read owner profile (permissions), still set selection to owner
-          if (activeOwnerId) {
-            setSelectedChild({
-              id: activeOwnerId,
-              name: 'Owner',
-              profileImageUrl: ''
-            });
-            setChildren([]);
-          }
-        } finally {
-          setLoadingProfile(false);
-        }
+      if (!user?.uid) return;
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase/firebaseConfig');
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) setUserProfile(userDoc.data());
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+      } finally {
+        setLoadingProfile(false);
       }
     };
-
     fetchUserProfile();
-  }, [activeOwnerId]);
+  }, [user?.uid]);
 
-  // Fetch unread notifications count - skip if permissions issue
+  // Live unread notifications indicator
   useEffect(() => {
-    const fetchNotifications = async () => {
-      if (user) {
-        try {
-          const { collection, query, where, getDocs } = await import('firebase/firestore');
-          const { db } = await import('@/lib/firebase/firebaseConfig');
-          
-          const notificationsQuery = query(
-            collection(db, 'notifications'),
-            where('userId', '==', user.uid),
-            where('read', '==', false)
-          );
-          const snapshot = await getDocs(notificationsQuery);
-          setUnreadNotifications(snapshot.size);
-        } catch (error) {
-          console.warn('Notification permissions issue, skipping notifications:', error);
-          setUnreadNotifications(0); // Default to 0 if permissions issue
-        }
+    if (!user?.uid) return;
+    let unsubscribe: undefined | (() => void);
+    const setup = async () => {
+      try {
+        const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase/firebaseConfig');
+        const notificationsRef = collection(db, 'notifications');
+        const unreadQuery = query(
+          notificationsRef,
+          where('userId', '==', user.uid),
+          where('read', '==', false)
+        );
+        unsubscribe = onSnapshot(unreadQuery, (snapshot) => setUnreadNotifications(snapshot.size));
+      } catch (e) {
+        console.error('RecapsScreen notifications listen error', e);
       }
     };
-
-    // Only fetch notifications if user exists
-    if (user) {
-      fetchNotifications();
-    }
-  }, [user]);
+    setup();
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [user?.uid]);
 
   const filteredRecaps = React.useMemo(() => {
     let filtered = rawRecaps.filter(recap => recap.id);
-
-    // Filter by selected child
-    if (selectedChild && String(selectedChild) !== 'all') {
-      const childId = typeof selectedChild === 'string' ? selectedChild : 
-                    (typeof selectedChild === 'object' && selectedChild !== null ? 
-                     (selectedChild as any).id : String(selectedChild));
-      
-      filtered = filtered.filter(recap => {
-        const recapChildId = (recap as any).childId;
-        const recapChildIds = (recap as any).childIds;
-        
-        const matches = recapChildId === childId || 
-          (Array.isArray(recapChildIds) && recapChildIds.includes(childId));
-        return matches;
-      });
-    }
 
     // Apply timeline filter
     if (activeTimeline !== 'All') {
@@ -209,7 +94,7 @@ const RecapsScreen = () => {
     }
     
     return filtered;
-  }, [rawRecaps, activeTimeline, activeFilter, selectedChild]);
+  }, [rawRecaps, activeTimeline, activeFilter]);
 
   const handleSharePress = () => {
     setShareSheetVisible(true);
@@ -230,7 +115,7 @@ const RecapsScreen = () => {
   }
 
   const handleAgePress = () => {
-    // Implement age filter modal here
+    // TODO: Implement age filter modal
     console.log('Age filter pressed');
   };
 
@@ -239,25 +124,22 @@ const RecapsScreen = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <View style={styles.headerContainer}>
         <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.headerLeft}
-            onPress={() => setShowChildDropdown((v) => !v)}
-            activeOpacity={0.7}
-            onLayout={(e) => setHeaderLeftLayout(e.nativeEvent.layout)}
-          >
+          <View style={styles.headerLeft}>
             <ProfileAvatar
-              imageUrl={getItemAvatar(selectedChild)}
-              name={getItemName(selectedChild)}
+              imageUrl={
+                userProfile?.profileImageUrl ||
+                userProfile?.photoURL ||
+                userProfile?.avatarUrl ||
+                userProfile?.photoUrl ||
+                null
+              }
+              name={userProfile?.name || userProfile?.displayName || 'Profile'}
               size={40}
               textSize={16}
             />
             <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-              {getItemName(selectedChild)}
+              {userProfile?.name || userProfile?.displayName || 'Recaps'}
             </Text>
-            <Ionicons name={showChildDropdown ? 'chevron-up' : 'chevron-down'} size={20} color="#2F4858" />
-          </TouchableOpacity>
-          <View style={styles.headerMiddle} pointerEvents="box-none">
-            <FamilySharingBubbles />
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
@@ -273,51 +155,6 @@ const RecapsScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
-        {showChildDropdown && (
-          <Pressable
-            style={styles.dropdownBackdrop}
-            onPress={() => setShowChildDropdown(false)}
-            android_ripple={{ color: 'transparent' }}
-          />
-        )}
-        {showChildDropdown && (
-          <View style={[
-            styles.dropdownContainer,
-            { top: headerLeftLayout.y + headerLeftLayout.height + 8, left: headerLeftLayout.x, width: headerLeftLayout.width },
-          ]}>
-            <FlatList
-              keyboardShouldPersistTaps="handled"
-              data={children.filter(item => item?.id !== selectedChild?.id)}
-              keyExtractor={(item) => item?.id}
-              renderItem={({ item }) => {
-                const isSelected = item?.id === selectedChild?.id;
-                const name = getItemName(item);
-                const imageUrl = getItemAvatar(item);
-                return (
-                  <TouchableOpacity
-                    style={[styles.dropdownItem, isSelected && styles.dropdownItemSelected]}
-                    onPress={() => {
-                      setSelectedChild(item);
-                      setShowChildDropdown(false);
-                    }}
-                  >
-                    <ProfileAvatar imageUrl={imageUrl} name={name} size={30} textSize={14} />
-                    <Text
-                      style={[
-                        styles.dropdownItemText,
-                        isSelected ? styles.dropdownItemTextActive : styles.dropdownItemTextInactive,
-                      ]}
-                    >
-                      {name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-              ItemSeparatorComponent={() => <View style={styles.separator} />}
-            />
-          </View>
-        )}
-        
       </View>
       {hasAnyRecap ? (
         <>
@@ -389,12 +226,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  headerMiddle: {
-    flex: 1,
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
   headerButton: {
     padding: 4,
     width: 36,
@@ -420,74 +251,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.error,
     borderWidth: 2,
     borderColor: '#FFFFFF',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  notificationCount: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  dropdownBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-  },
-  dropdownContainer: {
-    position: 'absolute',
-    backgroundColor: Colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.lightGrey,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-    maxHeight: 250,
-    zIndex: 1000,
-    marginTop: 8,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  dropdownItemSelected: {
-    backgroundColor: Colors.primary + '20',
-  },
-  dropdownItemText: {
-    fontSize: 16,
-    marginLeft: 12,
-    color: Colors.blacktext,
-    fontFamily: 'Poppins_500Medium',
-  },
-  dropdownItemTextActive: {
-    color: Colors.primary,
-    fontFamily: 'Poppins_600SemiBold',
-  },
-  dropdownItemTextInactive: {
-    color: Colors.blacktext,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginHorizontal: 16,
   },
   emptyContainer: {
     flex: 1,

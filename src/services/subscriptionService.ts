@@ -13,7 +13,7 @@ export interface FeatureFlags {
   updatedAt: Date;
 }
 
-// Normalized snapshot written by backend webhook into users/{uid}.subscription
+
 export interface SubscriptionSnapshot {
   status: 'active' | 'trial' | 'inactive' | 'cancelled';
   plan?: string | null;

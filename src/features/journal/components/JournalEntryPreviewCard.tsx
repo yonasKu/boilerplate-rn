@@ -62,6 +62,7 @@ const JournalEntryPreviewCard: React.FC<JournalEntryPreviewCardProps> = ({
   const formattedDate = formatDate(entry.createdAt);
   const entryDate = useMemo(() => (entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt)), [entry.createdAt]);
   const [computedAge, setComputedAge] = useState<string>('');
+  const [childAgeLabels, setChildAgeLabels] = useState<string[]>([]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -94,6 +95,35 @@ const JournalEntryPreviewCard: React.FC<JournalEntryPreviewCardProps> = ({
       isCancelled = true;
     };
   }, [selectedChildId, entryDate]);
+
+  // Build labels for multiple children: "Name — age" joined by bullets
+  useEffect(() => {
+    const loadChildLabels = async () => {
+      if (!entry || !Array.isArray(entry.childIds) || entry.childIds.length === 0) {
+        setChildAgeLabels([]);
+        return;
+      }
+      try {
+        const results = await Promise.all(
+          entry.childIds.map(async (id) => {
+            try {
+              const c = await getChild(id);
+              const age = entry.childAgeAtEntry?.[id] ?? '';
+              if (c?.name && age) return `${c.name} — ${age}`;
+              if (age) return age;
+              return null;
+            } catch {
+              return null;
+            }
+          })
+        );
+        setChildAgeLabels(results.filter((x): x is string => Boolean(x)));
+      } catch (e) {
+        setChildAgeLabels([]);
+      }
+    };
+    loadChildLabels();
+  }, [entry?.id, JSON.stringify(entry?.childIds)]);
 
   const childAge = computedAge || (selectedChildId && entry.childAgeAtEntry && entry.childAgeAtEntry[selectedChildId]
     ? entry.childAgeAtEntry[selectedChildId]
@@ -133,8 +163,16 @@ const JournalEntryPreviewCard: React.FC<JournalEntryPreviewCardProps> = ({
 
         {/* Footer actions copied from JournalEntryCard */}
         <View style={styles.footerActions}>
-          <View style={styles.ageContainer}>
-            {childAge ? <Text style={styles.childAge}>{childAge}</Text> : null}
+          <View style={[styles.ageContainer, styles.ageContainerFixed]}>
+            {childAgeLabels.length > 0 ? (
+              <View>
+                {childAgeLabels.map((label, idx) => (
+                  <Text key={idx} style={styles.childAge}>{label}</Text>
+                ))}
+              </View>
+            ) : childAge ? (
+              <Text style={styles.childAge}>{childAge}</Text>
+            ) : null}
           </View>
           <View style={styles.actionButtons}>
             {onLike && (
@@ -260,6 +298,10 @@ const styles = StyleSheet.create({
   },
   ageContainer: {
     flex: 1,
+  },
+  ageContainerFixed: {
+    width: '70%',
+    flexShrink: 1,
   },
   childAge: {
     marginLeft: 12,

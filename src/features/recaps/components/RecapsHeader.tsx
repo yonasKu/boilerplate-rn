@@ -1,22 +1,82 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/theme';
+import { ProfileAvatar } from '@/components/ProfileAvatar';
+import { useAuth } from '@/context/AuthContext';
 
 const RecapsHeader = () => {
   const router = useRouter();
+  const { user } = useAuth();
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.uid) return;
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase/firebaseConfig');
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) setUserProfile(userDoc.data());
+      } catch (e) {
+        console.error('RecapsHeader fetchUserProfile error', e);
+      }
+    };
+    fetchUserProfile();
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    let unsubscribe: undefined | (() => void);
+    const setup = async () => {
+      try {
+        const { collection, query, where, onSnapshot } = await import('firebase/firestore');
+        const { db } = await import('@/lib/firebase/firebaseConfig');
+        const notificationsRef = collection(db, 'notifications');
+        const unreadQuery = query(
+          notificationsRef,
+          where('userId', '==', user.uid),
+          where('read', '==', false)
+        );
+        unsubscribe = onSnapshot(unreadQuery, (snapshot) => setUnreadNotifications(snapshot.size));
+      } catch (e) {
+        console.error('RecapsHeader notifications listen error', e);
+      }
+    };
+    setup();
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [user?.uid]);
 
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
-        <Text style={styles.headerTitle}>Recaps</Text>
+        <ProfileAvatar
+          imageUrl={
+            userProfile?.profileImageUrl ||
+            userProfile?.photoURL ||
+            userProfile?.avatarUrl ||
+            userProfile?.photoUrl ||
+            null
+          }
+          name={userProfile?.name || userProfile?.displayName || 'Profile'}
+          size={40}
+          textSize={16}
+        />
+        <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+          {userProfile?.name || userProfile?.displayName || 'Recaps'}
+        </Text>
       </View>
       <View style={styles.headerRight}>
         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.darkGrey} />
+          <View style={styles.notificationContainer}>
+            <Ionicons name="notifications-outline" size={22} color={Colors.darkGrey} />
+            {unreadNotifications > 0 && <View style={styles.notificationDot} />}
+          </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/settings')}>
+        <TouchableOpacity style={[styles.headerButton, { marginLeft: 8 }]} onPress={() => router.push('/(main)/settings')}>
           <Ionicons name="settings-outline" size={22} color={Colors.darkGrey} />
         </TouchableOpacity>
       </View>
@@ -30,26 +90,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGrey,
-    backgroundColor: Colors.background,
+    paddingVertical: 10,
+    backgroundColor: Colors.white,
   },
   headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     flex: 1,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontFamily: 'Poppins_700Bold',
     color: Colors.black,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   headerButton: {
-    padding :4, 
+    padding: 4,
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -58,6 +119,20 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  notificationContainer: {
+    position: 'relative',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.error,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
 });
 

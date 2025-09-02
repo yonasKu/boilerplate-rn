@@ -62,10 +62,10 @@ service cloud.firestore {
         && request.resource.data.children.size() == 0
         && request.resource.data.createdAt is timestamp
         && request.resource.data.onboarded is bool;
-
+    
       // Allow reading own data, if a family member, or if it's a backend function.
       // Backend functions can list all users.
-      allow read, list: if isOwner(userId) || isFamilyMember(userId) || isBackendFunction();
+      allow read, list: if isOwner(userId) || isFamilyMember(userId) || hasSharedAccessToOwner(userId) || isBackendFunction();
 
       // Allow owner to update their document.
       // Full accounts can update any fields EXCEPT 'subscription' (server-only); viewer accounts are restricted to name/profileImageUrl/updatedAt.
@@ -132,7 +132,7 @@ service cloud.firestore {
     // ========== CHILDREN COLLECTION ==========
     match /children/{childId} {
       // Users can read children documents they own. Backend can read and list them.
-      allow read, list: if (request.auth != null && request.auth.uid == resource.data.parentId) || isBackendFunction();
+      allow read, list: if (request.auth != null && request.auth.uid == resource.data.parentId) || hasSharedAccessToOwner(resource.data.parentId) || isBackendFunction();
 
       // Users can create children documents for themselves
       allow create: if request.auth != null 
@@ -165,10 +165,20 @@ service cloud.firestore {
       
       // A user can update their own entry's content and tags.
       // Family members can also update likes and favorites.
-      allow update: if ((isOwner(resource.data.userId) && isFullAccount() && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes', 'childIds', 'childAgeAtEntry'])) ||
-                      (hasSharedAccessToOwner(resource.data.userId) && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited'])));
+      allow update: if (
+        // Owners can always toggle interactions (no full-account requirement)
+        (isOwner(resource.data.userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited', 'isMilestone', 'updatedAt'])
+        ) ||
+        // Owners with full accounts can modify content/media/children fields
+        (isOwner(resource.data.userId) && isFullAccount() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'isFavorited', 'isMilestone', 'media', 'updatedAt', 'likes', 'childIds', 'childAgeAtEntry'])
+        ) ||
+        // Shared viewers can toggle likes and favorites
+        (hasSharedAccessToOwner(resource.data.userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited'])
+        )
+      );
       
       // A user can delete their own entry
       allow delete: if isOwner(resource.data.userId) && isFullAccount();
@@ -191,11 +201,21 @@ service cloud.firestore {
         && request.resource.data.imageMetadata.hasImages is bool
         && request.resource.data.imageMetadata.imageTypes is list;
 
-      // Owners can update content, family members can update interactions.
-      allow update: if ((isOwner(resource.data.userId) && isFullAccount() && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'status', 'isFavorited', 'updatedAt', 'isMilestone'])) ||
-                      (hasSharedAccessToOwner(resource.data.userId) && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited', 'commentCount'])));
+      // Owners can update content and interactions based on account type; family members can update interactions.
+      allow update: if (
+        // Owners can always toggle interactions
+        (isOwner(resource.data.userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited', 'isMilestone', 'commentCount', 'lastCommentAt', 'updatedAt'])
+        ) ||
+        // Owners with full accounts can also modify content/status
+        (isOwner(resource.data.userId) && isFullAccount() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['content', 'status', 'isFavorited', 'updatedAt', 'isMilestone', 'commentCount', 'lastCommentAt', 'likes'])
+        ) ||
+        // Shared viewers can toggle interactions
+        (hasSharedAccessToOwner(resource.data.userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'isFavorited', 'commentCount', 'lastCommentAt', 'isMilestone'])
+        )
+      );
 
       // Owners can delete their recaps
       allow delete: if isOwner(resource.data.userId) && isFullAccount();
@@ -234,13 +254,13 @@ service cloud.firestore {
     
     // Helper functions for family sharing
     function hasSharedAccess(ownerId, viewerId) {
-      return exists(/databases/$(database)/documents/sharedAccess/$(ownerId)_$(viewerId));
+      return exists(/databases/$(database)/documents/sharedAccess/$(ownerId + '_' + viewerId));
     }
     
     function hasScope(ownerId, viewerId, requiredScope) {
       return hasSharedAccess(ownerId, viewerId) && 
-             get(/databases/$(database)/documents/sharedAccess/$(ownerId)_$(viewerId)).data.scopes != null &&
-             requiredScope in get(/databases/$(database)/documents/sharedAccess/$(ownerId)_$(viewerId)).data.scopes;
+             get(/databases/$(database)/documents/sharedAccess/$(ownerId + '_' + viewerId)).data.scopes != null &&
+             requiredScope in get(/databases/$(database)/documents/sharedAccess/$(ownerId + '_' + viewerId)).data.scopes;
     }
 
     // Invitations for family sharing (new model)

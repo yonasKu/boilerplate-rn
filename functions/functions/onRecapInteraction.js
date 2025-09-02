@@ -47,6 +47,7 @@ exports.onRecapCommentCreated = functions.firestore
       const preview = (comment.text || '').toString();
       const body = preview.length > 60 ? `${comment.userName || 'Someone'}: ${preview.slice(0, 57)}...` : `${comment.userName || 'Someone'}: ${preview}`;
 
+      // Push notification
       await notificationService.sendPushNotification(ownerId, {
         title,
         body,
@@ -55,6 +56,20 @@ exports.onRecapCommentCreated = functions.firestore
           recapId: comment.recapId,
           commentId: context.params.commentId || '',
         },
+      });
+
+      // In-app notification
+      await db.collection('notifications').add({
+        userId: ownerId,
+        type: 'recap_comment',
+        title,
+        body,
+        recapId: comment.recapId,
+        commentId: context.params.commentId || '',
+        commenterId: comment.userId,
+        commenterName: comment.userName || null,
+        read: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       return null;
@@ -105,6 +120,7 @@ exports.onRecapLikesUpdated = functions.firestore
           }
         } catch {}
 
+        // Push notification
         await notificationService.sendPushNotification(ownerId, {
           title: '❤️ New like on your recap',
           body: `${likerName} liked your recap`,
@@ -113,6 +129,18 @@ exports.onRecapLikesUpdated = functions.firestore
             recapId: context.params.recapId,
             likerId,
           },
+        });
+
+        // In-app notification
+        await db.collection('notifications').add({
+          userId: ownerId,
+          type: 'recap_like',
+          title: '❤️ New like on your recap',
+          body: `${likerName} liked your recap`,
+          recapId: context.params.recapId,
+          likerId,
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }
 

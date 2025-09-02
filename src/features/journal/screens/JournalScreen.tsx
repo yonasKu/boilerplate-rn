@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar, FlatList, ActivityIndicator, TextInput, Share, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar, FlatList, ActivityIndicator, Share, Alert } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
@@ -7,21 +8,13 @@ import { Ionicons } from '@expo/vector-icons';
 import WeekNavigator from '../components/WeekNavigator';
 import { useJournal } from '@/hooks/useJournal';
 import JournalEntryCard from '../components/JournalEntryCard';
-import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import JournalFilter from '../components/JournalFilter';
 import ActionCallout from '../../../components/ui/ActionCallout';
 import AgeFilterModal from '../components/modals/AgeFilterModal';
 import { TimelineOption } from '../components/TimelineDropdown';
 import ShareBottomSheet from '../components/ShareBottomSheet';
 import { Colors } from '@/theme';
-import { getInitials, generateAvatarColor } from '@/utils/avatarUtils';
-
-
-interface Child {
-  id: string;
-  name: string;
-  profileImageUrl?: string;
-}
+import { ProfileAvatar } from '../../../components/ProfileAvatar';
 
 const JournalScreen = () => {
     const insets = useSafeAreaInsets();
@@ -36,10 +29,6 @@ const JournalScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
     const [showAgeModal, setShowAgeModal] = useState(false);
-    const [showChildDropdown, setShowChildDropdown] = useState(false);
-    const [headerLeftLayout, setHeaderLeftLayout] = useState<{ x: number; y: number; width: number; height: number }>({ x: 16, y: 0, width: 200, height: 48 });
-    const [children, setChildren] = useState<any[]>([]);
-    const [selectedChild, setSelectedChild] = useState<Child | null>(null); // Will always be set to first child or user profile
     const [unreadNotifications, setUnreadNotifications] = useState(0);
 
     const fetchUserProfile = async () => {
@@ -64,42 +53,8 @@ const JournalScreen = () => {
         }
     };
 
-    const fetchChildren = async () => {
-        if (!user?.uid) return;
-        
-        try {
-            const { collection, query, where, getDocs } = await import('firebase/firestore');
-            const { db } = await import('@/lib/firebase/firebaseConfig');
-            
-            const childrenSnapshot = await getDocs(
-                query(collection(db, 'children'), where('parentId', '==', user.uid))
-            );
-            
-            const childrenData = childrenSnapshot.docs.map(doc => ({ 
-                id: doc.id, 
-                ...doc.data() 
-            }));
-            
-            setChildren(childrenData);
-            
-            if (childrenData.length > 0) {
-                const child = childrenData[0];
-                setSelectedChild({
-                    id: child.id,
-                    name: (child as any).name || (child as any).displayName || 'Unnamed',
-                    profileImageUrl: (child as any).profileImageUrl || (child as any).photoURL || (child as any).photoUrl || (child as any).avatarUrl || null
-                });
-            } else {
-                setSelectedChild(null); // Will use user profile
-            }
-        } catch (err) {
-            console.error('Error fetching children:', err);
-        }
-    };
-
     useEffect(() => {
         fetchUserProfile();
-        fetchChildren();
     }, [user]);
 
     useEffect(() => {
@@ -152,29 +107,6 @@ const JournalScreen = () => {
     }, [user]);
 
 
-    // Helpers: ensure consistent avatar/name resolution
-    const getItemName = (item: any | null) => {
-        if (!item) return userProfile?.name || userProfile?.displayName || 'Profile';
-        return item.name || item.displayName || 'Unnamed';
-    };
-
-    const getItemAvatar = (item: any | null) => {
-        if (!item) {
-            return userProfile?.profileImageUrl || 
-                   userProfile?.photoURL || 
-                   userProfile?.avatarUrl || 
-                   userProfile?.photoUrl ||
-                   null;
-        }
-        return (
-            item.profileImageUrl ||
-            item.photoURL ||
-            item.photoUrl ||
-            item.avatarUrl ||
-            item.avatar ||
-            null
-        );
-    };
 
     const filteredEntries = useMemo(() => {
         let filtered = entries;
@@ -214,12 +146,7 @@ const JournalScreen = () => {
         }
         */
 
-        // Filter by selected child
-        if (selectedChild) {
-            filtered = filtered.filter(entry => 
-                entry.childIds && Array.isArray(entry.childIds) && entry.childIds.includes(selectedChild.id)
-            );
-        }
+        // Child-based filtering removed: show all user entries regardless of child
 
         // Filter by search query
         if (searchQuery.trim()) {
@@ -243,7 +170,7 @@ const JournalScreen = () => {
             const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
             return dateB.getTime() - dateA.getTime();
         });
-        }, [entries, selectedChild, searchQuery, filterTags, activeTimeline]);
+        }, [entries, searchQuery, filterTags, activeTimeline]);
 
     const handleLike = async (entryId: string) => {
         try {
@@ -276,16 +203,13 @@ const JournalScreen = () => {
 
     const handleShareAction = async (platform: 'copy' | 'system') => {
         if (!shareEntry) return;
-        
         try {
+            const message = `Check out this memory from SproutBook: ${shareEntry.text || ''}`;
             if (platform === 'copy') {
-                await Share.share({
-                    message: `Check out this memory from SproutBook: ${shareEntry.text}`,
-                });
+                await Clipboard.setStringAsync(message);
+                Alert.alert('Copied to clipboard');
             } else {
-                await Share.share({
-                    message: `Check out this memory from SproutBook: ${shareEntry.text}`,
-                });
+                await Share.share({ message });
             }
             setShowShareModal(false);
         } catch (error) {
@@ -339,28 +263,35 @@ const JournalScreen = () => {
         );
     };
 
+    // Resolve user display name and avatar URL (no dropdown)
+    const displayName = useMemo(() => (
+        userProfile?.name || userProfile?.displayName || user?.displayName || 'Profile'
+    ), [userProfile, user]);
+
+    const avatarUrl = useMemo(() => (
+        userProfile?.profileImageUrl ||
+        (userProfile as any)?.photoURL ||
+        (userProfile as any)?.avatarUrl ||
+        (userProfile as any)?.photoUrl ||
+        null
+    ), [userProfile]);
+
     return (
         <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
             <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             <View style={styles.headerContainer}>
                 <View style={styles.header}>
-                    <TouchableOpacity
-                        style={styles.headerLeft}
-                        onPress={() => setShowChildDropdown((v) => !v)}
-                        activeOpacity={0.7}
-                        onLayout={(e) => setHeaderLeftLayout(e.nativeEvent.layout)}
-                    >
+                    <View style={styles.headerLeft}>
                         <ProfileAvatar
-                            imageUrl={getItemAvatar(selectedChild)}
-                            name={getItemName(selectedChild)}
+                            imageUrl={avatarUrl}
+                            name={displayName}
                             size={40}
                             textSize={16}
                         />
                         <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-                            {getItemName(selectedChild)}
+                            {displayName}
                         </Text>
-                        <Ionicons name={showChildDropdown ? 'chevron-up' : 'chevron-down'} size={20} color="#2F4858" />
-                    </TouchableOpacity>
+                    </View>
                     <View style={styles.headerRight}>
                         <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
                             <View style={styles.notificationContainer}>
@@ -375,50 +306,6 @@ const JournalScreen = () => {
                         </TouchableOpacity>
                     </View>
                 </View>
-                {showChildDropdown && (
-                    <Pressable
-                        style={styles.dropdownBackdrop}
-                        onPress={() => setShowChildDropdown(false)}
-                        android_ripple={{ color: 'transparent' }}
-                    />
-                )}
-                {showChildDropdown && (
-                    <View style={[
-                        styles.dropdownContainer,
-                        { top: headerLeftLayout.y + headerLeftLayout.height, left: headerLeftLayout.x, width: headerLeftLayout.width },
-                    ]}>
-                        <FlatList
-                            keyboardShouldPersistTaps="handled"
-                            data={children.filter(item => item?.id !== selectedChild?.id)}
-                            keyExtractor={(item) => item?.id}
-                            renderItem={({ item }) => {
-                                const isSelected = item?.id === selectedChild?.id;
-                                const name = getItemName(item);
-                                const imageUrl = getItemAvatar(item);
-                                return (
-                                    <TouchableOpacity
-                                        style={[styles.dropdownItem, isSelected && styles.dropdownItemSelected]}
-                                        onPress={() => {
-                                            setSelectedChild(item);
-                                            setShowChildDropdown(false);
-                                        }}
-                                    >
-                                        <ProfileAvatar imageUrl={imageUrl} name={name} size={30} textSize={14} />
-                                        <Text
-                                            style={[
-                                                styles.dropdownItemText,
-                                                isSelected ? styles.dropdownItemTextActive : styles.dropdownItemTextInactive,
-                                            ]}
-                                        >
-                                            {name}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            }}
-                            ItemSeparatorComponent={() => <View style={styles.separator} />}
-                        />
-                    </View>
-                )}
             </View>
             {entries.length > 0 && <WeekNavigator />}
             {entries.length > 0 && (
@@ -494,7 +381,7 @@ const JournalScreen = () => {
                     renderItem={({ item }) => (
                         <JournalEntryCard 
                             entry={item} 
-                            selectedChildId={selectedChild?.id || ''}
+                            selectedChildId={''}
                             onPress={() => router.push(`/journal/${item.id}` as any)}
                             onLike={() => handleLike(item.id)}
                             onShare={() => handleShare(item)}

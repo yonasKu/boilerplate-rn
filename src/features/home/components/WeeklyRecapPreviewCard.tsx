@@ -7,7 +7,11 @@ import { Recap, RecapService } from '../../../services/aiRecapService';
 import { useJournal } from '@/hooks/useJournal';
 import { useAuth } from '@/context/AuthContext';
 
-const WeeklyRecapPreviewCard: React.FC = () => {
+interface WeeklyRecapPreviewCardProps {
+  onShare?: (recap: Recap) => void;
+}
+
+const WeeklyRecapPreviewCard: React.FC<WeeklyRecapPreviewCardProps> = ({ onShare }) => {
   // Pull journals and current user
   const { entries } = useJournal();
   const { user } = useAuth();
@@ -113,7 +117,12 @@ const WeeklyRecapPreviewCard: React.FC = () => {
       </View>
       <View style={styles.cardContainer}>
         {hasAnyRecap ? (
-          <RecapCard recap={mostRecentRecap as Recap} onShare={() => {}} />
+          <RecapCard
+            recap={mostRecentRecap as Recap}
+            onShare={() => {
+              if (onShare && mostRecentRecap) onShare(mostRecentRecap);
+            }}
+          />
         ) : (
           <RecapCard recap={sample} onShare={() => {}} />
         )}

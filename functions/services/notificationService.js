@@ -68,7 +68,13 @@ class NotificationService {
       if (snapshot.empty) {
         return [];
       }
-      return snapshot.docs.map(doc => doc.data().token);
+      // Prefer stored token field; fall back to doc ID (we store tokens as doc IDs)
+      const rawTokens = snapshot.docs.map((doc) => doc.data().token || doc.id);
+      // Filter out invalid entries and de-duplicate
+      const filtered = rawTokens
+        .filter((t) => typeof t === 'string' && t.trim().length > 0)
+        .map((t) => t.trim());
+      return Array.from(new Set(filtered));
     } catch (error) {
       console.error(`Error getting device tokens for user ${userId}:`, error);
       return [];
@@ -85,9 +91,15 @@ class NotificationService {
    * @returns {Promise<{success: boolean, message?: string}>}
    */
   async sendPushNotification(userId, notification) {
+    // Validate userId input to avoid Firestore path errors
+    if (typeof userId !== 'string' || userId.trim().length === 0) {
+      console.warn('sendPushNotification called with invalid userId:', userId);
+      return { success: false, message: 'Invalid userId' };
+    }
+
     const tokens = await this.getUserDeviceTokens(userId);
 
-    if (tokens.length === 0) {
+    if (!Array.isArray(tokens) || tokens.length === 0) {
       console.log(`No device tokens found for user ${userId}.`);
       return { success: false, message: 'No device tokens found for user.' };
     }
@@ -102,9 +114,16 @@ class NotificationService {
     };
 
     try {
-      const response = await this.messaging.sendToDevice(tokens, payload);
+      // Defensive: ensure we do not pass undefined/empty tokens to FCM
+      const validTokens = tokens.filter((t) => typeof t === 'string' && t.trim().length > 0);
+      if (validTokens.length === 0) {
+        console.log(`No valid device tokens to send for user ${userId}.`);
+        return { success: false, message: 'No valid device tokens for user.' };
+      }
+
+      const response = await this.messaging.sendToDevice(validTokens, payload);
       console.log(`Successfully sent notification to user ${userId}.`);
-      await this.cleanupInvalidTokens(response, tokens, userId);
+      await this.cleanupInvalidTokens(response, validTokens, userId);
       return { success: true };
     } catch (error) {
       console.error(`Error sending notification to user ${userId}:`, error);
