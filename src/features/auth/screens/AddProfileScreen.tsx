@@ -30,8 +30,8 @@ const AddProfileScreen = () => {
             <ScrollView contentContainerStyle={styles.scrollContainer}>
 
                 <View style={styles.headerTop}>
-                    <Text style={styles.sectionTitle}>Let's set up your profile</Text>
-                    <Text style={styles.sectionSubtitle}>Tell us about yourself</Text>
+                    <Text style={styles.sectionTitle}>Let’s create {'\n'}your journal</Text>
+
                 </View>
 
                 <View style={styles.avatarContainer}>
@@ -64,6 +64,7 @@ const AddProfileScreen = () => {
                     )}
                 </View>
 
+                <Text style={styles.sectionSubtitle}>Tell us about yourself</Text>
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
@@ -193,7 +194,7 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 15,
         color: Colors.blacktext,
         paddingVertical: 6,
         fontFamily: 'Poppins-Regular'
@@ -205,9 +206,9 @@ const styles = StyleSheet.create({
     },
     pickerText: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 15,
         color: Colors.blacktext,
-        padding: 10,
+        paddingVertical: 6,
         width: '100%',
         fontFamily: 'Poppins-Regular',
     },
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
     },
     optionItem: {
         paddingVertical: 12,
-        paddingHorizontal: 16,
+        //paddingHorizontal: 16,
     },
     optionText: {
         fontSize: 16,
@@ -259,18 +260,20 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     sectionTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
+        fontSize: 26,
+        fontWeight: '500',
         color: Colors.black,
-        marginBottom: 8,
+        marginBottom: 6,
         textAlign: 'center',
-        fontFamily: 'Poppins-medium',
+        fontFamily: 'poppins-500regular',
+        lineHeight: 32,
     },
     sectionSubtitle: {
-        fontSize: 16,
-        color: Colors.mediumGrey,
-        textAlign: 'center',
-        marginTop: 16,
+        fontSize: 14,
+        color: Colors.blacktext,
+        paddingHorizontal: 12,
+        marginTop: 8,
+        marginBottom: 16,
         fontFamily: 'Poppins-Regular',
     },
     uploadingContainer: {

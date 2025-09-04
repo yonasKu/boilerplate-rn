@@ -1,333 +1,62 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, Alert, ActivityIndicator, Linking, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import React from 'react';
+import { View, Text, TextInput, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform, ActivityIndicator, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import ScreenHeader from '@/components/ui/ScreenHeader';
-import { useJournal } from '@/hooks/useJournal';
-import * as journalService from '@/services/journalService';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { getAuth } from 'firebase/auth';
-import { ProfileAvatar } from '@/components/ProfileAvatar';
-import { Colors } from '@/theme/colors';
-import JournalEntryCard from '@/features/journal/components/JournalEntryCard';
-import JournalEntryPreviewCard from '@/features/journal/components/JournalEntryPreviewCard';
-import ShareBottomSheet from '@/features/journal/components/ShareBottomSheet';
-import JournalPreviewActionButtons from '../components/JournalPreviewActionButtons';
-import { JournalEntry } from '@/hooks/useJournal';
-import { useActiveTimeline } from '@/context/ActiveTimelineContext';
-import { useAccount } from '@/context/AccountContext';
 
-type Media = {
-  uri: string;
-  type: 'image' | 'video';
-};
+import { Calendar } from 'react-native-calendars';
+import { Colors } from '@/theme/colors';
+// Removed preview components and share sheet as preview mode is no longer used
+import { useNewEntryScreen } from '@/hooks/useNewEntryScreen';
 
 const NewEntryScreen = () => {
   const router = useRouter();
-  const { entryId } = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const { addEntry, updateEntry, entries, isLoading } = useJournal();
-  const isEditMode = !!entryId;
-  const { canCreateEntries, isViewingOthers, loading: timelineLoading } = useActiveTimeline();
-  const { accountType } = useAccount();
 
-  const [entryText, setEntryText] = useState('');
-  const [media, setMedia] = useState<Media[]>([]);
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [isMilestone, setIsMilestone] = useState(false);
-  const [selectedChildren, setSelectedChildren] = useState<string[]>([]);
-  const [children, setChildren] = useState<Array<{ id: string; name: string; dateOfBirth: Date; profileImageUrl?: string }>>([]);
-  const [isPreview, setIsPreview] = useState(false);
-  const [showShareSheet, setShowShareSheet] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const {
+    // entries / loading
+    isLoading,
+    timelineLoading,
 
-  useEffect(() => {
-    if (timelineLoading) return;
-    if (!canCreateEntries) {
-      if ((accountType ?? 'full') === 'view-only') {
-        Alert.alert('View-only access', 'Upgrade your account to create journal entries.');
-      } else if (isViewingOthers) {
-        Alert.alert('Switch timeline', 'Switch to your own timeline to create journal entries.');
-      } else {
-        Alert.alert('Unavailable', 'You cannot create entries right now.');
-      }
-      router.replace('/(main)/(tabs)/journal');
-    }
-  }, [canCreateEntries, isViewingOthers, accountType, timelineLoading]);
+    // editor state
+    entryText,
+    setEntryText,
+    media,
+    isSaving,
+
+    // date
+    showDatePicker,
+    setShowDatePicker,
+    markedDates,
+    todayYMD,
+    selectedDateYMD,
+    formattedDate,
+
+    // actions
+    pickMedia,
+    removeMedia,
+    handleSave,
+    onCalendarDayPress,
+
+    // ui helpers
+    isSaveDisabled,
+  } = useNewEntryScreen();
 
   if (timelineLoading) {
     return null;
   }
 
-  useEffect(() => {
-    const loadChildren = async () => {
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-      if (!currentUser) return;
-
-      try {
-        const q = query(collection(db, 'children'), where('parentId', '==', currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        const childrenData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.name,
-            profileImageUrl: data.profileImageUrl,
-            dateOfBirth: data.dateOfBirth?.toDate ? data.dateOfBirth.toDate() : new Date(data.dateOfBirth)
-          };
-        });
-
-        setChildren(childrenData);
-        
-        if (isEditMode && entryId) {
-          const existingEntry = entries.find(entry => entry.id === entryId);
-          if (existingEntry) {
-            setEntryText(existingEntry.text);
-            setMedia(existingEntry.media.map(m => ({ uri: m.url, type: m.type })));
-            setIsFavorited(existingEntry.isFavorited);
-            setIsMilestone(existingEntry.isMilestone);
-            setSelectedChildren(existingEntry.childIds || []);
-          }
-        } else if (childrenData.length === 1) {
-          setSelectedChildren([childrenData[0].id]);
-        } else if (childrenData.length > 1) {
-          setSelectedChildren([]);
-        }
-      } catch (error) {
-        console.error('Error loading children:', error);
-      }
-    };
-
-    loadChildren();
-  }, [isEditMode, entryId, entries]);
-
-  const pickMedia = async () => {
-    try {
-      // Request media library permissions
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (permissionResult.status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Please allow access to your photos to upload images. You can enable this in Settings > Privacy > Photos > SproutBook.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Platform.OS === 'ios' && Linking.openURL('app-settings:') }
-          ]
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        base64: false,
-      });
-
-      if (!result.canceled && result.assets) {
-        const newMedia = result.assets.map(asset => ({
-          uri: asset.uri,
-          type: 'image' as 'image'
-        }));
-        setMedia(prevMedia => [...prevMedia, ...newMedia]);
-      }
-    } catch (error) {
-      console.error('Error picking media:', error);
-      Alert.alert('Error', 'Failed to select images. Please try again.');
-    }
-  };
-
-  const takePhoto = async () => {
-    try {
-      // Request camera permissions
-      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-      
-      if (permissionResult.status !== 'granted') {
-        Alert.alert(
-          'Permission Required',
-          'Please allow access to your camera to take photos. You can enable this in Settings > Privacy > Camera > SproutBook.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Open Settings', onPress: () => Platform.OS === 'ios' && Linking.openURL('app-settings:') }
-          ]
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-        base64: false,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const newMediaItem = {
-          uri: result.assets[0].uri,
-          type: 'image' as 'image' | 'video',
-        };
-        setMedia(prevMedia => [...prevMedia, newMediaItem]);
-      }
-    } catch (error) {
-      console.error('Error taking photo:', error);
-      Alert.alert('Error', 'Failed to take photo. Please try again.');
-    }
-  };
-
-  const removeMedia = (uri: string) => {
-    setMedia(prevMedia => prevMedia.filter(item => item.uri !== uri));
-  };
-
-  const handleSave = async () => {
-    console.log('🚀 Starting save process...');
-    console.log('📄 Entry text:', entryText);
-    console.log('👶 Selected children:', selectedChildren);
-    console.log('📸 Media count:', media.length);
-    console.log('⭐ Is favorited:', isFavorited);
-    console.log('🏆 Is milestone:', isMilestone);
-
-    if (!entryText.trim()) {
-      console.log('❌ Save failed: Empty entry text');
-      Alert.alert('Empty Entry', 'Please write something before saving.');
-      return;
-    }
-    if (selectedChildren.length === 0) {
-      console.log('❌ Save failed: No children selected');
-      Alert.alert('Select Child', 'Please select at least one child');
-      return;
-    }
-
-    setIsSaving(true);
-    console.log('⏳ Setting isSaving to true...');
-
-    try {
-      const selectedChildData = children.filter(c => selectedChildren.includes(c.id));
-      console.log('👶 Selected child data:', selectedChildData);
-      
-      if (selectedChildData.length === 0) {
-        console.log('❌ Save failed: No child data found');
-        Alert.alert('Error', 'Could not find child information.');
-        setIsSaving(false);
-        return;
-      }
-
-      // Calculate age for each selected child
-      const childAgeAtEntry: Record<string, string> = {};
-      selectedChildren.forEach(childId => {
-        const child = children.find(c => c.id === childId);
-        if (child) {
-          const age = journalService.calculateChildAgeAtDate(new Date(child.dateOfBirth), selectedDate);
-          childAgeAtEntry[childId] = age;
-        }
-      });
-      console.log('📊 Child age at entry:', childAgeAtEntry);
-
-      console.log('📸 Processing media...');
-      const mediaToUpload = media.filter(item => !item.uri.startsWith('http'));
-      // Prepare media array with correct format for addEntry (uri property)
-      const finalMedia = media.filter(item => item.uri).map(item => ({
-        uri: item.uri,
-        type: item.type as 'image' | 'video'
-      }));
-      console.log('📸 Final media array:', finalMedia);
-
-      if (isEditMode && entryId) {
-        console.log('📝 Updating existing entry:', entryId);
-        // For updateEntry, we need to provide the actual URLs
-        const uploadedMedia = await Promise.all(
-          media.filter(item => item.uri && !item.uri.startsWith('http')).map(async (item) => {
-            const url = await journalService.uploadMedia(item.uri, item.type);
-            return { url: url, type: item.type };
-          })
-        );
-
-        const existingMedia = media.filter(item => item.uri && item.uri.startsWith('http')).map(item => ({
-          url: item.uri,
-          type: item.type
-        }));
-
-        const updateMedia = [...uploadedMedia, ...existingMedia];
-        
-        await updateEntry(entryId as string, {
-          text: entryText,
-          media: updateMedia,
-          isFavorited,
-          isMilestone
-        });
-        console.log('✅ Entry updated successfully');
-        console.log('🎯 Navigating to entry detail...');
-        router.replace({ pathname: '/(main)/journal/[entryId]', params: { entryId: entryId as string } });
-      } else {
-        console.log('📝 Creating new entry...');
-        const entryData = {
-          text: entryText,
-          media: finalMedia,
-          isFavorited,
-          isMilestone,
-          childIds: selectedChildren,
-          childAgeAtEntry,
-          occurredAt: selectedDate
-        };
-        console.log('📝 Entry data to save:', entryData);
-        const newEntryId = await addEntry(entryData);
-        console.log('✅ New entry created successfully with ID:', newEntryId);
-        console.log('🎯 Navigating to entry detail...');
-        router.replace({ pathname: '/(main)/journal/[entryId]', params: { entryId: newEntryId } });
-      }
-
-      } catch (error) {
-      console.error('❌ Save failed with error:', error);
-      console.error('❌ Error stack:', (error as Error).stack);
-      
-      let errorMessage = 'Could not save your entry. Please try again.';
-      if ((error as any).code === 'permission-denied') {
-        errorMessage = 'You don\'t have permission to post this entry. Please check your account status or contact support.';
-      } else if ((error as any).code === 'unavailable') {
-        errorMessage = 'Service is temporarily unavailable. Please check your internet connection and try again.';
-      }
-      
-      Alert.alert(
-        'Cannot Post Entry',
-        errorMessage,
-        [{ text: 'OK', style: 'default' }]
-      );
-    } finally {
-      console.log('🏁 Save process completed, setting isSaving to false');
-      setIsSaving(false);
-    }
-  };
-
-  const handleShare = (type: 'copy' | 'system') => {
-    if (type === 'copy') {
-      // Copy entry text to clipboard
-      Alert.alert('Copied', 'Entry text copied to clipboard');
-    } else {
-      // System share
-      Alert.alert('Share', 'System share dialog will open');
-    }
-    setShowShareSheet(false);
-  };
-
+  // Helpers for dates and marking posted days
   const renderHeaderRight = () => {
     if (isSaving || isLoading) {
       return <ActivityIndicator color="#5D9275" />;
     }
 
-    const isDisabled = !entryText.trim() || selectedChildren.length === 0;
-
     return (
       <View style={styles.headerRightContainer}>
-        <TouchableOpacity onPress={handleSave} disabled={isDisabled || isSaving}>
-          <Text style={[styles.headerSaveText, (isDisabled || isSaving) && styles.headerSaveTextDisabled]}>Save</Text>
+        <TouchableOpacity onPress={handleSave} disabled={isSaveDisabled || isSaving}>
+          <Text style={[styles.headerSaveText, (isSaveDisabled || isSaving) && styles.headerSaveTextDisabled]}>Save</Text>
         </TouchableOpacity>
       </View>
     );
@@ -350,26 +79,6 @@ const NewEntryScreen = () => {
     );
   };
 
-  const formattedDate = selectedDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-
-  const onChangeDate = (event: DateTimePickerEvent, date?: Date) => {
-    // Android sends event.type === 'dismissed' or 'set'
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    if (date) {
-      setSelectedDate(date);
-    }
-  };
-
-  useEffect(() => {
-    // This is just to ensure the header updates when isFavorited changes
-  }, [isFavorited]);
-
   return (
     <KeyboardAvoidingView
       style={[styles.container, { paddingBottom: insets.bottom, paddingTop: insets.top }]}
@@ -378,16 +87,11 @@ const NewEntryScreen = () => {
     >
             <ScreenHeader
         title={formattedDate}
+        centerTitle
         rightComponent={renderHeaderRight()}
         leftComponent={
           <TouchableOpacity
-            onPress={() => {
-              if (isPreview) {
-                setIsPreview(false);
-              } else {
-                router.back();
-              }
-            }}
+            onPress={() => router.back()}
             style={styles.headerCloseButton}
           >
             <Ionicons name="close" size={20} color={Colors.darkGrey} />
@@ -404,69 +108,17 @@ const NewEntryScreen = () => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {isPreview ? (
-          <View>
-            <JournalEntryPreviewCard
-              entry={{
-                text: entryText,
-                media: media.map(m => ({ url: m.uri, type: m.type })),
-              }}
-            />
-            <JournalPreviewActionButtons
-              isFavorited={isFavorited}
-              isMilestone={isMilestone}
-              onToggleFavorite={() => setIsFavorited(!isFavorited)}
-              onToggleMilestone={() => setIsMilestone(!isMilestone)}
-              onShare={() => setShowShareSheet(true)}
-            />
-          </View>
-        ) : (
-          <>
-            {children.length > 1 && (
-          <View style={styles.childSelectorContainer}>
-            {children.map((child) => (
-              <TouchableOpacity
-                key={child.id}
-                style={[
-                  styles.childOption,
-                  selectedChildren.includes(child.id) && styles.selectedChild,
-                ]}
-                onPress={() => {
-                  setSelectedChildren(prev => 
-                    prev.includes(child.id) 
-                      ? prev.filter(id => id !== child.id)
-                      : [...prev, child.id]
-                  );
-                }}
-              >
-                <ProfileAvatar
-                  imageUrl={child.profileImageUrl}
-                  name={child.name}
-                  size={20}
-                  textSize={10}
-                />
-                <Text style={[
-                  styles.childName,
-                  selectedChildren.includes(child.id) && styles.selectedChildName,
-                ]}>
-                  {child.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-            <TextInput
-              style={styles.textInput}
-              placeholder={`What did ${children.find(c => selectedChildren.includes(c.id))?.name || 'your child'} do today?`}
-              placeholderTextColor="#A09D94"
-              value={entryText}
-              onChangeText={setEntryText}
-              multiline
-              autoFocus
-            />
-            {renderMediaPreviews()}
-          </>
-        )}
+        {/* Child selection removed: entries apply to all children by default */}
+        <TextInput
+          style={styles.textInput}
+          placeholder={`What happened today?`}
+          placeholderTextColor="#A09D94"
+          value={entryText}
+          onChangeText={setEntryText}
+          multiline
+          autoFocus
+        />
+        {renderMediaPreviews()}
       </ScrollView>
 
       {/*
@@ -492,12 +144,8 @@ const NewEntryScreen = () => {
 
      </View>
     </TouchableWithoutFeedback>
-      <ShareBottomSheet
-        isVisible={showShareSheet}
-        onClose={() => setShowShareSheet(false)}
-        onShare={handleShare}
-      />
-      {showDatePicker && Platform.OS === 'ios' && (
+      {/* Date picker overlay */}
+      {showDatePicker && (
         <View style={styles.dateOverlay}>
           <View style={styles.dateSheet}>
             <View style={styles.dateSheetActions}>
@@ -505,24 +153,25 @@ const NewEntryScreen = () => {
                 <Text style={styles.headerSaveText}>Done</Text>
               </TouchableOpacity>
             </View>
-            <DateTimePicker
-              value={selectedDate}
-              mode="date"
-              display="inline"
-              maximumDate={new Date()}
-              onChange={onChangeDate}
+            <Calendar
+              current={selectedDateYMD}
+              maxDate={todayYMD}
+              markedDates={markedDates}
+              onDayPress={onCalendarDayPress}
+              markingType="multi-dot"
+              enableSwipeMonths
+              hideExtraDays={false}
+              theme={{
+                selectedDayBackgroundColor: '#5D9275',
+                todayTextColor: '#5D9275',
+                arrowColor: '#5D9275',
+              }}
             />
           </View>
+          <TouchableWithoutFeedback onPress={() => setShowDatePicker(false)}>
+            <View style={styles.overlayBackdrop} />
+          </TouchableWithoutFeedback>
         </View>
-      )}
-      {showDatePicker && Platform.OS === 'android' && (
-        <DateTimePicker
-          value={selectedDate}
-          mode="date"
-          display="default"
-          maximumDate={new Date()}
-          onChange={onChangeDate}
-        />
       )}
     </KeyboardAvoidingView>
   );
@@ -687,7 +336,8 @@ const styles = StyleSheet.create({
   headerRightContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    justifyContent: 'center',
+    width: 40,
   },
   milestoneIcon: {
     width: 20,
@@ -765,14 +415,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-start',
+  },
+  overlayBackdrop: {
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.2)',
-    justifyContent: 'flex-end',
   },
   dateSheet: {
     backgroundColor: Colors.white,
     paddingTop: 8,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   dateSheetActions: {
     paddingHorizontal: 16,

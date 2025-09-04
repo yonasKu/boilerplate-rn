@@ -135,7 +135,7 @@ const JournalEntryPreviewCard: React.FC<JournalEntryPreviewCardProps> = ({
         {/* Header row */}
         {headerTitle ? (
           <View style={styles.headerRow}>
-            <Text style={[styles.headerTitle, headerTitleStyle]}>{headerTitle}</Text>
+            <Text style={[styles.headerTitle, headerTitleStyle]} numberOfLines={1} ellipsizeMode="tail">{headerTitle}</Text>
             {showEditIcon && onEdit ? (
               <TouchableOpacity onPress={onEdit} style={styles.headerEditBtn}>
                 <Image source={require('@/assets/images/edit-2_icon.png')} style={styles.headerEditIcon} />
@@ -237,6 +237,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.black,
     fontFamily: 'Poppins_600SemiBold',
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   headerEditBtn: {
     padding: 8,

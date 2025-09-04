@@ -39,7 +39,7 @@ const RecapsHeader = () => {
         const unreadQuery = query(
           notificationsRef,
           where('userId', '==', user.uid),
-          where('read', '==', false)
+          where('isRead', '==', false)
         );
         unsubscribe = onSnapshot(unreadQuery, (snapshot) => setUnreadNotifications(snapshot.size));
       } catch (e) {
@@ -49,6 +49,16 @@ const RecapsHeader = () => {
     setup();
     return () => { if (unsubscribe) unsubscribe(); };
   }, [user?.uid]);
+
+  // Use saved journal name for the header title
+  const journalTitle = React.useMemo(() => {
+    const raw = (userProfile as any)?.journalName;
+    if (typeof raw === 'string') {
+      const t = raw.trim();
+      return t.length > 0 ? t : 'My Journal';
+    }
+    return 'My Journal';
+  }, [userProfile]);
 
   return (
     <View style={styles.header}>
@@ -66,7 +76,7 @@ const RecapsHeader = () => {
           textSize={16}
         />
         <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-          {userProfile?.name || userProfile?.displayName || 'Recaps'}
+          {journalTitle}
         </Text>
       </View>
       <View style={styles.headerRight}>
@@ -98,11 +108,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     flex: 1,
+    minWidth: 0,
   },
   headerTitle: {
     fontSize: 16,
     fontFamily: 'Poppins_700Bold',
     color: Colors.black,
+    flexShrink: 1,
+    minWidth: 0,
+    maxWidth: 50,
   },
   headerRight: {
     flexDirection: 'row',

@@ -11,6 +11,73 @@ class OpenAIService {
     this.presencePenalty = parseFloat(process.env.PRESENCE_PENALTY) || 0.1;
   }
 
+  /**
+   * Generate a concise recap title from journal content.
+   * Returns single-line string; caller enforces 85-char max and fallbacks.
+   */
+  async generateRecapTitle(journalData, type, dateRange = {}) {
+    try {
+      const prompt = this.buildTitlePrompt(journalData, type, dateRange);
+      const openai = this.getOpenAIClient();
+      const response = await openai.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: 'You write short, clear, human-friendly recap titles. Keep titles punchy and warm. No emojis. No quotes. One line only.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 32,
+        temperature: Math.min(this.temperature, 0.7),
+      });
+
+      const raw = (response.choices?.[0]?.message?.content || '').trim();
+      const firstLine = raw.split('\n')[0].trim();
+      const unquoted = firstLine.replace(/^"|"$/g, '').replace(/^'|'$/g, '').trim();
+      return unquoted;
+    } catch (error) {
+      console.error('Error generating recap title:', error);
+      return '';
+    }
+  }
+
+  /** Build a targeted prompt asking only for a concise title */
+  buildTitlePrompt(data, type, dateRange = {}) {
+    const childName = data?.childName || 'Your child';
+    const childAge = data?.childAge ? ` (${data.childAge})` : '';
+    const start = dateRange?.start instanceof Date ? dateRange.start : undefined;
+    const end = dateRange?.end instanceof Date ? dateRange.end : undefined;
+    const periodText = (() => {
+      try {
+        if (type === 'yearly' && start) return `${start.getFullYear()}`;
+        if ((type === 'weekly' || type === 'weekly_snippet') && start && end) {
+          const s = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const e = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          return `${s} - ${e}`;
+        }
+        if (type === 'monthly' && start) return start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      } catch {}
+      return '';
+    })();
+
+    const sampleMoments = (() => {
+      try {
+        const daily = data?.dailyEntries || {};
+        const values = Object.values(daily).filter(Boolean).slice(0, 2);
+        if (values.length) return `Highlights: ${values.join(' | ').slice(0, 180)}`;
+      } catch {}
+      return '';
+    })();
+
+    const typeLabel = type === 'weekly_snippet' ? 'Weekly Highlights' : type.charAt(0).toUpperCase() + type.slice(1);
+
+    return [
+      `${childName}${childAge} — ${typeLabel} ${periodText}`.trim(),
+      sampleMoments,
+      '',
+      'Write ONLY a short, punchy, human title that fits within 85 characters.',
+      'No quotes, no emojis, no extra lines.'
+    ].filter(Boolean).join('\n');
+  }
+
   getOpenAIClient() {
     if (!this.openai_instance) {
       // Use ONLY Firebase functions config (never .env)

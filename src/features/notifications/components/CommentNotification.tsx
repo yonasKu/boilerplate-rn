@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Colors } from '@/theme';
+import NotificationService from '@/services/notifications/NotificationService';
 
 interface User {
   name: string;
@@ -22,8 +23,16 @@ interface Notification {
 const CommentNotification = ({ item }: { item: Notification }) => {
   const userNames = item.users?.map(u => u.name).join(', ').replace(/,([^,]*)$/, ' and$1');
 
+  const handlePress = React.useCallback(() => {
+    if (!item.isRead) {
+      NotificationService.markNotificationAsRead(item.id).catch((e) =>
+        console.error('Failed to mark notification as read:', e)
+      );
+    }
+  }, [item.id, item.isRead]);
+
   return (
-    <TouchableOpacity style={styles.itemContainer}>
+    <TouchableOpacity style={styles.itemContainer} onPress={handlePress}>
         {item.users && item.users[0]?.avatar && (
             <Image source={item.users[0].avatar} style={styles.avatar} />
         )}

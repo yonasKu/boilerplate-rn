@@ -1,11 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Colors } from '../../../theme/colors';
 
-const filterOptions = ['All', 'Weekly', 'Monthly', 'Favorites'];
+const filterOptions = ['All', 'Weekly', 'Monthly', 'Favorites', 'Date'];
 
-const RecapFilter = () => {
+type RecapFilterProps = {
+  onDateSelected?: (date: Date) => void;
+};
+
+const RecapFilter: React.FC<RecapFilterProps> = ({ onDateSelected }) => {
   const [activeFilter, setActiveFilter] = React.useState('All');
+  const [showDatePicker, setShowDatePicker] = React.useState(false);
+  const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
 
   return (
     <View style={styles.container}>
@@ -15,12 +22,40 @@ const RecapFilter = () => {
           <TouchableOpacity
             key={option}
             style={[styles.filterButton, activeFilter === option && styles.activeFilter]}
-            onPress={() => setActiveFilter(option)}
+            onPress={() => {
+              if (option === 'Date') {
+                setShowDatePicker(true);
+              } else {
+                setActiveFilter(option);
+              }
+            }}
           >
-            <Text style={[styles.filterText, activeFilter === option && styles.activeText]}>{option}</Text>
+            <Text style={[styles.filterText, activeFilter === option && styles.activeText]}>
+              {option === 'Date' && selectedDate
+                ? `Date • ${selectedDate.toLocaleDateString()}`
+                : option}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate || new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+          onChange={(_e, date) => {
+            if (date) {
+              setSelectedDate(date);
+              setActiveFilter('Date');
+              onDateSelected?.(date);
+            }
+            if (Platform.OS === 'android') {
+              setShowDatePicker(false);
+            }
+          }}
+        />
+      )}
     </View>
   );
 };

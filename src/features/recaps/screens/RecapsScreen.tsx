@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, StatusBar, FlatList, Alert, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, StatusBar, FlatList, Alert, Text, TouchableOpacity, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
@@ -10,6 +10,7 @@ import { ProfileAvatar } from '@/components/ProfileAvatar';
 import { RecapCard } from '../components/RecapCard';
 import ShareBottomSheet from '../../journal/components/ShareBottomSheet';
 import FilterTabs from '../components/FilterTabs';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRecaps } from '../hooks/useRecaps';
 import { Recap } from '../../../services/aiRecapService';
 import { TimelineOption } from '../components/TimelineDropdown';
@@ -26,6 +27,8 @@ const RecapsScreen = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const { recaps: rawRecaps, loading } = useRecaps();
   const hasAnyRecap = (rawRecaps || []).length > 0;
@@ -61,7 +64,7 @@ const RecapsScreen = () => {
         const unreadQuery = query(
           notificationsRef,
           where('userId', '==', user.uid),
-          where('read', '==', false)
+          where('isRead', '==', false)
         );
         unsubscribe = onSnapshot(unreadQuery, (snapshot) => setUnreadNotifications(snapshot.size));
       } catch (e) {
@@ -72,8 +75,15 @@ const RecapsScreen = () => {
     return () => { if (unsubscribe) unsubscribe(); };
   }, [user?.uid]);
 
+  const toJsDate = (v: any | undefined | null): Date | null => {
+    if (!v) return null;
+    const d = v?.toDate ? v.toDate() : new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
   const filteredRecaps = React.useMemo(() => {
-    let filtered = rawRecaps.filter(recap => recap.id);
+    // Exclude user-scoped weekly_snippet from Recaps by default
+    let filtered = rawRecaps.filter(recap => recap.id && (recap as any).type !== 'weekly_snippet');
 
     // Apply timeline filter
     if (activeTimeline !== 'All') {
@@ -88,13 +98,34 @@ const RecapsScreen = () => {
       case 'Milestones':
         filtered = filtered.filter(recap => recap.isMilestone === true);
         break;
-      case 'Age':
-        // Age filtering will be handled by Age filter modal
+      case 'Date':
+        // If a date is selected, include recaps whose period includes that date
+        if (selectedDate) {
+          filtered = filtered.filter((recap) => {
+            const start = toJsDate((recap as any).period?.startDate);
+            const end = toJsDate((recap as any).period?.endDate);
+            if (!start || !end) return false;
+            const d = selectedDate;
+            const ds = new Date(start); ds.setHours(0,0,0,0);
+            const de = new Date(end); de.setHours(23,59,59,999);
+            return d >= ds && d <= de;
+          });
+        }
         break;
     }
     
     return filtered;
-  }, [rawRecaps, activeTimeline, activeFilter]);
+  }, [rawRecaps, activeTimeline, activeFilter, selectedDate]);
+
+  // Use saved journal name for the header title
+  const journalTitle = React.useMemo(() => {
+    const raw = (userProfile as any)?.journalName;
+    if (typeof raw === 'string') {
+      const t = raw.trim();
+      return t.length > 0 ? t : 'My Journal';
+    }
+    return 'My Journal';
+  }, [userProfile]);
 
   const handleSharePress = () => {
     setShareSheetVisible(true);
@@ -114,9 +145,20 @@ const RecapsScreen = () => {
     );
   }
 
-  const handleAgePress = () => {
-    // TODO: Implement age filter modal
-    console.log('Age filter pressed');
+  const handleDatePress = () => {
+    setShowDatePicker(true);
+  };
+
+  const handleDateChange = (_event: any, date?: Date) => {
+    // On Android, user can dismiss; only proceed if date is set
+    if (date) {
+      setSelectedDate(date);
+      setActiveFilter('Date');
+    }
+    // Hide picker on Android after selection; keep visible on iOS (inline)
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
   };
 
   return (
@@ -138,7 +180,7 @@ const RecapsScreen = () => {
               textSize={16}
             />
             <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-              {userProfile?.name || userProfile?.displayName || 'Recaps'}
+              {journalTitle}
             </Text>
           </View>
           <View style={styles.headerRight}>
@@ -159,7 +201,7 @@ const RecapsScreen = () => {
       {hasAnyRecap ? (
         <>
           <FilterTabs
-            onAgePress={handleAgePress}
+            onDatePress={handleDatePress}
             onFilterChange={setActiveFilter}
             activeFilter={activeFilter}
             onTimelineChange={setActiveTimeline}
@@ -188,6 +230,15 @@ const RecapsScreen = () => {
         onClose={() => setShareSheetVisible(false)}
         onShare={handleShareOption}
       />
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate || new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+          onChange={handleDateChange}
+        />
+      )}
     </View>
   );
 };

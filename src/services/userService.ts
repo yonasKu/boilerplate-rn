@@ -19,6 +19,9 @@ export interface UserProfile {
     trialEndDate?: Date;
   };
   lifestage: string | null;
+  // Journal-level settings
+  journalName?: string;
+  journalImageUrl?: string;
   children: Array<{
     name: string;
     age?: number;
@@ -250,6 +253,52 @@ export const uploadChildProfileImage = async (childId: string, imageUri: string)
     return downloadURL;
   } catch (error) {
     console.error('Error uploading child profile image:', error);
+    throw error;
+  }
+};
+
+/**
+ * Upload a journal image for the user's journal and persist the URL to users/{uid}.journalImageUrl
+ */
+export const uploadJournalImage = async (userId: string, imageUri: string): Promise<string> => {
+  try {
+    if (!userId) throw new Error('User ID is required');
+
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+    const imageRef = ref(storage, `journal_images/${userId}/${generateId()}`);
+    await uploadBytes(imageRef, blob);
+    const downloadURL = await getDownloadURL(imageRef);
+
+    await setDoc(doc(db, 'users', userId), {
+      journalImageUrl: downloadURL,
+      updatedAt: new Date()
+    }, { merge: true });
+
+    return downloadURL;
+  } catch (error) {
+    console.error('Error uploading journal image:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update journal settings on the user document. Pass any subset of fields.
+ */
+export const updateJournalSettings = async (
+  userId: string,
+  data: { journalName?: string; journalImageUrl?: string }
+): Promise<void> => {
+  try {
+    if (!userId) throw new Error('User ID is required');
+    if (!data || Object.keys(data).length === 0) return;
+
+    await setDoc(doc(db, 'users', userId), {
+      ...data,
+      updatedAt: new Date()
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error updating journal settings:', error);
     throw error;
   }
 };

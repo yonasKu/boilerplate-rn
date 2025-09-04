@@ -49,7 +49,7 @@ const familyCreateInvitation = onRequest({ region: 'us-central1', invoker: 'publ
   const decoded = await requireAuth(req, res);
   if (!decoded) return;
   try {
-    const { inviteeContact, scopes: requestedScopes } = req.body || {};
+    const { inviteeContact, inviteeName: rawInviteeName, scopes: requestedScopes } = req.body || {};
     if (!inviteeContact) {
       return res.status(mapCodeToStatus('invalid-argument')).json({ error: 'inviteeContact is required' });
     }
@@ -61,6 +61,7 @@ const familyCreateInvitation = onRequest({ region: 'us-central1', invoker: 'publ
     const invitation = {
       inviterId,
       inviteeContact: String(inviteeContact).trim(),
+      inviteeName: typeof rawInviteeName === 'string' ? String(rawInviteeName).trim() : '',
       role: 'viewer',
       status: 'pending',
       inviteCode,
@@ -71,7 +72,7 @@ const familyCreateInvitation = onRequest({ region: 'us-central1', invoker: 'publ
     };
 
     const docRef = await admin.firestore().collection('invitations').add(invitation);
-    return res.json({ invitationId: docRef.id, inviteCode, expiresAt: expiresAt.toDate().toISOString(), scopes });
+    return res.json({ invitationId: docRef.id, inviteCode, expiresAt: expiresAt.toDate().toISOString(), scopes, inviteeName: invitation.inviteeName });
   } catch (error) {
     console.error('familyCreateInvitation error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
@@ -116,22 +117,55 @@ const familyAcceptInvitation = onRequest({ region: 'us-central1', invoker: 'publ
     const existingAccess = await accessRef.get();
     const scopes = Array.isArray(invite.scopes) && invite.scopes.length ? sanitizeScopes(invite.scopes) : ['recaps:read'];
 
+    // Prepare profile briefs for denormalization
+    const db = admin.firestore();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    const [ownerUserSnap, viewerUserSnap, ownerAuth, viewerAuth] = await Promise.all([
+      db.collection('users').doc(ownerId).get(),
+      db.collection('users').doc(viewerId).get(),
+      admin.auth().getUser(ownerId).catch(() => null),
+      admin.auth().getUser(viewerId).catch(() => null),
+    ]);
+
+    const briefFrom = (uid, userDoc, authUser) => {
+      const data = userDoc?.exists ? userDoc.data() : null;
+      const email = data?.email || authUser?.email || '';
+      const emailLocal = email ? String(email).split('@')[0] : '';
+      const name = data?.name || authUser?.displayName || emailLocal || 'User';
+      const profileImageUrl = data?.profileImageUrl || authUser?.photoURL || '';
+      return { uid, name, profileImageUrl };
+    };
+
+    const ownerBrief = briefFrom(ownerId, ownerUserSnap, ownerAuth);
+    const viewerBrief = briefFrom(viewerId, viewerUserSnap, viewerAuth);
+
     const batch = admin.firestore().batch();
     if (existingAccess.exists) {
       batch.update(accessRef, {
         scopes,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: now,
+        viewer: viewerBrief,
+        owner: ownerBrief,
       });
     } else {
       batch.set(accessRef, {
         ownerId,
         viewerId,
         scopes,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: now,
+        updatedAt: now,
+        viewer: viewerBrief,
+        owner: ownerBrief,
       });
     }
-    batch.update(inviteDoc.ref, { status: 'accepted', updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    // Update invitation: mark accepted and attach accepted profile info
+    batch.update(inviteDoc.ref, {
+      status: 'accepted',
+      updatedAt: now,
+      acceptedAt: now,
+      inviteeUserId: viewerId,
+      acceptedProfile: viewerBrief,
+    });
     await batch.commit();
 
     try {
@@ -141,10 +175,9 @@ const familyAcceptInvitation = onRequest({ region: 'us-central1', invoker: 'publ
         await admin.auth().setCustomUserClaims(viewerId, { ...existingClaims, accountType: 'view-only' });
       }
 
-      const db = admin.firestore();
       const userRef = db.collection('users').doc(viewerId);
       const userSnap = await userRef.get();
-      const now = admin.firestore.FieldValue.serverTimestamp();
+      const now2 = admin.firestore.FieldValue.serverTimestamp();
       const email = userRecord.email || '';
       const fallbackName = (userRecord.displayName && userRecord.displayName.trim().length > 0)
         ? userRecord.displayName
@@ -157,17 +190,17 @@ const familyAcceptInvitation = onRequest({ region: 'us-central1', invoker: 'publ
           email,
           lifestage: null,
           children: [],
-          subscription: { plan: 'free', status: 'trial', startDate: now },
+          subscription: { plan: 'free', status: 'trial', startDate: now2 },
           onboarded: false,
-          createdAt: now,
-          updatedAt: now,
+          createdAt: now2,
+          updatedAt: now2,
           accountType: 'view-only',
           parentUserId: ownerId,
           profileComplete: false,
         }, { merge: true });
       } else {
         await userRef.set({
-          updatedAt: now,
+          updatedAt: now2,
           accountType: 'view-only',
           parentUserId: ownerId,
           profileComplete: (userSnap.data()?.profileComplete === true) ? true : false,
@@ -267,6 +300,9 @@ const familyGetSharedAccess = onRequest({ region: 'us-central1', invoker: 'publi
         scopes: Array.isArray(val.scopes) ? sanitizeScopes(val.scopes) : ['recaps:read'],
         createdAt: (val.createdAt?.toDate?.().toISOString?.() || ''),
         updatedAt: (val.updatedAt?.toDate?.().toISOString?.() || ''),
+        // If profiles are denormalized on the doc, include them directly
+        viewer: val.viewer || undefined,
+        owner: val.owner || undefined,
       };
     });
 
@@ -283,8 +319,8 @@ const familyGetSharedAccess = onRequest({ region: 'us-central1', invoker: 'publi
       return { uid, name, profileImageUrl };
     }
 
-    const viewerIds = new Set(sharedAccess.map((sa) => sa.viewerId));
-    const ownerIds = includeOwner ? new Set(sharedAccess.map((sa) => sa.ownerId)) : new Set();
+    const viewerIds = new Set(sharedAccess.filter(sa => !sa.viewer).map((sa) => sa.viewerId));
+    const ownerIds = includeOwner ? new Set(sharedAccess.filter(sa => !sa.owner).map((sa) => sa.ownerId)) : new Set();
     const allIds = new Set([ ...viewerIds, ...ownerIds ]);
 
     const userSnaps = await Promise.all(
@@ -302,11 +338,14 @@ const familyGetSharedAccess = onRequest({ region: 'us-central1', invoker: 'publi
     const profileMap = new Map(userSnaps.map(({ userId, data }) => [userId, data]));
 
     const sharedAccessWithProfiles = sharedAccess.map((sa) => {
-      const viewerData = profileMap.get(sa.viewerId) || null;
-      const base = { ...sa, viewer: toBrief(sa.viewerId, viewerData) };
-      if (includeOwner) {
+      const base = { ...sa };
+      if (!base.viewer) {
+        const viewerData = profileMap.get(sa.viewerId) || null;
+        base.viewer = toBrief(sa.viewerId, viewerData);
+      }
+      if (includeOwner && !base.owner) {
         const ownerData = profileMap.get(sa.ownerId) || null;
-        return { ...base, owner: toBrief(sa.ownerId, ownerData) };
+        base.owner = toBrief(sa.ownerId, ownerData);
       }
       return base;
     });
@@ -335,6 +374,7 @@ const familyGetInvitations = onRequest({ region: 'us-central1', invoker: 'public
         id: d.id,
         inviterId: v.inviterId,
         inviteeContact: v.inviteeContact,
+        inviteeName: v.inviteeName || '',
         role: v.role,
         status: v.status,
         inviteCode: v.inviteCode,
@@ -342,6 +382,9 @@ const familyGetInvitations = onRequest({ region: 'us-central1', invoker: 'public
         scopes: Array.isArray(v.scopes) ? sanitizeScopes(v.scopes) : ['recaps:read'],
         createdAt: (v.createdAt?.toDate?.().toISOString?.() || ''),
         updatedAt: (v.updatedAt?.toDate?.().toISOString?.() || ''),
+        inviteeUserId: v.inviteeUserId || undefined,
+        acceptedAt: (v.acceptedAt?.toDate?.().toISOString?.() || undefined),
+        acceptedProfile: v.acceptedProfile || undefined,
       };
     });
 

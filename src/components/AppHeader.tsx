@@ -76,7 +76,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ showBackButton = false }) => {
               size={40}
               textSize={16}
             />
-            <View>
+            <View style={styles.nameContainer}>
               <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
                 {loadingProfile ? 'Loading...' : (userProfile?.name || user?.email || 'User')}
               </Text>
@@ -111,6 +111,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    minWidth: 0,
   },
   avatar: {
     width: 40,
@@ -121,6 +123,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#2F4858',
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  nameContainer: {
+    flex: 1,
+    minWidth: 0,
   },
   email: {
     fontSize: 12,

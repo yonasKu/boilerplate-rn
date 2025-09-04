@@ -42,7 +42,7 @@ const SearchScreen = () => {
   const filteredRecaps = useMemo(() => {
     if (!debouncedQuery) return [];
     return recaps.filter((r: any) =>
-      r.aiGenerated?.title?.toLowerCase().includes(debouncedQuery) ||
+      r.title?.toLowerCase().includes(debouncedQuery) ||
       r.aiGenerated?.recapText?.toLowerCase().includes(debouncedQuery) ||
       r.aiGenerated?.keyMoments?.some((m: string) => m.toLowerCase().includes(debouncedQuery)) ||
       r.childName?.toLowerCase().includes(debouncedQuery)
@@ -71,7 +71,7 @@ const SearchScreen = () => {
         id: `recap-${recap.id}`,
         type: 'recap',
         data: recap,
-        title: recap.aiGenerated?.title || `${recap.childName}'s ${recap.type} Recap`,
+        title: recap.title || `${recap.childName}'s ${recap.type} Recap`,
         subtitle: recap.aiGenerated?.recapText?.substring(0, 100) || 'No recap content',
         date: recap.createdAt,
       }));

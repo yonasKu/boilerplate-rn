@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, query, where, doc, updateDoc, arrayUnion, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase/firebaseConfig';
 
 export interface Child {
@@ -23,6 +23,7 @@ export interface ChildInput {
 export const addChild = async (child: ChildInput, parentId: string): Promise<string> => {
   try {
     const now = new Date();
+
     const childData = {
       ...child,
       parentId,
@@ -117,11 +118,19 @@ export const updateUserChildrenArray = async (userId: string, childId: string): 
   }
 };
 
-export const deleteChild = async (childId: string): Promise<void> => {
+export const deleteChild = async (childId: string, parentId: string): Promise<void> => {
   try {
-    // Note: This would require additional logic to remove from user's children array
-    // For now, just log the deletion
-    console.log('Child deletion not implemented yet');
+    // Delete the child document
+    await deleteDoc(doc(db, 'children', childId));
+
+    // Remove from the user's children array
+    const userRef = doc(db, 'users', parentId);
+    await updateDoc(userRef, {
+      children: arrayRemove(childId),
+      updatedAt: new Date(),
+    });
+
+    console.log('Child deleted successfully:', childId);
   } catch (error) {
     console.error('Error deleting child:', error);
     throw error;

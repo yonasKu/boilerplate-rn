@@ -14,9 +14,10 @@ interface ScreenHeaderProps {
   showCalendarIcon?: boolean;
   leftComponent?: React.ReactNode;
   onTitlePress?: () => void;
+  centerTitle?: boolean;
 }
 
-const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = true, showShareIcon = false, onSharePress, rightComponent, onBack, showCalendarIcon = false, leftComponent, onTitlePress }) => {
+const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = true, showShareIcon = false, onSharePress, rightComponent, onBack, showCalendarIcon = false, leftComponent, onTitlePress, centerTitle = false }) => {
   const router = useRouter();
 
   const handleBackPress = () => {
@@ -38,14 +39,14 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = tru
       ) : (
         <View style={styles.headerSpacer} />
       )}
-      <View style={styles.titleContainer}>
+      <View style={[styles.titleContainer, centerTitle && styles.titleCenteredContainer]}>
         {showCalendarIcon && <Image source={require('../../assets/images/calendar.png')} style={styles.calendarIcon} />}
         {onTitlePress ? (
-          <TouchableOpacity onPress={onTitlePress} activeOpacity={0.7}>
-            <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }]}>{title}</Text>
+          <TouchableOpacity onPress={onTitlePress} activeOpacity={0.7} style={centerTitle ? styles.titleTouchableCentered : undefined}>
+            <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }, centerTitle && styles.headerTitleCentered]} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
           </TouchableOpacity>
         ) : (
-          <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }]}>{title}</Text>
+          <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }, centerTitle && styles.headerTitleCentered]} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
         )}
       </View>
       {rightComponent ? (
@@ -79,19 +80,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-    titleContainer: {
+  titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
   },
-    calendarIcon: {
+  titleCenteredContainer: {
+    justifyContent: 'center',
+  },
+  calendarIcon: {
     width: 20,
     height: 20,
     tintColor: Colors.darkGrey,
   },
   headerTitle: {
-        fontSize: 16,
+    fontSize: 16,
     fontWeight: '600',
     color: Colors.darkGrey,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  headerTitleCentered: {
+    textAlign: 'center',
+    width: '100%',
+  },
+  titleTouchableCentered: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerSpacer: {
     width: 32,

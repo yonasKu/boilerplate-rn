@@ -372,6 +372,42 @@ export class NotificationService {
       console.error('Remove token error:', error);
     }
   }
+
+  /**
+   * Mark a single notification as read.
+   * @param notificationId Firestore document ID in the top-level `notifications` collection
+   */
+  static async markNotificationAsRead(notificationId: string): Promise<void> {
+    try {
+      const { getFirestore, doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+      await updateDoc(doc(getFirestore(), 'notifications', notificationId), {
+        isRead: true,
+        readAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error('markNotificationAsRead error:', error);
+    }
+  }
+
+  /**
+   * Mark multiple notifications as read in a single batch write.
+   * Only updates docs provided; safe to call repeatedly.
+   */
+  static async markNotificationsAsRead(notificationIds: string[]): Promise<void> {
+    if (!notificationIds || notificationIds.length === 0) return;
+    try {
+      const { getFirestore, writeBatch, doc, serverTimestamp } = await import('firebase/firestore');
+      const db = getFirestore();
+      const batch = writeBatch(db);
+      const ts = serverTimestamp();
+      for (const id of notificationIds) {
+        batch.update(doc(db, 'notifications', id), { isRead: true, readAt: ts });
+      }
+      await batch.commit();
+    } catch (error) {
+      console.error('markNotificationsAsRead batch error:', error);
+    }
+  }
 }
 
 // Export for use in components

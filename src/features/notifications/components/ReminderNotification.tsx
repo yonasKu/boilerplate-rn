@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
+import NotificationService from '@/services/notifications/NotificationService';
 
 interface Notification {
   id: string;
@@ -15,8 +16,16 @@ interface Notification {
 const ReminderNotification = ({ item }: { item: Notification }) => {
   const iconContainerStyle = [styles.iconContainer, { backgroundColor: item.isRead ? Colors.offWhite : Colors.lightPink }];
 
+  const handlePress = React.useCallback(() => {
+    if (!item.isRead) {
+      NotificationService.markNotificationAsRead(item.id).catch((e) =>
+        console.error('Failed to mark notification as read:', e)
+      );
+    }
+  }, [item.id, item.isRead]);
+
   return (
-    <TouchableOpacity style={styles.itemContainer}>
+    <TouchableOpacity style={styles.itemContainer} onPress={handlePress}>
       <View style={iconContainerStyle}>
         <Ionicons name="notifications-outline" size={24} color={Colors.darkGrey} />
       </View>

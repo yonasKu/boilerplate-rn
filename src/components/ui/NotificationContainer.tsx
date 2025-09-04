@@ -3,6 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 import { Toast } from './Toast';
 import { useNotification } from '../../hooks/useNotification';
 import { router } from 'expo-router';
+import NotificationService from '@/services/notifications/NotificationService';
 
 export const NotificationContainer: React.FC = () => {
   const { notifications, removeNotification } = useNotification();
@@ -11,7 +12,7 @@ export const NotificationContainer: React.FC = () => {
   console.log('🔔 NotificationContainer: Current notifications:', notifications.length);
   console.log('🔔 NotificationContainer: Notifications data:', notifications);
 
-  const handleAction = (notification: any) => {
+  const handleAction = async (notification: any) => {
     if (notification.actionUrl) {
       console.log('🔔 NotificationContainer: Navigate to:', notification.actionUrl);
       try {
@@ -19,6 +20,15 @@ export const NotificationContainer: React.FC = () => {
       } catch (e) {
         console.warn('🔔 NotificationContainer: Navigation error', e);
       }
+    }
+    // If this toast originated from a Firestore notification and includes its id, mark as read
+    try {
+      const firestoreNotificationId = notification?.data?.notificationId as string | undefined;
+      if (firestoreNotificationId) {
+        await NotificationService.markNotificationAsRead(firestoreNotificationId);
+      }
+    } catch (e) {
+      console.warn('🔔 NotificationContainer: Failed to mark notification as read from toast', e);
     }
     removeNotification(notification.id);
   };

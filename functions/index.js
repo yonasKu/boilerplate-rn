@@ -17,6 +17,7 @@ const familyHttp = require('./functions/http/family');
 const notificationsHttp = require('./functions/http/notifications');
 // Keep Recaps as HTTP v2 to avoid deleting existing v2 HTTP recaps
 const recapsHttp = require('./functions/http/recaps');
+const adminHttp = require('./functions/http/admin');
 const { AutomatedRecapService } = require('./services/recapGenerator');
 
 // Validate environment variables with better error handling
@@ -51,6 +52,11 @@ exports.redeemPromoCode = referralsHttp.redeemPromoCode;
 exports.generateReferralCode = referralsHttp.generateReferralCode;
 exports.processReferral = referralsHttp.processReferral;
 exports.getReferralStats = referralsHttp.getReferralStats;
+
+// --- HTTP v2: Admin ---
+exports.adminSetAdminRole = adminHttp.adminSetAdminRole;
+exports.adminCreatePromoCode = adminHttp.adminCreatePromoCode;
+exports.adminDisablePromoCode = adminHttp.adminDisablePromoCode;
 
 // --- HTTP v2: Recap triggers (keep as HTTP)
 exports.generateWeeklyRecap = recapsHttp.generateWeeklyRecap;
@@ -119,6 +125,10 @@ exports.generateAllUsersTestRecaps = generateAllUsersTestRecaps;
 const { onRecapCommentCreated, onRecapLikesUpdated } = require('./functions/onRecapInteraction');
 exports.onRecapCommentCreated = onRecapCommentCreated;
 exports.onRecapLikesUpdated = onRecapLikesUpdated;
+
+// --- User profile propagation ---
+const { onUserProfileUpdated } = require('./functions/onUserProfile');
+exports.onUserProfileUpdated = onUserProfileUpdated;
 
 
 // --- Notification Device Token Management ---

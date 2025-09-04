@@ -39,6 +39,18 @@ export const useJournal = () => {
     }
   }, [user]);
 
+  // Refresh entries on demand
+  const refreshEntries = async () => {
+    if (!user) return;
+    try {
+      const updated = await journalService.fetchUserJournalEntries(user.uid);
+      setEntries(updated);
+    } catch (e) {
+      setError('Failed to refresh journal entries.');
+      throw e;
+    }
+  };
+
   // Function to add a new entry
   const addEntry = async (entryData: {
     text: string;
@@ -156,5 +168,5 @@ export const useJournal = () => {
     }
   };
 
-  return { entries, isLoading, error, addEntry, updateEntry, deleteEntry, toggleLike, getEntryById };
+  return { entries, isLoading, error, addEntry, updateEntry, deleteEntry, toggleLike, getEntryById, refreshEntries };
 };

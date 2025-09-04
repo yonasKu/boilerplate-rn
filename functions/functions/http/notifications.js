@@ -34,23 +34,34 @@ const sendTestNotification = onRequest(
         return res.status(400).json({ error: 'The request must include a "token" field.' });
       }
 
-      const payload = {
-        notification: {
+      const isExpo = /^ExponentPushToken\[.+\]$/.test(token);
+      if (isExpo) {
+        const notification = {
           title: title || 'Test Notification',
           body: body || 'This is a test from your SproutBook cloud!',
-          sound: 'default',
-        },
-      };
-
-      const response = await admin.messaging().sendToDevice(token, payload);
-      console.log('Successfully sent message:', response);
-      response.results.forEach(result => {
-        const error = result.error;
-        if (error) {
-          console.error('Failure sending notification to', token, error);
-        }
-      });
-      return res.json({ success: true, response });
+          data: { type: 'test' },
+        };
+        const svc = new NotificationService();
+        const ok = await svc.sendExpoPush([token], notification);
+        return res.json({ success: ok, via: 'expo' });
+      } else {
+        const payload = {
+          notification: {
+            title: title || 'Test Notification',
+            body: body || 'This is a test from your SproutBook cloud!',
+            sound: 'default',
+          },
+        };
+        const response = await admin.messaging().sendToDevice(token, payload);
+        console.log('Successfully sent message:', response);
+        response.results.forEach(result => {
+          const error = result.error;
+          if (error) {
+            console.error('Failure sending notification to', token, error);
+          }
+        });
+        return res.json({ success: true, via: 'fcm', response });
+      }
     } catch (error) {
       console.error('sendTestNotification error:', error);
       return res.status(500).json({ error: 'Internal Server Error' });

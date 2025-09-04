@@ -1,211 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, Platform, Alert, ActivityIndicator, StatusBar, Linking } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, ScrollView, TextInput, Image, Platform, ActivityIndicator, StatusBar } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../../../context/AuthContext';
-import { addChild } from '../../../services/childService';
-import { uploadChildProfileImage, getUserProfile } from '../../../services/userService';
-import * as ImagePicker from 'expo-image-picker';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../../lib/firebase/firebaseConfig';
 import { Colors } from '../../../theme/colors';
 import { Button } from '../../../components/Button';
+import { useAddChildDetails } from '../hooks/useAddChildDetails';
 
 const AddChildDetailsScreen = () => {
-    const router = useRouter();
-    const { user, refreshOnboardingStatus } = useAuth();
-    const [date, setDate] = useState(new Date());
-    const [childName, setChildName] = useState('');
-    const [dueDate, setDueDate] = useState('');
-    const [gender, setGender] = useState('');
-    const [childImage, setChildImage] = useState<string | null>(null);
-    const [lifestage, setLifestage] = useState<string>('Soon to be parent');
-    const [isPickerOpen, setIsPickerOpen] = useState(false);
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [isLoading, setIsLoading] = useState(false);
-    const [isUploadingImage, setIsUploadingImage] = useState(false);
-    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const {
+        // State
+        childrenRows,
+        setChildrenRows,
+        activeDatePickerIndex,
+        openGenderPickerIndex,
+        setOpenGenderPickerIndex,
+        journalImage,
+        journalName,
+        setJournalName,
+        lifestage,
+        showDatePicker,
+        isLoading,
+        isUploadingJournalImage,
+        genderOptions,
 
-    // Fetch user's actual life stage from Firebase
-    useEffect(() => {
-        const fetchUserLifeStage = async () => {
-            if (user?.uid) {
-                const userProfile = await getUserProfile(user.uid);
-                if (userProfile?.lifestage) {
-                    setLifestage(userProfile.lifestage);
-                }
-            }
-        };
-        fetchUserLifeStage();
-    }, [user]);
-
-    const genderOptions = lifestage === 'Soon to be parent'
-        ? ['Boy', 'Girl', "Don't know yet"]
-        : ['Boy', 'Girl', "Prefer not to say"];
-
-    const handleSelect = (option: string) => {
-        setGender(option);
-        setIsPickerOpen(false);
-    };
-
-    const onDateChange = (event: any, selectedDate?: Date) => {
-        // For Android, the picker is modal and closes on its own.
-        // For iOS, we need to manually hide it.
-        if (Platform.OS === 'android') {
-            setShowDatePicker(false);
-        }
-
-        if (selectedDate) {
-            // A date was selected. Update state and close the picker on iOS.
-            if (Platform.OS === 'ios') {
-                setShowDatePicker(false);
-            }
-
-            try {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0); // Reset time to start of day
-
-                // Validate based on lifestage
-                if (lifestage === 'Parent' && selectedDate > today) {
-                    Alert.alert('Invalid Date', 'Birth date cannot be in the future. Please select a valid birth date.');
-                    return;
-                } else if (lifestage === 'Soon to be parent' && selectedDate < today) {
-                    Alert.alert('Invalid Date', 'Due date cannot be in the past. Please select a valid due date.');
-                    return;
-                }
-
-                const formattedDate = selectedDate.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                });
-                setDueDate(formattedDate);
-                setDate(selectedDate);
-            } catch (error) {
-                console.error('Error handling date change:', error);
-                Alert.alert('Error', 'Failed to process date selection. Please try again.');
-            }
-        } else if (event.type === 'dismissed') {
-            // This handles cancellation on iOS
-            setShowDatePicker(false);
-        }
-    };
-
-    const handleContinue = async () => {
-        if (!user) {
-            Alert.alert('Error', 'User not authenticated');
-            return;
-        }
-
-        if (!childName.trim()) {
-            Alert.alert('Error', 'Please enter your child\'s name');
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            let profileImageUrl: string | undefined = undefined;
-
-            // Map UI label to canonical stored value
-            // Stored set: 'Boy' | 'Girl' | "Don't know yet" | 'prefer_not_to_say'
-            let firestoreGender: 'Boy' | 'Girl' | "Don't know yet" | 'prefer_not_to_say';
-            if (gender === 'Boy') {
-                firestoreGender = 'Boy';
-            } else if (gender === 'Girl') {
-                firestoreGender = 'Girl';
-            } else if (gender === 'Prefer not to say') {
-                firestoreGender = 'prefer_not_to_say';
-            } else {
-                firestoreGender = "Don't know yet";
-            }
-
-            // Create child document first
-            const childId = await addChild({
-                name: childName,
-                dateOfBirth: date,
-                gender: firestoreGender as any, // Matches ChildInput union in childService
-            }, user.uid);
-
-            // Upload child image after child document is created
-            if (childImage) {
-                profileImageUrl = await uploadChildProfileImage(childId, childImage);
-
-                // Update child document with profile image URL
-                if (profileImageUrl) {
-                    const childRef = doc(db, 'children', childId);
-                    await updateDoc(childRef, {
-                        profileImageUrl: profileImageUrl,
-                        updatedAt: new Date()
-                    });
-                }
-            }
-
-            await refreshOnboardingStatus();
-            console.log('Child added successfully');
-            setShowSuccessModal(true);
-        } catch (error) {
-            console.error('Error adding child:', error);
-            Alert.alert('Error', 'Failed to add child. Please try again.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleAddAnotherChild = () => {
-        setShowSuccessModal(false);
-        setChildName('');
-        setDueDate('');
-        setChildImage(null);
-        setGender("Don't know yet");
-        router.push('/(auth)/add-child-details');
-    };
-
-    const handleStartJournaling = () => {
-        setShowSuccessModal(false);
-        router.replace('/(main)/(tabs)/journal');
-    };
-
-    const openDatePicker = () => {
-        setShowDatePicker(true);
-    };
-
-    const pickChildImage = async () => {
-        try {
-            // Request media library permissions
-            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-            if (permissionResult.status !== 'granted') {
-                Alert.alert(
-                    'Permission Required',
-                    'Please allow access to your photos to upload a child picture. You can enable this in Settings > Privacy > Photos > SproutBook.',
-                    [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Open Settings', onPress: () => Platform.OS === 'ios' && Linking.openURL('app-settings:') }
-                    ]
-                );
-                return;
-            }
-
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [1, 1],
-                quality: 0.8,
-                base64: false,
-            });
-
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-                setIsUploadingImage(true);
-                const imageUri = result.assets[0].uri;
-                setChildImage(imageUri);
-                setIsUploadingImage(false);
-            }
-        } catch (error) {
-            console.error('Error picking child image:', error);
-            Alert.alert('Error', 'Failed to select child image. Please try again.');
-            setIsUploadingImage(false);
-        }
-    };
+        // Actions
+        handleGenderSelect,
+        onDateChange,
+        openDatePicker,
+        pickJournalImage,
+        pickRowImage,
+        handleContinue,
+    } = useAddChildDetails();
 
     return (
         <SafeAreaView style={styles.container}>
@@ -215,69 +39,138 @@ const AddChildDetailsScreen = () => {
             <ScrollView contentContainerStyle={styles.scrollContainer}>
 
                 <View style={styles.headerTop}>
-                    <Text style={styles.sectionTitle}> Let’s set up your journal</Text>
-                    <Text style={styles.sectionSubtitle}>Tell us who you’re journaling about</Text>
+                    <Text style={styles.sectionTitle}>Let’s create{'\n'}your journal</Text>
                 </View>
                 <View style={styles.avatarContainer}>
-                    <TouchableOpacity onPress={pickChildImage} disabled={isUploadingImage}>
-                        {isUploadingImage ? (
+                    <TouchableOpacity onPress={pickJournalImage} disabled={isUploadingJournalImage}>
+                        {isUploadingJournalImage ? (
                             <View style={[styles.avatar, styles.uploadingContainer]}>
                                 <ActivityIndicator size="large" color="#4A90E2" />
                             </View>
                         ) : (
                             <View style={styles.avatar}>
                                 <Image
-                                    source={childImage ? { uri: childImage } : require('../../../assets/images/placeholder profile.png')}
+                                    source={journalImage ? { uri: journalImage } : require('../../../assets/images/placeholder profile.png')}
                                     style={styles.avatarImage}
                                 />
                             </View>
                         )}
                     </TouchableOpacity>
-                    {childImage ? (
+                    {journalImage ? (
                         <TouchableOpacity
                             style={styles.editIconContainer}
-                            onPress={pickChildImage}
-                            disabled={isUploadingImage}
+                            onPress={pickJournalImage}
+                            disabled={isUploadingJournalImage}
                         >
                             <Image source={require('../../../assets/images/Pen_Icon.png')} style={styles.editIcon} />
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity onPress={pickChildImage}>
+                        <TouchableOpacity onPress={pickJournalImage} disabled={isUploadingJournalImage}>
                             <Text style={styles.addPhotoText}>Add photo</Text>
                         </TouchableOpacity>
                     )}
-                </View>
-
-                <View style={styles.inputContainer}>
                     <TextInput
-                        style={styles.input}
-                        placeholder="Child's name*"
+                        style={styles.journalNameInput}
+                        placeholder="Your journal name"
                         placeholderTextColor={Colors.mediumGrey}
-                        value={childName}
-                        onChangeText={setChildName}
-                        accessibilityLabel="Child's name"
+                        value={journalName}
+                        onChangeText={setJournalName}
+                        accessibilityLabel="Journal name"
                     />
                 </View>
 
-                <View style={styles.inputContainer}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder={`${lifestage === 'Parent' ? "Child's birthday" : "Baby's due date"}*`}
-                        placeholderTextColor={Colors.mediumGrey}
-                        value={dueDate}
-                        onChangeText={setDueDate}
-                        editable={false}
-                        accessibilityLabel={lifestage === 'Parent' ? "Child's birthday" : "Baby's due date"}
-                    />
-                    <TouchableOpacity onPress={openDatePicker}>
-                        <Image source={require('../../../assets/images/calendar.png')} style={styles.calendarIcon} />
-                    </TouchableOpacity>
-                </View>
+                <Text style={styles.sectionSubtitle}>Who are you journaling about?</Text>
+
+                {childrenRows.map((row, index) => (
+                    <View key={`child-row-${index}`} style={styles.childCard}>
+                        <View style={styles.childHeader}>
+                            <View style={{ alignItems: 'center' }}>
+                                <TouchableOpacity onPress={() => pickRowImage(index)}>
+                                    <View style={styles.childAvatar}>
+                                        <Image
+                                            source={row.imageUri ? { uri: row.imageUri } : require('../../../assets/images/placeholder profile.png')}
+                                            style={styles.childAvatarImage}
+                                        />
+                                        <View style={styles.childEditIconContainer}>
+                                            <Image source={require('../../../assets/images/camera.png')} style={styles.childEditIcon} />
+                                        </View>
+                                    </View>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <View style={styles.labelRow}>
+                                    <Text style={styles.fieldLabel}>Name</Text>
+                                    <TouchableOpacity style={styles.removeButton} onPress={() => setChildrenRows(rows => rows.filter((_, i) => i !== index))} accessibilityLabel={`Remove child ${index + 1}`}>
+                                        <Image source={require('../../../assets/images/trash_Icon.png')} style={styles.trashIcon} />
+                                    </TouchableOpacity>
+                                </View>
+                                <TextInput
+                                    style={styles.inputUnderline}
+                                    placeholder="Child’s name or nickname"
+                                    placeholderTextColor={Colors.mediumGrey}
+                                    value={row.name}
+                                    onChangeText={(text) => setChildrenRows((rows) => rows.map((r, i) => i === index ? { ...r, name: text } : r))}
+                                    accessibilityLabel={`Child ${index + 1} name`}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.rowInline}>
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                                <Text style={styles.fieldLabel}>Birthday/due date</Text>
+                                <View style={styles.underlineContainer}>
+                                    <TextInput
+                                        style={styles.inputUnderlineText}
+                                        placeholder="MM/DD/YYYY"
+                                        placeholderTextColor={Colors.mediumGrey}
+                                        value={row.dueDate}
+                                        onChangeText={() => { }}
+                                        editable={false}
+                                        accessibilityLabel={lifestage === 'Parent' ? "Child's birthday" : "Baby's due date"}
+                                    />
+                                    <TouchableOpacity onPress={() => openDatePicker(index)}>
+                                        <Image source={require('../../../assets/images/calendar.png')} style={styles.calendarIcon} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={styles.fieldLabel}>Gender</Text>
+                                <View style={styles.pickerWrapper}>
+                                    <TouchableOpacity style={styles.underlineContainer} onPress={() => setOpenGenderPickerIndex(openGenderPickerIndex === index ? null : index)}>
+                                        <Text style={[styles.pickerText, { color: row.gender ? Colors.black : Colors.mediumGrey }]}>
+                                            {row.gender || 'Select'}
+                                        </Text>
+                                        <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.arrowIcon} />
+                                    </TouchableOpacity>
+                                    {openGenderPickerIndex === index && (
+                                        <View style={styles.optionsContainer}>
+                                            {genderOptions.map((option) => (
+                                                <TouchableOpacity key={option} style={styles.optionItem} onPress={() => handleGenderSelect(index, option)}>
+                                                    {row.gender === option ? (
+                                                        <View style={styles.selectedOptionButton}>
+                                                            <Text style={styles.selectedOptionText}>{option}</Text>
+                                                        </View>
+                                                    ) : (
+                                                        <Text style={styles.optionText}>{option}</Text>
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                ))}
+
+                {/* Journal name input moved under avatar */}
 
                 {showDatePicker && (
                     <DateTimePicker
                         testID="dateTimePicker"
-                        value={date}
+                        value={activeDatePickerIndex !== null && childrenRows[activeDatePickerIndex]?.date ? (childrenRows[activeDatePickerIndex]?.date as Date) : new Date()}
                         mode={'date'}
                         is24Hour={true}
                         display={Platform.OS === 'ios' ? 'spinner' : 'default'}
@@ -288,29 +181,13 @@ const AddChildDetailsScreen = () => {
                     />
                 )}
 
-                <View style={styles.pickerWrapper}>
-                    <TouchableOpacity style={styles.inputContainer} onPress={() => setIsPickerOpen(!isPickerOpen)}>
-                        <Text style={[styles.pickerText, { color: gender ? Colors.black : Colors.mediumGrey }]}>
-                            {gender || `Baby Gender`}
-                        </Text>
-                        <Image source={require('../../../assets/images/Chevron_Down.png')} style={styles.arrowIcon} />
-                    </TouchableOpacity>
-                    {isPickerOpen && (
-                        <View style={styles.optionsContainer}>
-                            {genderOptions.map((option) => (
-                                <TouchableOpacity key={option} style={styles.optionItem} onPress={() => handleSelect(option)}>
-                                    {gender === option ? (
-                                        <View style={styles.selectedOptionButton}>
-                                            <Text style={styles.selectedOptionText}>{option}</Text>
-                                        </View>
-                                    ) : (
-                                        <Text style={styles.optionText}>{option}</Text>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
-                </View>
+                <TouchableOpacity
+                    style={[styles.modalButton]}
+                    onPress={() => setChildrenRows((rows) => [...rows, { name: '', date: null, dueDate: '', gender: '', imageUri: undefined }])}
+                    accessibilityLabel="Add another child row"
+                >
+                    <Text style={styles.secondaryButtonText}>+ Add Child</Text>
+                </TouchableOpacity>
 
                 <View style={styles.footer}>
                     <Button
@@ -323,30 +200,7 @@ const AddChildDetailsScreen = () => {
                 </View>
             </ScrollView>
 
-            {/* Success Modal */}
-            {showSuccessModal && (
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>Journal created!</Text>
 
-                        <TouchableOpacity
-                            style={[styles.modalButton, styles.primaryButton]}
-                            onPress={handleStartJournaling}
-                            accessibilityLabel="Take me to the app"
-                        >
-                            <Text style={styles.primaryButtonText}>Take me to the app</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.modalButton, styles.primaryButton]}
-                            onPress={handleAddAnotherChild}
-                            accessibilityLabel="Add another child to my journal"
-                        >
-                            <Text style={styles.primaryButtonText}>Add another child to my journal</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            )}
         </SafeAreaView>
     );
 };
@@ -377,10 +231,20 @@ const styles = StyleSheet.create({
         height: 110,
         borderRadius: 55,
     },
+    journalNameInput: {
+        marginTop: 12,
+        fontSize: 16,
+        color: Colors.black,
+        textAlign: 'center',
+        width: '80%',
+        fontFamily: 'Poppins-Regular',
+        paddingVertical: 6,
+
+    },
     editIconContainer: {
         position: 'absolute',
-        bottom: -4,
-        right: '32%',
+        bottom: 32,
+        right: '34%',
     },
     editIcon: {
         width: 50,
@@ -388,9 +252,19 @@ const styles = StyleSheet.create({
     },
     label: {
         color: Colors.black,
-        marginBottom: 8,
+        //marginBottom: 8,
         fontSize: 16,
         fontWeight: '500',
+    },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+       
+    },
+    fieldLabel: {
+        color: Colors.darkGrey,
+        fontFamily: 'poppins-500regular',
     },
     asterisk: {
         color: Colors.secondary,
@@ -408,14 +282,23 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 15,
         color: Colors.blacktext,
         height: 50,
-        paddingVertical: 6
+        paddingVertical: 6,
+        fontFamily: 'Poppins-Regular',
+    },
+    inputUnderline: {
+        fontSize: 15,
+        color: Colors.blacktext,
+        fontFamily: 'Poppins-Regular',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderColor: Colors.lightGrey,
     },
     dateText: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 14,
         color: Colors.blacktext,
         fontFamily: 'Poppins-Regular',
     },
@@ -424,9 +307,24 @@ const styles = StyleSheet.create({
         position: 'relative',
         width: '100%',
     },
+    underlineContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderBottomWidth: 1,
+        borderColor: Colors.lightGrey,
+        paddingVertical: 8,
+    },
+    inputUnderlineText: {
+        flex: 1,
+        fontSize: 12,
+        color: Colors.blacktext,
+        fontFamily: 'Poppins-Regular',
+        paddingVertical: 6,
+    },
     pickerText: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 15,
         color: Colors.blacktext,
         width: '100%',
         fontFamily: 'Poppins-Regular',
@@ -459,7 +357,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
     },
     optionText: {
-        fontSize: 16,
+        fontSize: 15,
         fontFamily: 'Poppins-Regular',
         color: Colors.darkGrey,
     },
@@ -469,20 +367,91 @@ const styles = StyleSheet.create({
     },
     selectedOptionText: {
         color: Colors.primary,
-        fontWeight: '600',
+        fontWeight: '500',
         padding: 12,
-        fontFamily: 'Poppins-SemiBold',
+        fontFamily: 'Poppins-Regular',
+        fontSize: 15,
     },
     calendarIcon: {
-        width: 22,
-        height: 22,
+        width: 16,
+        height: 16,
         tintColor: Colors.grey,
+    },
+    childCard: {
+        backgroundColor: Colors.white,
+        borderWidth: 1,
+        borderColor: Colors.lightGrey,
+        borderRadius: 16,
+        padding: 12,
+        marginTop: 16,
+    },
+    childHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    childAvatar: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: Colors.white,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: Colors.lightGrey,
+        position: 'relative',
+    },
+    childAvatarImage: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+    },
+    childEditIconContainer: {
+        width: 24,
+        height: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: Colors.primary,
+        borderRadius: 12,
+        position: 'absolute',
+        bottom: -4,
+        right: -4,
+    },
+    childEditIcon: {
+        width: 12,
+        height: 12,
+    },
+    removeButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'transparent',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
+    },
+    removeButtonText: {
+        fontSize: 22,
+        color: Colors.darkGrey,
+        marginTop: -3,
+    },
+    trashIcon: {
+        width: 16,
+        height: 16,
+    },
+    rowInline: {
+        flexDirection: 'row',
+        paddingHorizontal: 6,
+        alignItems: 'flex-start',
+        paddingVertical: 6,
+        marginLeft: 24,
+
     },
     footer: {
         flex: 1,
         justifyContent: 'flex-end',
         paddingBottom: 20,
-        marginTop: 20, // Add margin top to ensure it doesn't overlap
+        marginTop: 20,
     },
     button: {
         backgroundColor: Colors.primary,
@@ -568,11 +537,11 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins-Regular',
     },
     modalButton: {
-        width: '100%',
+        alignSelf: 'center',
+        width: 150,
         paddingVertical: 18,
-        borderRadius: 30, // Pill shape
         alignItems: 'center',
-        marginBottom: 12,
+
     },
     primaryButton: {
         backgroundColor: Colors.primary,
@@ -595,17 +564,19 @@ const styles = StyleSheet.create({
         fontFamily: 'Poppins-Regular',
     },
     sectionTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
+        alignItems: 'center',
+        fontSize: 26,
+        fontWeight: '500',
         color: Colors.black,
         marginBottom: 8,
         textAlign: 'center',
-        fontFamily: 'Poppins-medium',
+        fontFamily: 'Poppins-SemiBold',
+        lineHeight: 32,
     },
     sectionSubtitle: {
-        fontSize: 16,
+        paddingHorizontal: 10,
+        fontSize: 15,
         color: Colors.mediumGrey,
-        textAlign: 'center',
         marginTop: 16,
         fontFamily: 'Poppins-Regular',
     },

@@ -5,7 +5,7 @@ import TimelineDropdown, { TimelineOption } from './TimelineDropdown';
 import { Colors } from '@/theme';
 
 interface FilterTabsProps {
-  onAgePress: () => void;
+  onDatePress: () => void;
   onFilterChange: (filter: string) => void;
   activeFilter: string;
   onTimelineChange: (timeline: TimelineOption) => void;
@@ -13,20 +13,20 @@ interface FilterTabsProps {
 }
 
 const FilterTabs: React.FC<FilterTabsProps> = ({ 
-  onAgePress, 
+  onDatePress, 
   onFilterChange, 
   activeFilter, 
   onTimelineChange,
   activeTimeline,
 }) => {
-  const FILTERS = ['All', 'Favorites', 'Milestones', 'Age'];
+  const FILTERS = ['All', 'Favorites', 'Milestones', 'Date'];
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const allFilterRef = useRef<View | null>(null);
 
   const handleFilterPress = (filter: string) => {
-    if (filter === 'Age') {
-      onAgePress();
+    if (filter === 'Date') {
+      onDatePress();
     } else if (filter === 'All') {
       onFilterChange('All'); // Ensure 'All' filter is active
       allFilterRef.current?.measureInWindow((x: number, y: number, _width: number, height: number) => {
@@ -56,11 +56,11 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
             <Text style={[styles.chipText, activeFilter === filter && styles.activeChipText]}>
               {filter === 'All' && activeTimeline !== 'All' ? activeTimeline : filter}
             </Text>
-            {filter === 'Age' && (
+            {filter === 'Date' && (
               <Ionicons 
                 name="chevron-down" 
                 size={14} 
-                color={activeFilter === filter ? '#FFFFFF' : Colors.mediumGrey} 
+                color={activeFilter === filter ? Colors.grey : Colors.mediumGrey} 
                 style={styles.chevronIcon}
               />
             )}

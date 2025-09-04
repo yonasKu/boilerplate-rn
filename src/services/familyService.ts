@@ -5,6 +5,7 @@ export interface Invitation {
   id?: string;
   inviterId: string;
   inviteeContact: string;
+  inviteeName?: string;
   role: 'viewer';
   status: 'pending' | 'accepted' | 'revoked';
   inviteCode: string;
@@ -12,6 +13,13 @@ export interface Invitation {
   scopes: string[];
   createdAt: string;
   updatedAt: string;
+  inviteeUserId?: string;
+  acceptedAt?: string;
+  acceptedProfile?: {
+    uid: string;
+    name: string;
+    profileImageUrl: string;
+  };
 }
 
 export interface SharedAccess {
@@ -76,8 +84,9 @@ const safeJson = async (resp: any) => {
 export const FamilyService = {
   createInvitation: async (data: {
     inviteeContact: string;
+    inviteeName?: string;
     scopes?: string[];
-  }): Promise<{ invitationId: string; inviteCode: string; expiresAt: string; scopes: string[] }> => {
+  }): Promise<{ invitationId: string; inviteCode: string; expiresAt: string; scopes: string[]; inviteeName?: string }> => {
     try {
       const token = await getIdTokenOrAnon();
       const url = buildFunctionUrl('familyCreateInvitation');
@@ -89,6 +98,7 @@ export const FamilyService = {
         },
         body: JSON.stringify({
           inviteeContact: data.inviteeContact,
+          inviteeName: data.inviteeName,
           scopes: data.scopes || ['recaps:read'],
         }),
       } as any);

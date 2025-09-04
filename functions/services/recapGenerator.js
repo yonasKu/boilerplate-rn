@@ -47,16 +47,18 @@ class AutomatedRecapService {
       }
 
       const aiContent = await this.openAIService.generateRecap(journalData, 'weekly');
+      const aiTitleRaw = await this.openAIService.generateRecapTitle(journalData, 'weekly', { start: weekRange.start, end: weekRange.end });
       
       const weekStart = weekRange.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const weekEnd = weekRange.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const easyTitle = `${journalData.childName}'s Week ${weekStart} - ${weekEnd}`;
+      const title = (aiTitleRaw && aiTitleRaw.length > 0) ? aiTitleRaw : easyTitle;
       
       const recap = {
         userId,
         childId,
         type: 'weekly',
-        title: easyTitle,
+        title,
         period: {
           startDate: weekRange.start,
           endDate: weekRange.end
@@ -145,15 +147,18 @@ class AutomatedRecapService {
       }
 
       const aiContent = await this.openAIService.generateRecap(journalData, 'monthly');
+      const aiTitleRaw = await this.openAIService.generateRecapTitle(journalData, 'monthly', { start: monthRange.start, end: monthRange.end });
       
       const monthName = monthRange.start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
       const easyTitle = `${journalData.childName}'s ${monthName}`;
+      const desiredTitle = aiTitleRaw && aiTitleRaw.length > 0 ? aiTitleRaw : easyTitle;
+      const title = desiredTitle;
       
       const recap = {
         userId,
         childId,
         type: 'monthly',
-        title: easyTitle,
+        title,
         period: {
           startDate: monthRange.start,
           endDate: monthRange.end
@@ -242,15 +247,18 @@ class AutomatedRecapService {
       }
 
       const aiContent = await this.openAIService.generateRecap(journalData, 'yearly');
+      const aiTitleRaw = await this.openAIService.generateRecapTitle(journalData, 'yearly', { start: yearRange.start, end: yearRange.end });
       
       const year = yearRange.start.getFullYear();
       const easyTitle = `${journalData.childName}'s ${year} Year in Review`;
+      const desiredTitle = aiTitleRaw && aiTitleRaw.length > 0 ? aiTitleRaw : easyTitle;
+      const title = desiredTitle;
       
       const recap = {
         userId,
         childId,
         type: 'yearly',
-        title: easyTitle,
+        title,
         content: aiContent.recapText,
         generatedAt: new Date(),
         periodStart: yearRange.start,
@@ -409,6 +417,24 @@ class AutomatedRecapService {
   }
 
   async saveRecap(userId, childId, type, dateRange, aiResponse, journalData = {}) {
+    const baseTitleFromRange = (() => {
+      try {
+        const startFmt = dateRange?.start?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const endFmt = dateRange?.end?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        if (type === 'monthly') {
+          return dateRange?.start?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) || 'Monthly Recap';
+        }
+        if (type === 'yearly') {
+          return `${dateRange?.start?.getFullYear?.() || ''} Year in Review`.trim();
+        }
+        return `Week ${startFmt} - ${endFmt}`;
+      } catch {
+        return 'Recap';
+      }
+    })();
+    const desiredTitle = (aiResponse && aiResponse.title) ? aiResponse.title : baseTitleFromRange;
+    const title = desiredTitle;
+
     const recapData = {
       userId,
       childId,
@@ -418,6 +444,7 @@ class AutomatedRecapService {
         endDate: dateRange.end
       },
       aiGenerated: aiResponse,
+      title,
       imageMetadata: journalData.imageMetadata || { count: 0, hasImages: false, imageTypes: [] },
       status: 'completed',
       createdAt: new Date(),
@@ -427,6 +454,105 @@ class AutomatedRecapService {
     const recapRef = await this.db.collection('recaps').add(recapData);
     console.log(`Saving ${type} recap ${recapRef.id} for child ${childId}.`);
     return recapRef.id;
+  }
+
+  /**
+   * Generate and persist a journal-scoped weekly snippet recap
+   * - Aggregates across ALL children for the user within the week
+   * - Persists with deterministic id (idempotent)
+   * - Does NOT send a notification (snippet is a manual save UX)
+   * @param {string} userId
+   * @param {{start: Date, end: Date}} weekRange
+   * @param {{ source?: 'http'|'auto'|'schedule' }} options
+   */
+  async generateWeeklySnippet(userId, weekRange, options = {}) {
+    const opId = `weekly_snippet_${userId}_${Date.now()}`;
+    const startTime = Date.now();
+    const { start, end } = weekRange || {};
+    const source = options.source || 'http';
+
+    try {
+      if (!userId || !(start instanceof Date) || !(end instanceof Date)) {
+        throw new Error('Invalid inputs for generateWeeklySnippet');
+      }
+
+      const journalData = await this.journalAggregator.aggregateJournalEntries({
+        userId,
+        type: 'weekly',
+        startDate: start,
+        endDate: end,
+      });
+
+      if (journalData.totalEntries < 3) {
+        return {
+          success: false,
+          message: 'Insufficient entries for weekly snippet',
+          totalEntries: journalData.totalEntries,
+          minimumRequired: 3,
+        };
+      }
+
+      const aiContent = await this.openAIService.generateRecap(journalData, 'weekly');
+      const aiTitleRaw = await this.openAIService.generateRecapTitle(journalData, 'weekly_snippet', { start, end });
+
+      const { createHash } = require('crypto');
+      const startISO = start.toISOString();
+      const endISO = end.toISOString();
+      const keyMaterial = `${userId}|weekly_snippet|${startISO}|${endISO}`;
+      const recapKey = createHash('sha1').update(keyMaterial).digest('hex');
+
+      const recapDocRef = this.db.collection('recaps').doc(recapKey);
+
+      // Title for weekly snippet (aggregated): prefer AI title; fallback to plain date range (no generic phrase)
+      const weekTitleBase = (() => {
+        const startFmt = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const endFmt = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        return `${startFmt} - ${endFmt}`;
+      })();
+      const desiredTitle = aiTitleRaw && aiTitleRaw.length > 0 ? aiTitleRaw : weekTitleBase;
+      const weekTitle = desiredTitle;
+
+      const recapPayload = {
+        userId,
+        type: 'weekly_snippet',
+        period: { startDate: start, endDate: end },
+        aiGenerated: aiContent,
+        title: weekTitle,
+        childIdsAggregated: journalData?.summary?.children?.uniqueChildren || [],
+        summary: journalData.summary,
+        imageMetadata: journalData.imageMetadata || { count: 0, hasImages: false, imageTypes: [] },
+        status: 'completed',
+        createdAt: new Date(),
+        source,
+        idempotencyKey: recapKey,
+      };
+
+      const writeResult = await this.db.runTransaction(async (tx) => {
+        const existing = await tx.get(recapDocRef);
+        if (existing.exists) {
+          return { alreadyExists: true };
+        }
+        tx.set(recapDocRef, recapPayload);
+        return { alreadyExists: false };
+      });
+
+      return {
+        success: true,
+        id: recapKey,
+        alreadyExists: writeResult.alreadyExists,
+        userId,
+        createdAt: recapPayload.createdAt.toISOString(),
+        processingTime: Date.now() - startTime,
+        ...recapPayload,
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        processingTime: Date.now() - startTime,
+      };
+    }
   }
 
   /**
@@ -449,6 +575,36 @@ class AutomatedRecapService {
       const title = `${typeMap[type]} Recap Ready!`;
       const body = `Your ${type} recap is ready to read. Tap to view!`;
       
+      // De-dup: create a deterministic notification doc first; if it exists, skip sending push
+      const { FieldValue } = require('firebase-admin/firestore');
+      const notifId = `recap_ready_${type}_${userId}_${recapId}`;
+      const notifRef = this.db.collection('notifications').doc(notifId);
+
+      try {
+        await notifRef.create({
+          userId,
+          childId,
+          type: 'recap_ready',
+          recapType: type,
+          recapId,
+          title,
+          body,
+          read: false,
+          createdAt: FieldValue.serverTimestamp()
+        });
+      } catch (e) {
+        // If already exists, do not send push again
+        const code = e?.code;
+        if (code === 6 || code === 'already-exists') {
+          console.log(`Notification already created for ${type} recap ${recapId}; skipping push.`);
+          return;
+        }
+        // For other errors, log and bail to avoid potential duplicate pushes
+        console.error(`Failed to create notification record for ${type} recap ${recapId}:`, e);
+        return;
+      }
+
+      // Only send push if we successfully created the notification record
       await this.notificationService.sendPushNotification(userId, {
         title,
         body,
@@ -459,20 +615,6 @@ class AutomatedRecapService {
           childId,
           childName
         }
-      });
-      
-      // Also save to notifications collection
-      const { FieldValue } = require('firebase-admin/firestore');
-      await this.db.collection('notifications').add({
-        userId,
-        childId,
-        type: 'recap_ready',
-        recapType: type,
-        recapId,
-        title,
-        body,
-        read: false,
-        createdAt: FieldValue.serverTimestamp()
       });
       
       console.log(`Notification sent for ${type} recap: ${recapId}`);

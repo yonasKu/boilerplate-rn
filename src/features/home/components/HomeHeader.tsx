@@ -46,7 +46,7 @@ const HomeHeader: React.FC = () => {
         const unreadQuery = query(
           notificationsRef,
           where('userId', '==', user.uid),
-          where('read', '==', false)
+          where('isRead', '==', false)
         );
         unsubscribe = onSnapshot(unreadQuery, (snapshot) => setUnreadNotifications(snapshot.size));
       } catch (e) {
@@ -94,7 +94,7 @@ const HomeHeader: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingVertical: 10,
     backgroundColor: Colors.white,
     // borderBottomWidth: 1,
@@ -110,11 +110,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
+    minWidth: 0,
   },
   welcome: {
-    fontSize: 16,
-    fontFamily: 'Poppins_700Bold',
+    marginLeft:4,
+    fontSize: 18,
+    fontFamily: 'Poppins_500Medium',
     color: Colors.black,
+    flexShrink: 1,
+    minWidth: 0,
   },
   // Removed timeline indicator styles
   iconRow: {

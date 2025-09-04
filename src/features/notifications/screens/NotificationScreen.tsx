@@ -5,6 +5,7 @@ import { Colors } from '@/theme';
 import ScreenHeader from '@/components/ui/ScreenHeader';
 import { useAuth } from '../../../context/AuthContext';
 import { getFirestore, collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import NotificationService from '@/services/notifications/NotificationService';
 
 interface User {
   name: string;
@@ -61,7 +62,7 @@ const NotificationScreen = () => {
     const notificationsRef = collection(db, 'notifications');
     const q = query(notificationsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'), limit(50));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const notificationsData: NotificationItem[] = [];
       console.log('📱 Notifications loaded:', snapshot.size, 'notifications');
       snapshot.forEach((doc) => {
@@ -98,6 +99,16 @@ const NotificationScreen = () => {
       console.log('📋 Processed notifications:', notificationsData);
       setNotifications(notificationsData);
       setLoading(false);
+
+      // Mark any unread notifications as read when the screen is viewed
+      try {
+        const unreadIds = notificationsData.filter((n) => !n.isRead).map((n) => n.id);
+        if (unreadIds.length > 0) {
+          await NotificationService.markNotificationsAsRead(unreadIds);
+        }
+      } catch (err) {
+        console.error('Failed to batch mark notifications as read:', err);
+      }
     }, (error) => {
       console.error('❌ Error fetching notifications:', error);
       setLoading(false);

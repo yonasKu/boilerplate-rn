@@ -91,6 +91,7 @@ const FamilySharingScreen = () => {
     try {
       const { inviteCode, expiresAt } = await FamilyService.createInvitation({
         inviteeContact: inviteEmail.trim(),
+        inviteeName: inviteName.trim() || undefined,
         scopes: ['recaps:read', 'comments:write', 'likes:write']
       });
 
@@ -259,15 +260,21 @@ const FamilySharingScreen = () => {
 
         <View style={styles.gridContainer}>
           {/* Invitations shown inline as avatars only */}
-          {invitations.map((inv, idx) => (
-            <FamilyMemberCircle
-              key={inv.id || inv.inviteCode || String(idx)}
-              name={`${getInviteeDisplayName(inv.inviteeContact)}${inv.status === 'pending' ? ' (Pending)' : inv.status === 'accepted' ? ' (Accepted)' : ''}`}
-              selected={inv.status === 'accepted'}
-              onPress={() => setShareModalValue(inv.inviteCode)}
-              hideName
-            />
-          ))}
+          {invitations.map((inv, idx) => {
+            const accepted = inv.status === 'accepted';
+            const nameSource = inv.acceptedProfile?.name || inv.inviteeName || getInviteeDisplayName(inv.inviteeContact);
+            const imageSource = inv.acceptedProfile?.profileImageUrl ? { uri: inv.acceptedProfile.profileImageUrl } : undefined;
+            return (
+              <FamilyMemberCircle
+                key={inv.id || inv.inviteCode || String(idx)}
+                name={nameSource}
+                image={imageSource}
+                selected={accepted}
+                onPress={() => setShareModalValue(inv.inviteCode)}
+                hideName
+              />
+            );
+          })}
           {/* Add tile first, left-aligned */}
           <View style={styles.addMemberContainer}>
             <TouchableOpacity style={styles.addButton} onPress={openInviteModal}>

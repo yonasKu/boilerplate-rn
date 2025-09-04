@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Text, Image } from 'react-native';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { View, StyleSheet, Text, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Colors } from '@/theme';
 import { RecapCard } from '../../recaps/components/RecapCard';
@@ -42,6 +42,55 @@ const WeeklyRecapPreviewCard: React.FC<WeeklyRecapPreviewCardProps> = ({ onShare
   // Progress for brand-new users only
   const progressPct = Math.min(100, Math.max(0, Math.round((totalEntries / REQUIRED) * 100)));
   const remaining = Math.max(0, REQUIRED - totalEntries);
+
+  // Week range helper (Mon-Sun to match backend trigger)
+  const getCurrentWeekRange = useCallback(() => {
+    const now = new Date();
+    const day = now.getDay(); // 0=Sun..6=Sat
+    // Compute Monday start
+    const diffToMonday = (day === 0 ? -6 : 1 - day);
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() + diffToMonday);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }, []);
+
+  const [saving, setSaving] = useState(false);
+  const triggerWeeklySnippet = useCallback(async () => {
+    if (!user || saving) return;
+    try {
+      setSaving(true);
+      const { start, end } = getCurrentWeekRange();
+      const token = await (user as any).getIdToken?.();
+      const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
+      if (!projectId) throw new Error('Missing EXPO_PUBLIC_FIREBASE_PROJECT_ID');
+      const url = `https://us-central1-${projectId}.cloudfunctions.net/saveWeeklySnippet`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ startDate: start.toISOString(), endDate: end.toISOString() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({} as any));
+        throw new Error(err?.error || `HTTP ${res.status}`);
+      }
+      // Refresh recaps to show the newly created snippet (idempotent)
+      const data = await RecapService.getRecaps(user.uid);
+      setRecaps(data);
+    } catch (e: any) {
+      // Soft surface error and keep UI usable
+      console.warn('saveWeeklySnippet failed:', e?.message || e);
+      Alert.alert('Could not generate preview yet', 'Please try again in a moment.');
+    } finally {
+      setSaving(false);
+    }
+  }, [user, saving, getCurrentWeekRange]);
 
   // Exact RecapCard style with sample data
   const s1 = Image.resolveAssetSource(require('@/assets/images/sample.png')).uri;
@@ -132,12 +181,20 @@ const WeeklyRecapPreviewCard: React.FC<WeeklyRecapPreviewCardProps> = ({ onShare
         )}
         {/* Centered pill text */}
         {(!hasAnyRecap) && (
-          <View style={styles.overlayCenter} pointerEvents={(hasAnyJournal) ? 'none' : 'auto'}>
-            <View style={styles.overlayPill}>
-              <Text style={styles.overlayText}>
-                {hasAnyJournal ? 'See your sneak peek!' : `Complete ${remaining} more ${remaining === 1 ? 'entry' : 'entries'}`}
-              </Text>
-            </View>
+          <View style={styles.overlayCenter} pointerEvents={(hasAnyJournal) ? 'auto' : 'auto'}>
+            {hasAnyJournal ? (
+              <TouchableOpacity style={styles.overlayPill} onPress={triggerWeeklySnippet} disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color={Colors.blacktext} />
+                ) : (
+                  <Text style={styles.overlayText}>See your sneak peek!</Text>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.overlayPill}>
+                <Text style={styles.overlayText}>{`Complete ${remaining} more ${remaining === 1 ? 'entry' : 'entries'}`}</Text>
+              </View>
+            )}
           </View>
         )}
       </View>

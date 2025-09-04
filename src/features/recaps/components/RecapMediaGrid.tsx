@@ -35,9 +35,9 @@ const renderImageWithOverlay = (item: any, style: any, key: any, overlayCount?: 
             {dateOverlay && dateOverlay.line1 && dateOverlay.line2 && (
                 <View style={styles.dateOverlayContainer}>
                     {dateOverlay.line1 ? <Text style={styles.dateOverlayText}>{dateOverlay.line1}</Text> : null}
-                    {dateOverlay.line2 && dateOverlay.line3 ? (
+                    {dateOverlay.line2 ? (
                         <Text style={[styles.dateOverlayText, styles.dateOverlayTextLarge]}>
-                            {dateOverlay.line2} {dateOverlay.line3}
+                            {dateOverlay.line2}{dateOverlay.line3 ? ` ${dateOverlay.line3}` : ''}
                         </Text>
                     ) : null}
                     {dateOverlay.line4 ? <Text style={styles.dateOverlayText}>{dateOverlay.line4}</Text> : null}

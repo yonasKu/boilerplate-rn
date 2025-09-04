@@ -34,5 +34,13 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*')
         && request.resource.size < 5 * 1024 * 1024;
     }
+
+    // Journal images for user journals - allow recursive paths
+    match /journal_images/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId
+        && request.resource.contentType.matches('image/.*')
+        && request.resource.size < 5 * 1024 * 1024;
+    }
   }
 }

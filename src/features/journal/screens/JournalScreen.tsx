@@ -1,280 +1,70 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar, FlatList, ActivityIndicator, Share, Alert } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import React from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, StatusBar, FlatList, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import WeekNavigator from '../components/WeekNavigator';
-import { useJournal } from '@/hooks/useJournal';
 import JournalEntryCard from '../components/JournalEntryCard';
 import JournalFilter from '../components/JournalFilter';
 import ActionCallout from '../../../components/ui/ActionCallout';
-import AgeFilterModal from '../components/modals/AgeFilterModal';
-import { TimelineOption } from '../components/TimelineDropdown';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import ShareBottomSheet from '../components/ShareBottomSheet';
 import { Colors } from '@/theme';
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
+import { useJournalScreen } from '@/hooks/useJournalScreen';
 
 const JournalScreen = () => {
     const insets = useSafeAreaInsets();
     const router = useRouter();
-    const { user } = useAuth();
-    const { entries, isLoading, error, updateEntry, deleteEntry, toggleLike } = useJournal();
-    const [userProfile, setUserProfile] = useState<any>(null);
-    const [loadingProfile, setLoadingProfile] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [filterTags, setFilterTags] = useState<string[]>([]);
-    const [showFilters, setShowFilters] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
-    const [activeTimeline, setActiveTimeline] = useState<TimelineOption>('All');
-    const [showAgeModal, setShowAgeModal] = useState(false);
-    const [unreadNotifications, setUnreadNotifications] = useState(0);
+    const {
+        // data
+        entries,
+        isLoading,
+        error,
+        filteredEntries,
 
-    const fetchUserProfile = async () => {
-        if (user) {
-            try {
-                const { doc, getDoc } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase/firebaseConfig');
-                
-                const userDocRef = doc(db, 'users', user.uid);
-                const userDoc = await getDoc(userDocRef);
-                
-                if (userDoc.exists()) {
-                    setUserProfile(userDoc.data());
-                }
-                setLoadingProfile(false);
-            } catch (error) {
-                console.error('Error fetching user profile:', error);
-                setLoadingProfile(false);
-            }
-        } else {
-            setLoadingProfile(false);
-        }
-    };
+        // profile / notifications
+        userProfile,
+        loadingProfile,
+        unreadNotifications,
 
-    useEffect(() => {
-        fetchUserProfile();
-    }, [user]);
+        // filters / search / date
+        searchQuery,
+        setSearchQuery,
+        filterTags,
+        setFilterTags,
+        showFilters,
+        setShowFilters,
+        selectedDate,
+        setSelectedDate,
+        showDatePicker,
+        setShowDatePicker,
 
-    useEffect(() => {
-        if (!user?.uid) return;
+        // refresh
+        refreshing,
+        onRefresh,
+        refreshEntries,
 
-        const fetchUnreadNotifications = async () => {
-            try {
-                const { collection, query, where, getDocs } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase/firebaseConfig');
-                // Query top-level notifications collection scoped to this user
-                const notificationsRef = collection(db, 'notifications');
-                const unreadQuery = query(
-                    notificationsRef,
-                    where('userId', '==', user.uid),
-                    where('read', '==', false)
-                );
-                const querySnapshot = await getDocs(unreadQuery);
-                setUnreadNotifications(querySnapshot.size);
-            } catch (error) {
-                console.error('Error fetching unread notifications:', error);
-            }
-        };
+        // share
+        showShareModal,
+        setShowShareModal,
+        shareEntry,
+        handleShare,
+        handleShareAction,
 
-        fetchUnreadNotifications();
+        // entry handlers
+        handleLike,
+        handleToggleMilestone,
+        handleEdit,
+        handleDelete,
 
-        // Set up real-time listener for unread notifications
-        let unsubscribe: (() => void) | undefined;
-        
-        const setupListener = async () => {
-            const { collection, query, where, onSnapshot } = await import('firebase/firestore');
-            const { db } = await import('@/lib/firebase/firebaseConfig');
-            // Real-time listener on top-level notifications for this user
-            const notificationsRef = collection(db, 'notifications');
-            const unreadQuery = query(
-                notificationsRef,
-                where('userId', '==', user.uid),
-                where('read', '==', false)
-            );
-            
-            unsubscribe = onSnapshot(unreadQuery, (snapshot) => {
-                setUnreadNotifications(snapshot.size);
-            });
-        };
+        // derived UI
+        displayName,
+        avatarUrl,
+        journalTitle,
+    } = useJournalScreen();
 
-        setupListener();
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
-    }, [user]);
-
-
-
-    const filteredEntries = useMemo(() => {
-        let filtered = entries;
-
-        // Filter by timeline (monthly/weekly) - COMMENTED OUT: These filters are for recaps, not journal entries
-        /*
-        if (activeTimeline !== 'All') {
-            const now = new Date();
-            
-            if (activeTimeline === 'Weekly') {
-                // Show entries from the current week (Sunday to Saturday)
-                const startOfWeek = new Date(now);
-                startOfWeek.setDate(now.getDate() - now.getDay()); // Get Sunday of current week
-                startOfWeek.setHours(0, 0, 0, 0);
-                
-                const endOfWeek = new Date(startOfWeek);
-                endOfWeek.setDate(startOfWeek.getDate() + 6); // Get Saturday of current week
-                endOfWeek.setHours(23, 59, 59, 999);
-                
-                filtered = filtered.filter(entry => {
-                    const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
-                    return entryDate >= startOfWeek && entryDate <= endOfWeek;
-                });
-            } else if (activeTimeline === 'Monthly') {
-                // Show entries from the current month
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                startOfMonth.setHours(0, 0, 0, 0);
-                
-                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-                endOfMonth.setHours(23, 59, 59, 999);
-                
-                filtered = filtered.filter(entry => {
-                    const entryDate = entry.createdAt?.toDate ? entry.createdAt.toDate() : new Date(entry.createdAt);
-                    return entryDate >= startOfMonth && entryDate <= endOfMonth;
-                });
-            }
-        }
-        */
-
-        // Child-based filtering removed: show all user entries regardless of child
-
-        // Filter by search query
-        if (searchQuery.trim()) {
-            filtered = filtered.filter(entry => 
-                entry.text.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-        }
-
-        // Filter by tags
-        if (filterTags.length > 0) {
-            filtered = filtered.filter(entry => {
-                const entryTags: string[] = [];
-                if (entry.isFavorited) entryTags.push('favorite');
-                if (entry.isMilestone) entryTags.push('milestone');
-                return filterTags.some(tag => entryTags.includes(tag));
-            });
-        }
-
-        return filtered.sort((a, b) => {
-            const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-            const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-            return dateB.getTime() - dateA.getTime();
-        });
-        }, [entries, searchQuery, filterTags, activeTimeline]);
-
-    const handleLike = async (entryId: string) => {
-        try {
-            await toggleLike(entryId);
-        } catch (error) {
-            console.error('Error toggling like:', error);
-        }
-    };
-
-    const handleToggleMilestone = async (entryId: string) => {
-        try {
-            const entry = entries.find(e => e.id === entryId);
-            if (entry) {
-                await updateEntry(entryId, { 
-                    isMilestone: !entry.isMilestone 
-                });
-            }
-        } catch (error) {
-            console.error('Error toggling milestone:', error);
-        }
-    };
-
-    const [showShareModal, setShowShareModal] = useState(false);
-    const [shareEntry, setShareEntry] = useState<any>(null);
-
-    const handleShare = (entry: any) => {
-        setShareEntry(entry);
-        setShowShareModal(true);
-    };
-
-    const handleShareAction = async (platform: 'copy' | 'system') => {
-        if (!shareEntry) return;
-        try {
-            const message = `Check out this memory from SproutBook: ${shareEntry.text || ''}`;
-            if (platform === 'copy') {
-                await Clipboard.setStringAsync(message);
-                Alert.alert('Copied to clipboard');
-            } else {
-                await Share.share({ message });
-            }
-            setShowShareModal(false);
-        } catch (error) {
-            console.error('Error sharing entry:', error);
-        }
-    };
-
-    const onRefresh = async () => {
-        setRefreshing(true);
-        try {
-            // Re-fetch user profile and journal entries
-            if (user) {
-                const { doc, getDoc } = await import('firebase/firestore');
-                const { db } = await import('@/lib/firebase/firebaseConfig');
-                
-                // Refresh user profile
-                const userDocRef = doc(db, 'users', user.uid);
-                const userDoc = await getDoc(userDocRef);
-                if (userDoc.exists()) {
-                    setUserProfile(userDoc.data());
-                }
-                
-                // Refresh journal entries via useJournal hook
-                // The useJournal hook will handle the refresh internally
-            }
-        } catch (error) {
-            console.error('Error refreshing data:', error);
-        } finally {
-            setRefreshing(false);
-        }
-    };
-
-    const handleEdit = (entry: any) => {
-        router.push(`/(main)/new-entry?entryId=${entry.id}` as any);
-    };
-
-    const handleDelete = async (entry: any) => {
-        try {
-            const mediaUrls = entry.media?.map((m: any) => m.url) || [];
-            await deleteEntry(entry.id, mediaUrls);
-        } catch (error) {
-            console.error('Error deleting entry:', error);
-        }
-    };
-
-    const toggleFilterTag = (tag: string) => {
-        setFilterTags(prev => 
-            prev.includes(tag) 
-                ? prev.filter(t => t !== tag)
-                : [...prev, tag]
-        );
-    };
-
-    // Resolve user display name and avatar URL (no dropdown)
-    const displayName = useMemo(() => (
-        userProfile?.name || userProfile?.displayName || user?.displayName || 'Profile'
-    ), [userProfile, user]);
-
-    const avatarUrl = useMemo(() => (
-        userProfile?.profileImageUrl ||
-        (userProfile as any)?.photoURL ||
-        (userProfile as any)?.avatarUrl ||
-        (userProfile as any)?.photoUrl ||
-        null
-    ), [userProfile]);
+    // All state/effects/handlers are provided by useJournalScreen
 
     return (
         <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
@@ -289,7 +79,7 @@ const JournalScreen = () => {
                             textSize={16}
                         />
                         <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-                            {displayName}
+                            {journalTitle}
                         </Text>
                     </View>
                     <View style={styles.headerRight}>
@@ -307,35 +97,63 @@ const JournalScreen = () => {
                     </View>
                 </View>
             </View>
-            {entries.length > 0 && <WeekNavigator />}
             {entries.length > 0 && (
-                <JournalFilter 
-                    onAgePress={() => setShowAgeModal(true)} 
-                    //activeTimeline={activeTimeline}
-                    //onTimelineChange={setActiveTimeline}
-                    onFilterChange={(filter) => {
-                        if (filter === 'All') {
-                            setFilterTags([]);
-                        } else if (filter === 'Favorites') {
-                            setFilterTags(['favorite']);
-                        } else if (filter === 'Milestones') {
-                            setFilterTags(['milestone']);
+                <WeekNavigator
+                    selectedDate={selectedDate}
+                    onDayPress={async (date) => {
+                        // Toggle if same day tapped, else set new date
+                        if (selectedDate &&
+                            date.getFullYear() === selectedDate.getFullYear() &&
+                            date.getMonth() === selectedDate.getMonth() &&
+                            date.getDate() === selectedDate.getDate()) {
+                            setSelectedDate(null);
+                        } else {
+                            setSelectedDate(date);
                         }
+                        // Refresh entries after selection change
+                        try { await refreshEntries(); } catch {}
                     }}
-                    activeFilter={filterTags.length === 0 ? 'All' : 
-                        filterTags.includes('favorite') ? 'Favorites' : 
-                        filterTags.includes('milestone') ? 'Milestones' : 'All'}
                 />
             )}
-            
-            <AgeFilterModal
-                visible={showAgeModal}
-                onClose={() => setShowAgeModal(false)}
-                                onSave={(ageRange) => {
-                    console.log('Age filter applied:', ageRange);
-                                        setShowAgeModal(false);
-                }}
-            />
+            {entries.length > 0 && (
+                <JournalFilter
+                    onDatePress={() => setShowDatePicker(true)}
+                    onFilterChange={async (filter) => {
+                        if (filter === 'All') {
+                            setFilterTags([]);
+                            setSelectedDate(null);
+                            try { await refreshEntries(); } catch {}
+                        } else if (filter === 'Favorites') {
+                            setFilterTags(['favorite']);
+                            setSelectedDate(null);
+                        } else if (filter === 'Milestones') {
+                            setFilterTags(['milestone']);
+                            setSelectedDate(null);
+                        }
+                    }}
+                    activeFilter={selectedDate ? 'Date' : (
+                        filterTags.length === 0 ? 'All' :
+                            (filterTags.includes('favorite') ? 'Favorites' :
+                                (filterTags.includes('milestone') ? 'Milestones' : 'All'))
+                    )}
+                />
+            )}
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={selectedDate || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                    onChange={(_e, date) => {
+                        if (date) {
+                            setSelectedDate(date);
+                        }
+                        if (Platform.OS === 'android') {
+                            setShowDatePicker(false);
+                        }
+                    }}
+                />
+            )}
 
             <ShareBottomSheet
                 isVisible={showShareModal}
@@ -343,8 +161,8 @@ const JournalScreen = () => {
                 onShare={handleShareAction}
             />
 
-                        
-            
+
+
             {isLoading ? (
                 <View style={styles.centeredContent}>
                     <ActivityIndicator size="large" color={Colors.primary} />
@@ -379,8 +197,8 @@ const JournalScreen = () => {
                 <FlatList
                     data={filteredEntries}
                     renderItem={({ item }) => (
-                        <JournalEntryCard 
-                            entry={item} 
+                        <JournalEntryCard
+                            entry={item}
                             selectedChildId={''}
                             onPress={() => router.push(`/journal/${item.id}` as any)}
                             onLike={() => handleLike(item.id)}
@@ -494,14 +312,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         flexShrink: 1, // Allow this container to shrink
+        flex: 1,
+        minWidth: 0,
     },
     headerTitle: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontFamily: 'Poppins_500Medium',
         color: Colors.black,
-        //flex: 1, // Allow the title to take available space and shrink
         flexShrink: 1,
-        marginHorizontal:6  
+        marginHorizontal: 6,
+        minWidth: 0,
     },
     headerRight: {
         flexDirection: 'row',
@@ -509,7 +329,7 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     headerButton: {
-        padding :4,
+        padding: 4,
         width: 36,
         height: 36,
         borderRadius: 18,

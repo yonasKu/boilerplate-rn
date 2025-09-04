@@ -24,18 +24,39 @@ const HomeScreen: React.FC = () => {
   const [showShareModal, setShowShareModal] = React.useState(false);
   const [shareEntry, setShareEntry] = React.useState<any>(null);
 
-  const isSameDay = (a?: any, b?: Date) => {
+  const toJsDate = (v: any | undefined | null): Date | null => {
+    if (!v) return null;
+    const d = v?.toDate ? v.toDate() : new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+  const getEntryDate = (e: any): Date | null => {
+    return toJsDate(e?.occurredAt) || toJsDate(e?.createdAt);
+  };
+  const isSameDay = (a?: Date | null, b?: Date | null) => {
     if (!a || !b) return false;
-    const d = a?.toDate ? a.toDate() : new Date(a);
-    return d.getFullYear() === b.getFullYear() && d.getMonth() === b.getMonth() && d.getDate() === b.getDate();
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   };
   const today = new Date();
-  const hasToday = Array.isArray(entries) && entries.some(e => isSameDay(e.createdAt, today));
-  const todaysLatest = hasToday ? (entries || []).find(e => isSameDay(e.createdAt, today)) : null;
-  // Most recent entry that is NOT today
-  const latestNonToday = !hasToday
-    ? (entries || []).filter((e: any) => !isSameDay(e.createdAt, today))[0] || null
-    : null;
+  // Sort entries by occurredAt (fallback createdAt) desc to make selection deterministic
+  const sortedByWhen = Array.isArray(entries)
+    ? [...entries].sort((a, b) => {
+        const ad = getEntryDate(a)?.getTime() ?? 0;
+        const bd = getEntryDate(b)?.getTime() ?? 0;
+        return bd - ad;
+      })
+    : [];
+
+  const hasToday = sortedByWhen.some(e => isSameDay(getEntryDate(e), today));
+  const todaysLatest = hasToday ? sortedByWhen.find(e => isSameDay(getEntryDate(e), today)) : null;
+  // Most recent entry that is NOT today; if none in last 7 days, still pick the most recent past entry
+  const nonToday = sortedByWhen.filter(e => !isSameDay(getEntryDate(e), today));
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(today.getDate() - 7);
+  const latestPastWeek = nonToday.find(e => {
+    const d = getEntryDate(e);
+    return d != null && d >= sevenDaysAgo;
+  });
+  const latestNonToday = latestPastWeek || (nonToday.length > 0 ? nonToday[0] : null);
 
   // Compute this week's entry count (Sun-Sat)
   const startOfWeek = (d: Date) => {
@@ -60,6 +81,7 @@ const HomeScreen: React.FC = () => {
   }).length;
   const hasEntriesThisWeek = countThisWeek > 0;
   const completedWeekly = countThisWeek >= 3;
+  const showAddToday = !!latest && !hasToday;
   const handleShare = (entry: any) => {
     setShareEntry(entry);
     setShowShareModal(true);
@@ -100,7 +122,7 @@ const HomeScreen: React.FC = () => {
         */}
         {(!latest && !isLoading) ? (
           <StartJournalCard />
-        ) : latest && !hasToday ? (
+        ) : showAddToday ? (
           <ActionCallout
             title="Add today's entry"
             description="What made you smile today? Take 30 seconds to add today's entry."
@@ -126,7 +148,7 @@ const HomeScreen: React.FC = () => {
         ) : null}
 
         {/* Weekly completion callout (middle). Only show if user posted this week. */}
-        {hasEntriesThisWeek && (
+        {!showAddToday && hasEntriesThisWeek && (
           completedWeekly ? (
             <ActionCallout
               title={"You're all caught up!"}
@@ -154,8 +176,8 @@ const HomeScreen: React.FC = () => {
           onShare={handleShareAction}
         />
 
-        {/* Look-back preview (when no entry today, show the most recent past entry) */}
-        {!hasToday && latestNonToday ? (
+        {/* Look-back preview: always show a past entry when available */}
+        {latestNonToday ? (
           <JournalEntryPreviewCard
             entry={latestNonToday as any}
             headerTitle="Take a look back"

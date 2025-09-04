@@ -4,21 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
 
 interface JournalFilterProps {
-  onAgePress: () => void;
+  onDatePress: () => void;
   onFilterChange: (filter: string) => void;
   activeFilter: string;
 }
 
 const JournalFilter: React.FC<JournalFilterProps> = ({ 
-  onAgePress, 
+  onDatePress, 
   onFilterChange, 
   activeFilter,
 }) => {
-  const FILTERS = ['All', 'Favorites', 'Milestones', 'Age'];
+  const FILTERS = ['All', 'Favorites', 'Milestones', 'Date'];
 
   const handleFilterPress = (filter: string) => {
-    if (filter === 'Age') {
-      onAgePress();
+    if (filter === 'Date') {
+      onDatePress();
     } else if (filter === 'All') {
       // Skip the dropdown and just apply 'All' filter directly
       onFilterChange('All');
@@ -39,11 +39,11 @@ const JournalFilter: React.FC<JournalFilterProps> = ({
             <Text style={[styles.chipText, activeFilter === filter && styles.activeChipText]}>
               {filter}
             </Text>
-            {filter === 'Age' && (
+            {filter === 'Date' && (
               <Ionicons 
                 name="chevron-down" 
                 size={14} 
-                color={activeFilter === filter ? '#FFFFFF' : Colors.mediumGrey} 
+                color={activeFilter === filter ? Colors.grey : Colors.mediumGrey} 
                 style={styles.chevronIcon}
               />
             )}

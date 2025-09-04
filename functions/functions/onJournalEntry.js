@@ -46,6 +46,89 @@ exports.onJournalEntryCreated = functions.firestore
   });
 
 /**
+ * Check if user has enough entries and generate recaps
+ * - Thresholds are computed at USER-level across all children
+ * - Weekly: generate ONE user-scoped weekly_snippet (aggregated children)
+ * - Monthly/Yearly: when user-level threshold is met, generate per-child recaps for children with entries in that period
+ */
+async function checkAndGenerateRecaps(userId, childIds) {
+  try {
+    const now = new Date();
+
+    const weeklyRange = { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
+    const monthlyRange = { start: startOfMonth(now), end: endOfMonth(now) };
+    const yearlyRange = { start: startOfYear(now), end: endOfYear(now) };
+
+    // User-level counts
+    const weeklyUserCount = await countUserJournalEntries(userId, weeklyRange);
+    const monthlyUserCount = await countUserJournalEntries(userId, monthlyRange);
+    const yearlyUserCount = await countUserJournalEntries(userId, yearlyRange);
+    console.log(`📊 User-level counts - Weekly: ${weeklyUserCount}, Monthly: ${monthlyUserCount}, Yearly: ${yearlyUserCount}`);
+
+    const recapResults = [];
+
+    // Weekly: user-level snippet
+    if (weeklyUserCount >= 3) {
+      try {
+        const res = await recapService.generateWeeklySnippet(userId, weeklyRange, { source: 'auto' });
+        recapResults.push({ type: 'weekly_snippet', ...res });
+        console.log(`📅 Weekly snippet generated/attempted for user ${userId}`);
+      } catch (e) {
+        console.error('Error generating weekly_snippet from trigger:', e);
+      }
+    }
+
+    // Monthly: per-child only if user-level threshold met
+    if (monthlyUserCount >= 5) {
+      for (const childId of childIds) {
+        const childMonthlyCount = await countJournalEntries(userId, childId, monthlyRange);
+        if (childMonthlyCount > 0) {
+          const monthlyRecap = await recapService.generateMonthlyRecap(userId, childId, monthlyRange);
+          recapResults.push({ type: 'monthly', childId, ...monthlyRecap });
+          console.log(`📅 Monthly recap generated for ${userId}/${childId}`);
+        }
+      }
+    }
+
+    // Yearly: per-child only if user-level threshold met
+    if (yearlyUserCount >= 10) {
+      for (const childId of childIds) {
+        const childYearlyCount = await countJournalEntries(userId, childId, yearlyRange);
+        if (childYearlyCount > 0) {
+          const yearlyRecap = await recapService.generateYearlyRecap(userId, childId, yearlyRange);
+          recapResults.push({ type: 'yearly', childId, ...yearlyRecap });
+          console.log(`📅 Yearly recap generated for ${userId}/${childId}`);
+        }
+      }
+    }
+
+    return recapResults;
+  } catch (error) {
+    console.error('Error checking and generating recaps:', error);
+    return [];
+  }
+}
+
+/**
+ * Count journal entries for a specific period at the user level (across all children)
+ */
+async function countUserJournalEntries(userId, dateRange) {
+  try {
+    const snapshot = await admin.firestore()
+      .collection('journalEntries')
+      .where('userId', '==', userId)
+      .where('createdAt', '>=', dateRange.start)
+      .where('createdAt', '<=', dateRange.end)
+      .count()
+      .get();
+    return snapshot.data().count;
+  } catch (error) {
+    console.error('Error counting user-level journal entries:', error);
+    return 0;
+  }
+}
+
+/**
  * Send immediate push notification for new journal entry
  */
 async function sendImmediateNotification(userId, entry) {
@@ -129,77 +212,6 @@ async function sendImmediateNotification(userId, entry) {
   } catch (error) {
     console.error('Error sending immediate notification:', error);
     return { success: false, error: error.message };
-  }
-}
-
-/**
- * Check if user has enough entries and generate all recap types
- */
-async function checkAndGenerateRecaps(userId, childIds) {
-  try {
-    const now = new Date();
-    
-    for (const childId of childIds) {
-      // Check weekly recap eligibility
-      const weeklyRange = {
-        start: startOfWeek(now, { weekStartsOn: 1 }),
-        end: endOfWeek(now, { weekStartsOn: 1 })
-      };
-      
-      // Check monthly recap eligibility
-      const monthlyRange = {
-        start: startOfMonth(now),
-        end: endOfMonth(now)
-      };
-      
-      // Check yearly recap eligibility
-      const yearlyRange = {
-        start: startOfYear(now),
-        end: endOfYear(now)
-      };
-      
-      // Count entries for each period
-      const weeklyCount = await countJournalEntries(userId, childId, weeklyRange);
-      const monthlyCount = await countJournalEntries(userId, childId, monthlyRange);
-      const yearlyCount = await countJournalEntries(userId, childId, yearlyRange);
-      
-      console.log(`📊 Entry counts - Weekly: ${weeklyCount}, Monthly: ${monthlyCount}, Yearly: ${yearlyCount}`);
-      
-      // Generate recaps if thresholds are met
-      const recapResults = [];
-      
-      if (weeklyCount >= 3) {
-        const weeklyRecap = await recapService.generateWeeklyRecap(userId, childId, weeklyRange);
-        recapResults.push({ type: 'weekly', ...weeklyRecap });
-        console.log(`📅 Weekly recap generated for ${userId}/${childId}`);
-      }
-      
-      if (monthlyCount >= 5) {
-        const monthlyRecap = await recapService.generateMonthlyRecap(userId, childId, monthlyRange);
-        recapResults.push({ type: 'monthly', ...monthlyRecap });
-        console.log(`📅 Monthly recap generated for ${userId}/${childId}`);
-      }
-      
-      if (yearlyCount >= 10) {
-        const yearlyRecap = await recapService.generateYearlyRecap(userId, childId, yearlyRange);
-        recapResults.push({ type: 'yearly', ...yearlyRecap });
-        console.log(`📅 Yearly recap generated for ${userId}/${childId}`);
-      }
-      
-      // Send notifications for generated recaps
-      // Disabled: recap notifications are already sent inside recapGenerator methods
-      // for (const recap of recapResults) {
-      //   if (recap.success) {
-      //     await sendRecapNotification(userId, recap.type, recap.recapId);
-      //   }
-      // }
-      
-      return recapResults;
-    }
-    
-  } catch (error) {
-    console.error('Error checking and generating recaps:', error);
-    return [];
   }
 }
 

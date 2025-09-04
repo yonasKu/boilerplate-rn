@@ -159,8 +159,9 @@ class JournalAggregator {
     if (!userId || typeof userId !== 'string') {
       throw new Error('Invalid userId: must be a non-empty string');
     }
-    if (!childId || typeof childId !== 'string') {
-      throw new Error('Invalid childId: must be a non-empty string');
+    // childId is optional to support user-scoped aggregation (e.g., weekly snippets)
+    if (childId !== undefined && (typeof childId !== 'string' || childId.length === 0)) {
+      throw new Error('Invalid childId: when provided, must be a non-empty string');
     }
     if (!['daily', 'weekly', 'monthly', 'yearly'].includes(type)) {
       throw new Error('Invalid type: must be daily, weekly, monthly, or yearly');
@@ -182,15 +183,18 @@ class JournalAggregator {
    * @returns {Object} Optimized Firestore query
    */
   buildOptimizedQuery({ userId, childId, startDate, endDate }) {
-    let query = this.db.collection('journalEntries');
-    
-    // Use composite indexes for better performance
-    query = query.where('userId', '==', userId)
-                .where('childIds', 'array-contains', childId)
-                .where('createdAt', '>=', startDate)
-                .where('createdAt', '<=', endDate)
-                .orderBy('createdAt', 'desc')
-                .limit(this.maxEntriesPerQuery);
+    // Base query scoped to user and date range
+    let query = this.db.collection('journalEntries')
+      .where('userId', '==', userId)
+      .where('createdAt', '>=', startDate)
+      .where('createdAt', '<=', endDate)
+      .orderBy('createdAt', 'desc')
+      .limit(this.maxEntriesPerQuery);
+
+    // If childId is provided, further scope to that child
+    if (childId) {
+      query = query.where('childIds', 'array-contains', childId);
+    }
 
     return query;
   }

@@ -94,7 +94,7 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0
         && (request.resource.data.dateOfBirth is timestamp || request.resource.data.dateOfBirth is string)
         && request.resource.data.gender is string
-        && (request.resource.data.gender in ['Boy', 'Girl', "Don't know yet", 'male', 'female', 'prefer_not_to_say'])
+        && (request.resource.data.gender in ['Boy', 'Girl', 'other', 'prefer_not_to_say', 'Don\'t know yet'])
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp;
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useJournal } from '@/hooks/useJournal';
 import { Colors } from '@/theme';
@@ -21,18 +21,27 @@ interface WeekProgressData {
   completedDays: number;
 }
 
-const Day = ({ day, status, isToday, date }: { day: string; status: DayStatus; isToday: boolean; date: Date }) => {
+const Day = ({ day, status, isToday, date, onPress, selected }: { day: string; status: DayStatus; isToday: boolean; date: Date; onPress?: (date: Date) => void; selected?: boolean }) => {
   return (
-    <View style={styles.dayContainer}>
+    <TouchableOpacity style={styles.dayContainer} activeOpacity={0.8} onPress={() => onPress?.(date)}>
       <Text style={[styles.dayText, isToday && styles.todayText]}>{day}</Text>
-      <View style={[styles.statusCircle, styles[status]]}>
+      <View style={[
+        styles.statusCircle,
+        styles[status],
+        selected ? styles.selected : null,
+      ]}>
         {status === 'checked' && <Ionicons name="checkmark" size={14} color="#5D9275" />}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
-const WeekNavigator = () => {
+interface WeekNavigatorProps {
+  onDayPress?: (date: Date) => void;
+  selectedDate?: Date | null;
+}
+
+const WeekNavigator: React.FC<WeekNavigatorProps> = ({ onDayPress, selectedDate }) => {
   const { entries } = useJournal();
   const [weekData, setWeekData] = useState<WeekProgressData>({
     days: [],
@@ -96,6 +105,8 @@ const WeekNavigator = () => {
           status={item.status} 
           isToday={item.isToday}
           date={item.date}
+          onPress={onDayPress}
+          selected={selectedDate ? isSameDayNative(selectedDate, item.date) : false}
         />
       ))}
     </View>
@@ -191,6 +202,9 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   filled: {
+    backgroundColor: Colors.primary,
+  },
+  selected: {
     backgroundColor: Colors.primary,
   },
 });

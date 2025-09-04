@@ -106,23 +106,42 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
         loadCardData();
     }, [recap.id]);
 
-    const displayDate = recap.createdAt || recap.period?.endDate;
+    const displayDateRaw = recap.period?.endDate || recap.createdAt;
+    const endDate = displayDateRaw instanceof Date ? displayDateRaw : (displayDateRaw ? new Date(displayDateRaw) : undefined);
 
-    const formattedDate = displayDate ? {
-        line1: 'WEEK OF',
-        line2: displayDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
-        line3: displayDate.getDate(),
-        line4: displayDate.getFullYear(),
-    } : undefined;
+    let formattedDate: { line1: string; line2: string; line3: number; line4: number } | undefined;
+    if (endDate && !isNaN(endDate.getTime())) {
+        switch ((recap as any).type) {
+            case 'monthly':
+                formattedDate = {
+                    line1: 'MONTH OF',
+                    line2: endDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+                    line3: 0, // no day
+                    line4: endDate.getFullYear(),
+                };
+                break;
+            case 'weekly':
+            default:
+                formattedDate = {
+                    line1: 'WEEK OF',
+                    line2: endDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+                    line3: endDate.getDate(),
+                    line4: endDate.getFullYear(),
+                };
+                break;
+        }
+    }
     
     const age = '11 months, 3 days'; // TODO: Calculate from recap data
 
     return (
         <TouchableOpacity onPress={handlePress} activeOpacity={0.9} style={styles.card}>
-            <View style={styles.header}>
-                <Image source={require('@/assets/images/two_stars_icon.png')} style={styles.sparkleIcon} />
-                <Text style={styles.title} numberOfLines={1}>{recap.aiGenerated.recapText || recap.aiGenerated.summary || 'Recap'}</Text>
-            </View>
+            {recap.title ? (
+                <View style={styles.header}>
+                    <Image source={require('@/assets/images/two_stars_icon.png')} style={styles.sparkleIcon} />
+                    <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">{recap.title}</Text>
+                </View>
+            ) : null}
             <RecapMediaGrid media={highlightPhotos?.map((url: string) => ({ url, type: 'image' as const })) ?? []} dateOverlay={formattedDate} />
             <View style={styles.footer}>
                 <Text style={styles.ageText}>{age}</Text>
@@ -182,8 +201,9 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: Colors.blacktext,
-       
         flex: 1,
+        flexShrink: 1,
+        minWidth: 0,
         lineHeight: 20,
     },
     footer: {

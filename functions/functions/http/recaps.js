@@ -24,6 +24,28 @@ async function requireAuth(req, res) {
 
 const recapService = new AutomatedRecapService();
 
+const saveWeeklySnippet = onRequest(
+  { region: 'us-central1', invoker: 'public', secrets: ['OPENAI_API_KEY'] },
+  async (req, res) => {
+    try {
+      const decoded = await requireAuth(req, res);
+      if (!decoded) return;
+
+      const { startDate, endDate } = req.body || {};
+      if (!startDate || !endDate) {
+        return res.status(400).json({ error: 'startDate and endDate are required' });
+      }
+      const userId = decoded.uid;
+      const range = { start: new Date(startDate), end: new Date(endDate) };
+      const result = await recapService.generateWeeklySnippet(userId, range, { source: 'http' });
+      return res.json(result);
+    } catch (err) {
+      console.error('saveWeeklySnippet error:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+  }
+);
+
 const generateWeeklyRecap = onRequest(
   { region: 'us-central1', invoker: 'public', secrets: ['OPENAI_API_KEY'] },
   async (req, res) => {
@@ -85,6 +107,7 @@ const generateYearlyRecap = onRequest(
 );
 
 module.exports = {
+  saveWeeklySnippet,
   generateWeeklyRecap,
   generateMonthlyRecap,
   generateYearlyRecap,

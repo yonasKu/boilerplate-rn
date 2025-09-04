@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
 import AvatarCluster from './AvatarCluster';
 import { getInitials, generateAvatarStyle, getContrastingTextColorForName } from '@/utils/avatarUtils';
+import NotificationService from '@/services/notifications/NotificationService';
 
 interface User {
   name: string;
@@ -72,8 +73,16 @@ const RecapLoveNotification = ({ item }: { item: Notification }) => {
     return body;
   }, [item.body, actors]);
 
+  const handlePress = React.useCallback(() => {
+    if (!item.isRead) {
+      NotificationService.markNotificationAsRead(item.id).catch((e) =>
+        console.error('Failed to mark notification as read:', e)
+      );
+    }
+  }, [item.id, item.isRead]);
+
   return (
-    <TouchableOpacity style={styles.itemContainer}>
+    <TouchableOpacity style={styles.itemContainer} onPress={handlePress}>
       <View style={styles.avatarContainer}>
         {actors.length > 1 ? (
           <AvatarCluster users={actors} />

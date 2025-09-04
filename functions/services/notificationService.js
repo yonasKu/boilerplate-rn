@@ -114,21 +114,115 @@ class NotificationService {
     };
 
     try {
-      // Defensive: ensure we do not pass undefined/empty tokens to FCM
+      // Defensive: ensure we do not pass undefined/empty tokens
       const validTokens = tokens.filter((t) => typeof t === 'string' && t.trim().length > 0);
       if (validTokens.length === 0) {
         console.log(`No valid device tokens to send for user ${userId}.`);
         return { success: false, message: 'No valid device tokens for user.' };
       }
 
-      const response = await this.messaging.sendToDevice(validTokens, payload);
-      console.log(`Successfully sent notification to user ${userId}.`);
-      await this.cleanupInvalidTokens(response, validTokens, userId);
-      return { success: true };
+      // Partition tokens: Expo vs FCM
+      const expoTokens = validTokens.filter((t) => /^ExponentPushToken\[.+\]$/.test(t));
+      const fcmTokens = validTokens.filter((t) => !/^ExponentPushToken\[.+\]$/.test(t));
+
+      let anySuccess = false;
+
+      if (fcmTokens.length > 0) {
+        const response = await this.messaging.sendToDevice(fcmTokens, payload);
+        console.log(`Successfully sent FCM notification to user ${userId}.`);
+        await this.cleanupInvalidTokens(response, fcmTokens, userId);
+        anySuccess = anySuccess || (response?.results?.some(r => !r.error) ?? false);
+      }
+
+      if (expoTokens.length > 0) {
+        try {
+          const expoOk = await this.sendExpoPush(expoTokens, notification);
+          anySuccess = anySuccess || expoOk;
+        } catch (e) {
+          console.error('Expo push send failed:', e);
+        }
+      }
+
+      return { success: anySuccess };
     } catch (error) {
       console.error(`Error sending notification to user ${userId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Send push notifications via Expo Push API for Expo tokens.
+   * @param {string[]} expoTokens
+   * @param {{title: string, body: string, data?: object}} notification
+   * @returns {Promise<boolean>} true if any message accepted
+   */
+  async sendExpoPush(expoTokens, notification) {
+    if (!Array.isArray(expoTokens) || expoTokens.length === 0) return false;
+    const url = 'https://exp.host/--/api/v2/push/send';
+
+    // Chunk into batches of 100 (Expo limit per request)
+    const chunk = (arr, size) => arr.reduce((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), []);
+    const batches = chunk(expoTokens, 100);
+
+    let anyOk = false;
+    for (const batch of batches) {
+      const messages = batch.map((to) => ({
+        to,
+        title: notification.title,
+        body: notification.body,
+        sound: 'default',
+        data: notification.data || {},
+      }));
+
+      const res = await this._postJson(url, messages);
+      const results = res?.data || res; // Expo responds with { data: [...] }
+      if (Array.isArray(results)) {
+        anyOk = anyOk || results.some((r) => r.status === 'ok');
+        results.forEach((r, idx) => {
+          if (r.status !== 'ok') {
+            console.warn('Expo push error for token', batch[idx], r);
+          }
+        });
+      }
+    }
+    return anyOk;
+  }
+
+  /**
+   * Minimal JSON POST helper using global fetch or https fallback.
+   */
+  async _postJson(url, body) {
+    if (typeof fetch === 'function') {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      try { return await resp.json(); } catch { return undefined; }
+    }
+    // Fallback to https module (Node <18)
+    const https = require('https');
+    const { URL } = require('url');
+    const u = new URL(url);
+    const options = {
+      method: 'POST',
+      hostname: u.hostname,
+      path: u.pathname + (u.search || ''),
+      headers: { 'Content-Type': 'application/json' },
+    };
+    const payload = JSON.stringify(body);
+    return await new Promise((resolve, reject) => {
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          try { resolve(JSON.parse(data)); } catch { resolve(undefined); }
+        });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
   }
 
   /**
