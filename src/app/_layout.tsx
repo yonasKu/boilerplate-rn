@@ -86,13 +86,15 @@ const InitialLayout = () => {
     } else if (user) {
       const isViewerAccount = (accountType ?? 'full') === 'view-only';
       if (isViewerAccount) {
+        const isOnPricing = inAuthGroup && Array.isArray(segments) && (segments as string[]).includes('pricing');
         if (!user.emailVerified) {
           if (!inAuthGroup) {
             console.log('Viewer not verified, redirecting to verify-email...');
             router.replace('/(auth)/verify-email');
           }
-        } else if (!inMainGroup) {
-          console.log('Authenticated viewer, redirecting to main app...');
+        } else if (!inMainGroup && !isOnPricing) {
+          // Allow pricing page for viewers so they can upgrade/create their own journal
+          console.log('Authenticated viewer, redirecting to main app (pricing exempt)...');
           router.replace('/(main)/(tabs)/journal');
         }
       } else if (!inAuthGroup && !inMainGroup && segments && segments.length > 0) {

@@ -19,6 +19,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../../../theme/colors';
 import { useAccount } from '@/context/AccountContext';
+import ErrorBanner from '../../../components/ui/ErrorBanner';
 
 export default function VerifyEmailScreen() {
     const router = useRouter();
@@ -119,15 +120,12 @@ export default function VerifyEmailScreen() {
                             {typeof email === 'string' ? email : email[0]}
                         </Text>
                     )}
-
+                    <ErrorBanner message={verificationStatus} onClose={() => setVerificationStatus(null)} />
                 </View>
                 <View style={styles.footerContainer}>
                     <Text style={styles.helperText}>
                         Can't find it? Check your spam/junk folder or promotions tab
                     </Text>
-                    {verificationStatus && (
-                        <Text style={styles.verificationStatus}>{verificationStatus}</Text>
-                    )}
                     <TouchableOpacity
                         style={[styles.button, styles.primaryButton]}
                         onPress={handleContinue}

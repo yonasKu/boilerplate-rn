@@ -51,7 +51,20 @@ export const NotificationContainer: React.FC = () => {
           type={notification.type}
           time={notification.time}
           actionText={notification.actionText}
-          onClose={() => removeNotification(notification.id)}
+          onClose={async () => {
+            try {
+              // If producers opt in, mark as read in Firestore when the toast is closed (tapped or auto-dismissed)
+              const shouldMarkRead = notification?.data?.markReadOnClose === true;
+              const firestoreNotificationId = notification?.data?.notificationId as string | undefined;
+              if (shouldMarkRead && firestoreNotificationId) {
+                await NotificationService.markNotificationAsRead(firestoreNotificationId);
+              }
+            } catch (e) {
+              console.warn('🔔 NotificationContainer: Failed optional mark read on close', e);
+            } finally {
+              removeNotification(notification.id);
+            }
+          }}
           onAction={() => handleAction(notification)}
         />
       ))}

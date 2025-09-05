@@ -221,7 +221,7 @@ const RecapViewScreen = () => {
                 <View style={styles.contentContainer}>
                     <View style={styles.titleContainer}>
                         <Image source={require('@/assets/images/two_stars_icon.png')} style={styles.sparkleIcon} />
-                        <Text style={styles.title}>{recap.title || formatRecapTitle(recap)}</Text>
+                        <Text style={styles.title}>{formatRecapTitle(recap)}</Text>
                     </View>
                     <Text style={styles.description}>{recap.aiGenerated?.recapText || ''}</Text>
 

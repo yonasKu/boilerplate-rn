@@ -3,6 +3,7 @@ import { View, StyleSheet, StatusBar, FlatList, Alert, Text, TouchableOpacity, P
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../../context/AuthContext';
+import { useAccount } from '@/context/AccountContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
@@ -31,7 +32,15 @@ const RecapsScreen = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  const { recaps: rawRecaps, loading } = useRecaps();
+  const { accountType, sharedAccess, loading: accountLoading } = useAccount();
+  // If view-only, show owner's recaps (take the first linked owner)
+  const ownerId = React.useMemo(() => {
+    if ((accountType ?? 'full') === 'view-only') {
+      return sharedAccess && sharedAccess.length > 0 ? sharedAccess[0].ownerId : undefined;
+    }
+    return undefined;
+  }, [accountType, sharedAccess]);
+  const { recaps: rawRecaps, loading } = useRecaps(ownerId);
   const hasAnyRecap = (rawRecaps || []).length > 0;
 
   // Fetch user profile and children
@@ -138,7 +147,7 @@ const RecapsScreen = () => {
     // Implement actual sharing logic here
   };
 
-  if (loading || loadingProfile) {
+  if (loading || loadingProfile || accountLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Text>Loading recaps...</Text>
@@ -184,6 +193,9 @@ const RecapsScreen = () => {
               {journalTitle}
             </Text>
           </View>
+          <View style={styles.headerMiddle}>
+            <FamilySharingBubbles />
+          </View>
           <View style={styles.headerRight}>
             <TouchableOpacity style={styles.headerButton} onPress={() => router.push('/(main)/notifications')}>
               <View style={styles.notificationContainer}>
@@ -197,9 +209,6 @@ const RecapsScreen = () => {
               <Ionicons name="settings-outline" size={22} color="#2F4858" />
             </TouchableOpacity>
           </View>
-        </View>
-        <View style={styles.bubblesRow}>
-          <FamilySharingBubbles />
         </View>
       </View>
       {hasAnyRecap ? (
@@ -271,6 +280,12 @@ const styles = StyleSheet.create({
     gap: 12,
     flexShrink: 1,
   },
+  headerMiddle: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
   headerTitle: {
     fontSize: 18,
     fontFamily: 'Poppins_500Medium',
@@ -280,11 +295,6 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  bubblesRow: {
-    marginTop: 8,
-    alignItems: 'flex-end',
-    paddingRight: 6,
   },
   headerButton: {
     padding: 4,

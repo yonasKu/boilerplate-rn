@@ -66,12 +66,12 @@ export const signUpWithEmail = async (email: string, password: string, firstName
   // Send verification email in both cases
   await sendEmailVerification(userCredential.user);
 
-  // Ensure minimal user document exists (avoid client writing subscription fields)
+  // IMPORTANT: Sign out immediately to avoid persisting an unverified session
+  // The user should only be considered authenticated AFTER they verify their email
   try {
-    const { ensureUserDocumentExists } = await import('../../services/userService');
-    await ensureUserDocumentExists(userCredential.user.uid, fullName, email);
-  } catch (error) {
-    console.error('Error ensuring user profile after email sign up/link:', error);
+    await firebaseSignOut(auth);
+  } catch (e) {
+    console.warn('signUpWithEmail: failed to sign out after sending verification (non-fatal):', e);
   }
 
   return userCredential;

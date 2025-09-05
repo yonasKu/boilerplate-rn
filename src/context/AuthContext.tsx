@@ -71,6 +71,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Attempt to accept any pending family invite captured before auth (from EnterInviteCodeScreen)
+  const applyPendingInviteIfAny = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@pendingInviteCode');
+      const code = (stored || '').trim();
+      if (!code) return;
+      console.log('[AuthContext] Found @pendingInviteCode, attempting to accept');
+      try {
+        const { FamilyService } = await import('@/services/familyService');
+        await FamilyService.acceptInvitation(code);
+        console.log('[AuthContext] Pending invite accepted successfully');
+      } catch (e) {
+        console.error('[AuthContext] Failed to accept pending invite code:', e);
+      } finally {
+        await AsyncStorage.removeItem('@pendingInviteCode');
+      }
+    } catch (e) {
+      console.error('[AuthContext] Error reading @pendingInviteCode:', e);
+    }
+  };
+
   useEffect(() => {
     // onAuthStateChanged returns an unsubscribe function
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -79,11 +100,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Check onboarding status when user changes
       if (currentUser) {
+        // Make sure we have the latest emailVerified flag
+        try {
+          await currentUser.reload();
+        } catch (e) {
+          console.warn('[AuthContext] user.reload() failed (non-fatal):', e);
+        }
         // Skip onboarding check for unverified users to prevent permission errors
         if (currentUser.emailVerified) {
+          // Ensure users/{uid} doc exists even if user re-opened the app after verifying email
+          // This covers flows that don't pass through the explicit login handler
+          try {
+            const { ensureUserDocumentExists } = await import('../services/userService');
+            await ensureUserDocumentExists(
+              currentUser.uid,
+              currentUser.displayName ?? null,
+              currentUser.email ?? null
+            );
+          } catch (e) {
+            console.warn('[AuthContext] ensureUserDocumentExists on verified session failed (non-fatal):', e);
+          }
+
           await refreshOnboardingStatus();
           // Process any pending referral captured pre-auth (deep link or manual entry)
           await applyPendingReferralIfAny();
+          // Process any pending family invite code captured pre-auth
+          await applyPendingInviteIfAny();
           // Initialize and register notifications for this user
           try {
             await NotificationService.initAndRegister(currentUser.uid);
@@ -125,7 +167,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const value = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!user.emailVerified,
     isLoading,
     onboardingStatus,
     isCheckingOnboarding,

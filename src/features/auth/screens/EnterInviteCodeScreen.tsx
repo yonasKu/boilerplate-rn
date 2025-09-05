@@ -6,16 +6,18 @@ import { FamilyService } from '../../../services/familyService';
 import { useAuth } from '../../../context/AuthContext';
 import { Colors } from '../../../theme/colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ErrorBanner from '../../../components/ui/ErrorBanner';
 
 const EnterInviteCodeScreen = () => {
   const [inviteCode, setInviteCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uiError, setUiError] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useAuth();
 
   const handleAcceptInvite = async () => {
     if (!inviteCode.trim()) {
-      Alert.alert('Required', 'Please enter an invite code.');
+      setUiError('Please enter an invite code.');
       return;
     }
 
@@ -27,7 +29,7 @@ const EnterInviteCodeScreen = () => {
         router.replace('/(auth)/signup');
       } catch (e) {
         console.error('Error storing pending invite code:', e);
-        Alert.alert('Error', 'Could not proceed. Please try again.');
+        setUiError('Could not proceed. Please try again.');
       }
       return;
     }
@@ -39,7 +41,7 @@ const EnterInviteCodeScreen = () => {
       router.replace('/(main)/(tabs)/journal');
     } catch (error: any) {
       console.error('Error accepting invitation:', error);
-      Alert.alert('Error', error.message || 'Failed to accept invitation. Please check the code and try again.');
+      setUiError(error?.message || 'Failed to accept invitation. Please check the code and try again.');
     } finally {
       setLoading(false);
     }
@@ -62,6 +64,7 @@ const EnterInviteCodeScreen = () => {
           <Text style={styles.description}>
             This is only for Family Sharing. Enter the family invite code to join and access shared Recaps.
           </Text>
+          <ErrorBanner message={uiError} onClose={() => setUiError(null)} />
         </View>
 
         <View style={styles.footerContainer}>
@@ -70,7 +73,7 @@ const EnterInviteCodeScreen = () => {
             placeholder="Enter family invite code"
             value={inviteCode}
             placeholderTextColor={Colors.mediumGrey}
-            onChangeText={setInviteCode}
+            onChangeText={(t) => { setInviteCode(t); setUiError(null); }}
             autoCapitalize="characters"
             autoCorrect={false}
           />

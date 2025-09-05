@@ -17,6 +17,8 @@ export interface Notification {
 // Global notification state - singleton
 let globalNotifications: Notification[] = [];
 let listeners: Array<(notifications: Notification[]) => void> = [];
+// Locally suppressed notification ids (do not re-show these toasts in this session)
+const suppressedIds = new Set<string>();
 
 const notifyListeners = () => {
   listeners.forEach(listener => listener(globalNotifications));
@@ -48,23 +50,24 @@ export const useNotification = () => {
     globalNotifications = [...globalNotifications, newNotification];
     notifyListeners();
 
-    // Auto-remove after 3 seconds for test notifications
-    if (notification.title.includes('TEST')) {
+    // Auto-remove non-persistent notifications after 3 seconds
+    if (!notification.data?.persistent) {
       setTimeout(() => {
-        console.log('🔔 Auto-removing test notification:', id);
+        console.log('🔔 Auto-removing notification:', id);
         removeNotification(id);
       }, 3000);
-    } else if (!notification.data?.persistent) {
-      setTimeout(() => {
-        console.log('🔔 Auto-removing regular notification:', id);
-        removeNotification(id);
-      }, 5000);
     } else {
       console.log('🔔 Notification: Keeping persistent notification visible');
     }
   }, []);
 
   const removeNotification = useCallback((id: string) => {
+    // Add to suppression set so it won't re-show in this session
+    try {
+      const notif = globalNotifications.find(n => n.id === id);
+      const nid = (notif && typeof notif.data?.notificationId === 'string') ? notif.data.notificationId : id;
+      if (nid) suppressedIds.add(nid);
+    } catch {}
     globalNotifications = globalNotifications.filter(n => n.id !== id);
     notifyListeners();
   }, []);
@@ -96,6 +99,7 @@ export const useNotification = () => {
       const notificationsQuery = query(
         collection(db, 'notifications'),
         where('userId', '==', userId),
+        where('isRead', '==', false),
         orderBy('createdAt', 'desc'),
         limit(20)
       );
@@ -105,6 +109,8 @@ export const useNotification = () => {
         const realNotifications: Notification[] = [];
         
         snapshot.forEach((doc: any) => {
+          // Skip locally suppressed notifications to avoid re-showing a toast
+          if (suppressedIds.has(doc.id)) return;
           const data = doc.data();
           realNotifications.push({
             id: doc.id,
@@ -114,7 +120,7 @@ export const useNotification = () => {
             time: data.createdAt?.toDate()?.toLocaleString() || 'Recently',
             actionText: data.actionText,
             actionUrl: data.actionUrl,
-            data: data.data,
+            data: { ...(data.data || {}), notificationId: doc.id },
             isPush: true,
           });
         });

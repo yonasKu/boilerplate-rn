@@ -207,6 +207,29 @@ export const FamilyService = {
     }
   },
 
+  revokeInvitation: async (inviteCode: string): Promise<{ success: boolean; invitationId?: string; alreadyRevoked?: boolean }> => {
+    try {
+      const token = await getIdTokenOrAnon();
+      const url = buildFunctionUrl('familyRevokeInvitation');
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ inviteCode }),
+      } as any);
+      if (!(resp as any).ok) {
+        const err = await safeJson(resp);
+        throw new Error(err?.error || 'Failed to revoke invitation');
+      }
+      return await (resp as any).json();
+    } catch (error) {
+      console.error('Error revoking invitation:', error);
+      throw error;
+    }
+  },
+
   getSharedAccess: async (): Promise<SharedAccess[]> => {
     try {
       const token = await getIdTokenOrAnon();

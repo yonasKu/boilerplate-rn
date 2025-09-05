@@ -33,10 +33,10 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
     const [isMilestone, setIsMilestone] = useState(false);
 
     // Debug logging for recap data
-    console.log('RecapCard - Full recap data:', recap);
-    console.log('RecapCard - recap.media:', recap.media);
-    console.log('RecapCard - recap.media?.highlightPhotos:', recap.media?.highlightPhotos);
-    console.log('RecapCard - recap.summary?.media?.highlightPhotos:', recap.summary?.media?.highlightPhotos);
+    // console.log('RecapCard - Full recap data:', recap);
+    // console.log('RecapCard - recap.media:', recap.media);
+    // console.log('RecapCard - recap.media?.highlightPhotos:', recap.media?.highlightPhotos);
+    // console.log('RecapCard - recap.summary?.media?.highlightPhotos:', recap.summary?.media?.highlightPhotos);
     
     // Use highlightPhotos directly from recap data, fallback to summary.media.highlightPhotos
     const highlightPhotos = (recap.media?.highlightPhotos && recap.media?.highlightPhotos?.length > 0) 
@@ -139,7 +139,7 @@ export const RecapCard: React.FC<RecapCardProps> = ({ recap, onShare }) => {
             {recap.title ? (
                 <View style={styles.header}>
                     <Image source={require('@/assets/images/two_stars_icon.png')} style={styles.sparkleIcon} />
-                    <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">{recap.title}</Text>
+                    <Text style={styles.title} numberOfLines={2} ellipsizeMode="tail">{recap.title}</Text>
                 </View>
             ) : null}
             <RecapMediaGrid media={highlightPhotos?.map((url: string) => ({ url, type: 'image' as const })) ?? []} dateOverlay={formattedDate} />

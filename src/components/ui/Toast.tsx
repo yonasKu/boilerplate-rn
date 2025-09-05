@@ -12,6 +12,7 @@ interface ToastProps {
     actionText?: string;
     onClose: () => void;
     onAction?: () => void;
+    autoDismissMs?: number; // if > 0, auto close after this many ms
 }
 
 export const Toast: React.FC<ToastProps> = ({
@@ -22,7 +23,8 @@ export const Toast: React.FC<ToastProps> = ({
     icon,
     actionText,
     onClose,
-    onAction
+    onAction,
+    autoDismissMs = 3000,
 }) => {
     const slideAnim = new Animated.Value(-100);
     const opacityAnim = new Animated.Value(0);
@@ -43,6 +45,16 @@ export const Toast: React.FC<ToastProps> = ({
         ]).start();
     }, []);
 
+    useEffect(() => {
+        // Auto-dismiss after timeout if enabled
+        if (autoDismissMs && autoDismissMs > 0) {
+            const t = setTimeout(() => {
+                onClose();
+            }, autoDismissMs);
+            return () => clearTimeout(t);
+        }
+    }, [autoDismissMs, onClose]);
+
     const getIcon = () => {
         // Use existing profile-2user.png for all notification types
         // This matches the ReminderToast component
@@ -59,6 +71,7 @@ export const Toast: React.FC<ToastProps> = ({
                 },
             ]}
         >
+            <TouchableOpacity activeOpacity={0.9} onPress={onClose}>
             <View style={styles.toast}>
                 <View style={styles.header}>
                     <View style={styles.titleContainer}>
@@ -78,6 +91,7 @@ export const Toast: React.FC<ToastProps> = ({
                     ) : null}
                 </View>
             </View>
+            </TouchableOpacity>
         </Animated.View>
     );
 };

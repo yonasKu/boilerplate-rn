@@ -6,6 +6,7 @@ import { biometricService } from '@/services/biometricService';
 import { AppleAuthService } from '@/features/auth/services/appleAuthService';
 import { NotificationService } from '@/services/notifications/NotificationService';
 import { FamilyService } from '@/services/familyService';
+import { mapAuthError } from '@/utils/authErrorMapper';
 
 export const useLogin = () => {
     const router = useRouter();
@@ -22,6 +23,26 @@ export const useLogin = () => {
     const [biometricType, setBiometricType] = useState<string>('Face ID');
     const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
     const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+    const [uiError, setUiError] = useState<string | null>(null);
+
+    // Determine if current user should be treated as a view-only account.
+    // Uses accountType and sharedAccess, with a fallback to a lightweight isViewer() check.
+    const isViewerAccount = async (): Promise<boolean> => {
+        try {
+            const { accountType, sharedAccess } = await FamilyService.getAccountStatus();
+            if (accountType === 'view-only') return true;
+            if (Array.isArray(sharedAccess) && sharedAccess.length > 0) return true;
+        } catch (e) {
+            console.warn('Primary account status check failed, will try fallback isViewer()', e);
+        }
+        try {
+            const isViewer = await FamilyService.isViewer();
+            return !!isViewer;
+        } catch (e) {
+            console.warn('Fallback isViewer() check failed', e);
+            return false;
+        }
+    };
 
     const registerForPushNotifications = async (userId: string) => {
         try {
@@ -72,7 +93,7 @@ export const useLogin = () => {
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('Login Failed', 'Please enter both email and password.');
+            setUiError('Please enter both email and password.');
             return;
         }
 
@@ -80,7 +101,30 @@ export const useLogin = () => {
         try {
             const userCredential = await signInWithEmail(email, password);
             if (userCredential.user) {
-                // Ensure user document exists (handles migrated users without a doc)
+                // Enforce email verification gate: if not verified, sign out and stop.
+                try {
+                    // Refresh user state and check verification
+                    await userCredential.user.reload();
+                } catch {}
+                if (!userCredential.user.emailVerified) {
+                    try {
+                        const { sendEmailVerification, getAuth, signOut: fbSignOut } = await import('firebase/auth');
+                        // Re-send verification email as a convenience
+                        await sendEmailVerification(userCredential.user);
+                        // Immediately sign out to avoid an unverified persisted session
+                        await fbSignOut(getAuth());
+                    } catch (e) {
+                        console.warn('Post-login verification handling encountered an issue (non-fatal):', e);
+                    }
+                    Alert.alert(
+                        'Verify your email',
+                        'We sent you a verification email. Please verify your email, then open the app and sign in again.'
+                    );
+                    setIsLoading(false);
+                    return;
+                }
+
+                // Verified: ensure user document exists (handles migrated users without a doc)
                 try {
                     const { ensureUserDocumentExists } = await import('../../../services/userService');
                     await ensureUserDocumentExists(
@@ -134,8 +178,7 @@ export const useLogin = () => {
             
             // View-only accounts: skip onboarding screens, go straight to main app
             try {
-                const { accountType } = await FamilyService.getAccountStatus();
-                if (accountType === 'view-only') {
+                if (await isViewerAccount()) {
                     router.replace('/(main)/(tabs)/journal');
                     return;
                 }
@@ -152,28 +195,13 @@ export const useLogin = () => {
             if (!status.hasProfile) {
                 router.replace('/(auth)/add-profile');
             } else if (!status.hasChild) {
-                router.replace('/(auth)/add-profile');
+                router.replace('/(auth)/add-child-details');
             } else {
                 router.replace('/(main)/(tabs)/journal');
             }
         } catch (error: any) {
-            let errorMessage = 'Login failed. Please check your credentials.';
-            if (error.code === 'auth/user-not-found') {
-                errorMessage = 'No user found with this email address.';
-            } else if (error.code === 'auth/wrong-password') {
-                errorMessage = 'Invalid password. Please try again.';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = 'Invalid email format.';
-            } else if (error.code === 'auth/user-disabled') {
-                errorMessage = 'This account has been disabled.';
-            } else if (error.code === 'auth/network-request-failed') {
-                errorMessage = 'Network error. Please check your internet connection.';
-            } else if (error.code === 'auth/too-many-requests') {
-                errorMessage = 'Too many failed attempts. Please try again later.';
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            Alert.alert('Login Failed', errorMessage);
+            const errorMessage = mapAuthError(error) || 'Login failed. Please check your credentials.';
+            setUiError(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -186,7 +214,7 @@ export const useLogin = () => {
 
     const handleSendResetEmail = async () => {
         if (!resetEmail.trim()) {
-            Alert.alert('Error', 'Please enter your email address');
+            setUiError('Please enter your email address.');
             return;
         }
 
@@ -203,7 +231,7 @@ export const useLogin = () => {
             );
             setResetEmail('');
         } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to send reset email');
+            setUiError(mapAuthError(error) || 'Failed to send reset email.');
         } finally {
             setIsSendingReset(false);
         }
@@ -224,8 +252,7 @@ export const useLogin = () => {
                 setTimeout(async () => {
                     // View-only accounts: skip onboarding screens, go straight to main app
                     try {
-                        const { accountType } = await FamilyService.getAccountStatus();
-                        if (accountType === 'view-only') {
+                        if (await isViewerAccount()) {
                             router.replace('/(main)/(tabs)/journal');
                             return;
                         }
@@ -275,7 +302,7 @@ export const useLogin = () => {
                     console.log('Google sign-in dismissed/cancelled by user');
                 } else if (result?.type === 'error') {
                     console.warn('Google sign-in error from provider:', result?.error || result);
-                    Alert.alert('Google Sign-In Failed', 'Unable to complete sign-in. Please try again.');
+                    setUiError('Unable to complete Google sign-in. Please try again.');
                 }
                 return;
             }
@@ -309,7 +336,7 @@ export const useLogin = () => {
             const authUser = await waitForAuthUser();
             if (!authUser) {
                 console.warn('Google sign-in did not complete within timeout: no authenticated user');
-                Alert.alert('Google Sign-In Incomplete', 'We could not verify your sign-in. Please try again.');
+                setUiError('We could not verify your Google sign-in. Please try again.');
                 return;
             }
 
@@ -317,8 +344,7 @@ export const useLogin = () => {
 
             // View-only accounts: skip onboarding screens, go straight to main app
             try {
-                const { accountType } = await FamilyService.getAccountStatus();
-                if (accountType === 'view-only') {
+                if (await isViewerAccount()) {
                     router.replace('/(main)/(tabs)/journal');
                     return;
                 }
@@ -343,7 +369,7 @@ export const useLogin = () => {
             }
         } catch (error) {
             console.error('Google Sign-In Error:', error);
-            Alert.alert('Sign-In Error', 'An unexpected error occurred. Please try again.');
+            setUiError('An unexpected error occurred during Google sign-in. Please try again.');
         } finally {
             setIsLoading(false);
         }
@@ -447,8 +473,7 @@ export const useLogin = () => {
                         
                         // View-only accounts: skip onboarding screens, go straight to main app
                         try {
-                            const { accountType } = await FamilyService.getAccountStatus();
-                            if (accountType === 'view-only') {
+                            if (await isViewerAccount()) {
                                 router.replace('/(main)/(tabs)/journal');
                                 return;
                             }
@@ -554,6 +579,8 @@ export const useLogin = () => {
         biometricAvailable,
         biometricEnabled,
         biometricType,
+        uiError,
+        setUiError,
         
         // Functions
         handleLogin,

@@ -190,8 +190,8 @@ const styles = StyleSheet.create({
   },
   editIconContainer: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
+    bottom: -16,
+    right: -10,
     // backgroundColor: Colors.primary,
     // borderRadius: 12,
     padding: 4,
@@ -199,9 +199,9 @@ const styles = StyleSheet.create({
     // borderColor: Colors.white,
   },
   editIcon: {
-    width: 14,
-    height: 14,
-    tintColor: Colors.white,
+    width: 44,
+    height: 44,
+    //tintColor: Colors.white,
     resizeMode: 'contain',
   },
   profileName: {

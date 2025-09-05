@@ -90,17 +90,24 @@ const NotificationScreen = () => {
             : (['recap_love', 'comment', 'reminder', 'streak', 'recap_ready'] as string[]).includes(rawType)
             ? (rawType as NotificationItem['type'])
             : 'comment';
+        // Build users array with fallbacks for older notifications
+        let users = Array.isArray(data.users) ? data.users : [];
+        if ((!users || users.length === 0) && normalizedType === 'comment') {
+          const name = data.commenterName || 'Someone';
+          const avatar = data.commenterAvatar || data.commenterPhotoUrl || '';
+          users = [{ name, avatar }];
+        }
         notificationsData.push({
           id: doc.id,
           type: normalizedType,
-          users: data.users || [],
+          users,
           recap: data.recap,
           recapId: data.recapId || data.recap?.id,
-          comment: data.comment,
+          comment: data.comment || undefined,
           body: data.body,
           title: data.title,
-          date: data.date || new Date(data.createdAt?.toDate()).toLocaleDateString(),
-          isRead: data.isRead || false,
+          date: data.date || (data.createdAt?.toDate ? new Date(data.createdAt.toDate()).toLocaleDateString() : ''),
+          isRead: (typeof data.isRead === 'boolean' ? data.isRead : (typeof data.read === 'boolean' ? data.read : false)),
           createdAt: data.createdAt,
         });
       });

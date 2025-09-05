@@ -14,15 +14,30 @@ import JournalEntryPreviewCard from '@/features/journal/components/JournalEntryP
 import ShareBottomSheet from '@/features/journal/components/ShareBottomSheet';
 import ActionCallout from '@/components/ui/ActionCallout';
 import { useRouter } from 'expo-router';
+import { FamilyService } from '@/services/familyService';
+import { useAccount } from '@/context/AccountContext';
 
 
 const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { isFullAccount } = useAccount();
   const { entries, isLoading, updateEntry, toggleLike } = useJournal();
   const latest = entries && entries.length > 0 ? entries[0] : null;
   const [showShareModal, setShowShareModal] = React.useState(false);
   const [shareEntry, setShareEntry] = React.useState<any>(null);
+
+  // Debug: Log account status on mount to verify backend classification
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const status = await FamilyService.getAccountStatus();
+        console.log('[HomeScreen] AccountStatus:', status);
+      } catch (e) {
+        console.error('[HomeScreen] getAccountStatus error:', e);
+      }
+    })();
+  }, []);
 
   const toJsDate = (v: any | undefined | null): Date | null => {
     if (!v) return null;
@@ -115,23 +130,31 @@ const HomeScreen: React.FC = () => {
         contentContainerStyle={[styles.content, { paddingBottom: 24 + insets.bottom + 80 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top CTA:
-            - If no entries: Start card
-            - Else if user hasn't posted today: show "Add today's entry" callout
-            - Else: hide
-        */}
-        {(!latest && !isLoading) ? (
-          <StartJournalCard />
-        ) : showAddToday ? (
+        {/* Top CTA (owner-only) */}
+        {isFullAccount ? (
+          (!latest && !isLoading) ? (
+            <StartJournalCard />
+          ) : showAddToday ? (
+            <ActionCallout
+              title={"Add today's entry"}
+              description="What made you smile today? Take 30 seconds to add today's entry."
+              ctaLabel="Add memory"
+              onPress={() => router.push('/(main)/new-entry')}
+              dateBadge={today}
+              backgroundColor={Colors.lightPink2}
+            />
+          ) : null
+        ) : (
+          // Viewer-specific prompt
           <ActionCallout
-            title="Add today's entry"
-            description="What made you smile today? Take 30 seconds to add today's entry."
-            ctaLabel="Add memory"
-            onPress={() => router.push('/(main)/new-entry')}
-            dateBadge={today}
+            title="Get your own journal"
+            description="Create your private journal to add memories and recaps."
+            ctaLabel="Create journal"
+            onPress={() => router.push('/(auth)/pricing')}
+            iconName="book-outline"
             backgroundColor={Colors.lightPink2}
           />
-        ) : null}
+        )}
 
         {/* Show only today's entry as a preview card when user posted today. Do not show older latest entries. */}
         {hasToday && todaysLatest ? (
@@ -147,13 +170,14 @@ const HomeScreen: React.FC = () => {
           />
         ) : null}
 
-        {/* Weekly completion callout (middle). Only show if user posted this week. */}
-        {!showAddToday && hasEntriesThisWeek && (
+        {/* Weekly completion callout (owner-only). Only show if user posted this week. */}
+        {isFullAccount && !showAddToday && hasEntriesThisWeek && (
           completedWeekly ? (
             <ActionCallout
               title={"You're all caught up!"}
               description="Come back tomorrow to capture more memories."
               success
+              iconName="list-outline"
               backgroundColor={Colors.lightPink2}
             />
           ) : (

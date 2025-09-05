@@ -7,11 +7,12 @@ interface FamilyMemberCircleProps {
   name: string;
   image?: ImageSourcePropType;
   onPress?: () => void;
+  onLongPress?: () => void;
   selected?: boolean;
   hideName?: boolean;
 }
 
-const FamilyMemberCircle: React.FC<FamilyMemberCircleProps> = ({ name, image, onPress, selected, hideName }) => {
+const FamilyMemberCircle: React.FC<FamilyMemberCircleProps> = ({ name, image, onPress, onLongPress, selected, hideName }) => {
   const renderAvatar = () => {
     if (image) {
       return <Image source={image} style={[styles.image, selected ? styles.imageSelected : undefined]} />;
@@ -27,7 +28,7 @@ const FamilyMemberCircle: React.FC<FamilyMemberCircleProps> = ({ name, image, on
   };
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity style={styles.container} onPress={onPress} onLongPress={onLongPress} delayLongPress={300}>
       {renderAvatar()}
       {!hideName && <Text style={styles.name}>{name}</Text>}
     </TouchableOpacity>

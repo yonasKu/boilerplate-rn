@@ -12,10 +12,12 @@ import ShareBottomSheet from '../components/ShareBottomSheet';
 import { Colors } from '@/theme';
 import { ProfileAvatar } from '../../../components/ProfileAvatar';
 import { useJournalScreen } from '@/hooks/useJournalScreen';
+import { useAccount } from '@/context/AccountContext';
 
 const JournalScreen = () => {
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { isFullAccount } = useAccount();
     const {
         // data
         entries,
@@ -178,14 +180,25 @@ const JournalScreen = () => {
             ) : filteredEntries.length === 0 ? (
                 entries.length === 0 ? (
                     <View style={styles.emptyCalloutContainer}>
-                        <ActionCallout
-                            title="Start your journal"
-                            description="Take 30 seconds now to create memories for a lifetime."
-                            ctaLabel="Add first memory"
-                            onPress={() => router.push('/(main)/new-entry')}
-                            dateBadge={new Date()}
-                            backgroundColor={Colors.lightPink2}
-                        />
+                        {isFullAccount ? (
+                            <ActionCallout
+                                title="Start your journal"
+                                description="Take 30 seconds now to create memories for a lifetime."
+                                ctaLabel="Add first memory"
+                                onPress={() => router.push('/(main)/new-entry')}
+                                dateBadge={new Date()}
+                                backgroundColor={Colors.lightPink2}
+                            />
+                        ) : (
+                            <ActionCallout
+                                title="Get your own journal"
+                                description="Create your private journal to add memories and recaps."
+                                ctaLabel="Create journal"
+                                onPress={() => router.push('/(auth)/pricing')}
+                                iconName="book-outline"
+                                backgroundColor={Colors.lightPink2}
+                            />
+                        )}
                     </View>
                 ) : (
                     <View style={styles.centeredContent}>

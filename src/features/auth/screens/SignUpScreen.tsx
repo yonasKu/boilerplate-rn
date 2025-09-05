@@ -6,6 +6,7 @@ import { useSignUp } from '../hooks/useSignUp';
 import { FontAwesome } from '@expo/vector-icons';
 import { Button } from '../../../components/Button';
 import { Colors } from '../../../theme/colors';
+import ErrorBanner from '../../../components/ui/ErrorBanner';
 
 const SignUpScreen = () => {
     const router = useRouter();
@@ -25,7 +26,9 @@ const SignUpScreen = () => {
         handleSignUp,
         handleGoogleSignIn,
         handleAppleSignUp,
-        appleSignInAvailable
+        appleSignInAvailable,
+        uiError,
+        setUiError
     } = useSignUp();
 
     return (
@@ -37,12 +40,13 @@ const SignUpScreen = () => {
             >
                 <ScrollView contentContainerStyle={styles.scrollContainer}>
                     <Text style={styles.title}>Create your account</Text>
+                    <ErrorBanner message={uiError} onClose={() => setUiError(null)} />
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
                             placeholder="Name *"
                             value={name}
-                            onChangeText={setName}
+                            onChangeText={(t) => { setName(t); setUiError(null); }}
                             placeholderTextColor={Colors.mediumGrey}
                             accessibilityLabel="Name input"
                             autoCapitalize="words"
@@ -54,7 +58,7 @@ const SignUpScreen = () => {
                             placeholder="Email address *"
                             placeholderTextColor={Colors.mediumGrey}
                             value={email}
-                            onChangeText={setEmail}
+                            onChangeText={(t) => { setEmail(t); setUiError(null); }}
                             keyboardType="email-address"
                             autoCapitalize="none"
                             accessibilityLabel="Email address input"
@@ -66,7 +70,7 @@ const SignUpScreen = () => {
                             placeholder="Password *"
                             placeholderTextColor={Colors.mediumGrey}
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={(t) => { setPassword(t); setUiError(null); }}
                             secureTextEntry={!isPasswordVisible}
                             onFocus={() => setIsPasswordFocused(true)}
                             onBlur={() => setIsPasswordFocused(false)}

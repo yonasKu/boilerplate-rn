@@ -6,17 +6,19 @@ import { useAuth } from '@/context/AuthContext';
 import { ReferralService } from '@/services/referralService';
 import { Colors } from '@/theme/colors';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ErrorBanner from '@/components/ui/ErrorBanner';
 
 const EnterReferralCodeScreen = () => {
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
+  const [uiError, setUiError] = useState<string | null>(null);
   const router = useRouter();
   const { user } = useAuth();
 
   const handleProcessReferral = async () => {
     const code = referralCode.trim().toUpperCase();
     if (!code) {
-      Alert.alert('Required', 'Please enter a referral code.');
+      setUiError('Please enter a referral code.');
       return;
     }
 
@@ -27,7 +29,7 @@ const EnterReferralCodeScreen = () => {
         router.replace('/(auth)/signup');
       } catch (e) {
         console.error('Error storing pending referral code:', e);
-        Alert.alert('Error', 'Could not proceed. Please try again.');
+        setUiError('Could not proceed. Please try again.');
       }
       return;
     }
@@ -39,7 +41,7 @@ const EnterReferralCodeScreen = () => {
       router.replace('/(auth)/pricing');
     } catch (error: any) {
       console.error('Error processing referral:', error);
-      Alert.alert('Error', error?.message || 'Failed to apply referral. Please check the code and try again.');
+      setUiError(error?.message || 'Failed to apply referral. Please check the code and try again.');
     } finally {
       setLoading(false);
     }
@@ -62,6 +64,7 @@ const EnterReferralCodeScreen = () => {
           <Text style={styles.description}>
             Enter a referral code to unlock complimentary days
           </Text>
+          <ErrorBanner message={uiError} onClose={() => setUiError(null)} />
         </View>
 
         <View style={styles.footerContainer}>
@@ -70,7 +73,7 @@ const EnterReferralCodeScreen = () => {
             placeholder="Enter referral code"
             value={referralCode}
             placeholderTextColor={Colors.mediumGrey}
-            onChangeText={setReferralCode}
+            onChangeText={(t) => { setReferralCode(t); setUiError(null); }}
             autoCapitalize="characters"
             autoCorrect={false}
           />

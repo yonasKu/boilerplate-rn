@@ -4,6 +4,7 @@ import { useLogin } from '../hooks/useLogin';
 import { router, useNavigation } from 'expo-router';
 import { Colors } from '../../../theme/colors';
 import { Button } from '../../../components/Button';
+import ErrorBanner from '../../../components/ui/ErrorBanner';
 
 
 export default function LoginScreen() {
@@ -36,7 +37,9 @@ export default function LoginScreen() {
         handleAppleSignIn,
         handleBiometricLogin,
         checkBiometricAvailability,
-        toggleBiometricSwitch
+        toggleBiometricSwitch,
+        uiError,
+        setUiError
     } = useLogin();
 
     const navigation = useNavigation();
@@ -61,13 +64,16 @@ export default function LoginScreen() {
                         <Image source={require('../../../assets/images/Logo_Icon_small.png')} style={styles.logo} />
                     </View>
 
+                    {/* Inline, user-friendly auth errors */}
+                    <ErrorBanner message={uiError} onClose={() => setUiError(null)} />
+
                     <View style={styles.inputContainer}>
                         <TextInput
                             style={styles.input}
                             placeholder="Email address *"
                             placeholderTextColor={Colors.mediumGrey}
                             value={email}
-                            onChangeText={setEmail}
+                            onChangeText={(t) => { setUiError(null); setEmail(t); }}
                             keyboardType="email-address"
                             autoCapitalize="none"
                             accessibilityLabel="Email address input"
@@ -80,7 +86,7 @@ export default function LoginScreen() {
                             placeholder="Password *"
                             placeholderTextColor={Colors.mediumGrey}
                             value={password}
-                            onChangeText={setPassword}
+                            onChangeText={(t) => { setUiError(null); setPassword(t); }}
                             secureTextEntry={!isPasswordVisible}
                             accessibilityLabel="Password input"
                         />

@@ -58,7 +58,24 @@ exports.onRecapCommentCreated = functions.firestore
         },
       });
 
-      // In-app notification
+      // Prepare commenter brief (name + avatar) for client rendering
+      let commenterBrief = { name: comment.userName || 'Someone', profileImageUrl: '' };
+      try {
+        const [userSnap, authUser] = await Promise.all([
+          db.collection('users').doc(comment.userId).get(),
+          admin.auth().getUser(comment.userId).catch(() => null),
+        ]);
+        const data = userSnap?.exists ? (userSnap.data() || {}) : {};
+        const email = data.email || authUser?.email || '';
+        const emailLocal = email ? String(email).split('@')[0] : '';
+        const name = data.name || authUser?.displayName || comment.userName || emailLocal || 'Someone';
+        const profileImageUrl = data.profileImageUrl || authUser?.photoURL || '';
+        commenterBrief = { name, profileImageUrl };
+      } catch (e) {
+        console.warn('Failed to enrich commenter brief for notification:', e);
+      }
+
+      // In-app notification (denormalized actor info for UI)
       await db.collection('notifications').add({
         userId: ownerId,
         type: 'recap_comment',
@@ -66,9 +83,13 @@ exports.onRecapCommentCreated = functions.firestore
         body,
         recapId: comment.recapId,
         commentId: context.params.commentId || '',
+        comment: (comment.text || '').toString(),
         commenterId: comment.userId,
-        commenterName: comment.userName || null,
-        read: false,
+        commenterName: comment.userName || commenterBrief.name || null,
+        users: [
+          { name: commenterBrief.name, avatar: commenterBrief.profileImageUrl || null }
+        ],
+        isRead: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -110,14 +131,21 @@ exports.onRecapLikesUpdated = functions.firestore
       for (const likerId of addedLikers) {
         if (likerId === ownerId) continue; // don't notify self-like
 
-        // Get liker display name for message
+        // Get liker display brief for message and UI (name + avatar)
         let likerName = 'Someone';
+        let likerAvatar = '';
         try {
-          const likerSnap = await db.collection('users').doc(likerId).get();
+          const [likerSnap, authUser] = await Promise.all([
+            db.collection('users').doc(likerId).get(),
+            admin.auth().getUser(likerId).catch(() => null),
+          ]);
           if (likerSnap.exists) {
             const u = likerSnap.data() || {};
-            likerName = u.displayName || u.name || 'Someone';
+            likerName = u.displayName || u.name || likerName;
+            likerAvatar = u.profileImageUrl || likerAvatar;
           }
+          if (!likerAvatar && authUser?.photoURL) likerAvatar = authUser.photoURL;
+          if (likerName === 'Someone' && authUser?.displayName) likerName = authUser.displayName;
         } catch {}
 
         // Push notification
@@ -131,7 +159,7 @@ exports.onRecapLikesUpdated = functions.firestore
           },
         });
 
-        // In-app notification
+        // In-app notification (denormalized liker info for UI)
         await db.collection('notifications').add({
           userId: ownerId,
           type: 'recap_like',
@@ -139,7 +167,8 @@ exports.onRecapLikesUpdated = functions.firestore
           body: `${likerName} liked your recap`,
           recapId: context.params.recapId,
           likerId,
-          read: false,
+          users: [ { name: likerName, avatar: likerAvatar || null } ],
+          isRead: false,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       }

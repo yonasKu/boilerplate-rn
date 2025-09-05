@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { signUpWithEmail, useGoogleSignIn } from '@/lib/firebase/auth';
 import { AppleAuthService } from '@/features/auth/services/appleAuthService';
+import { mapAuthError } from '@/utils/authErrorMapper';
 
 export const useSignUp = () => {
     const router = useRouter();
@@ -21,6 +22,7 @@ export const useSignUp = () => {
     });
     const [appleSignInAvailable, setAppleSignInAvailable] = useState(false);
     const { promptAsync: promptGoogleSignIn } = useGoogleSignIn();
+    const [uiError, setUiError] = useState<string | null>(null);
 
     useEffect(() => {
         checkAppleSignInAvailability();
@@ -50,12 +52,12 @@ export const useSignUp = () => {
 
     const handleSignUp = async () => {
         if (!name || !email || !password) {
-            Alert.alert('Missing Information', 'Please fill in all required fields.');
+            setUiError('Please fill in all required fields.');
             return;
         }
 
         if (!validatePassword(password)) {
-            Alert.alert('Invalid Password', 'Please ensure your password meets all the requirements.');
+            setUiError('Please ensure your password meets all the requirements.');
             return;
         }
 
@@ -68,18 +70,8 @@ export const useSignUp = () => {
             router.replace({ pathname: '/(auth)/verify-email', params: { email } });
         } catch (error: any) {
             console.error('Full sign-up error:', JSON.stringify(error, null, 2));
-            // Provide a more user-friendly error message
-            let errorMessage = 'An unexpected error occurred. Please try again.';
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = 'This email address is already in use by another account.';
-            } else if (error.code === 'auth/weak-password') {
-                errorMessage = 'The password is too weak. Please choose a stronger password.';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = 'The email address is not valid. Please check and try again.';
-            } else if (error.code === 'permission-denied') {
-                errorMessage = 'Could not create user profile. Please ensure Firestore is enabled in your Firebase project.';
-            }
-            Alert.alert('Sign-Up Failed', errorMessage);
+            const errorMessage = mapAuthError(error) || 'We could not create your account. Please try again.';
+            setUiError(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -91,7 +83,7 @@ export const useSignUp = () => {
             // The hook's useEffect will handle the rest
         } catch (error) {
             console.error('Google Sign-In Error:', error);
-            Alert.alert('Sign-Up Error', 'An unexpected error occurred. Please try again.');
+            setUiError('An unexpected error occurred during Google sign-up. Please try again.');
         }
     };
 
@@ -187,7 +179,9 @@ export const useSignUp = () => {
         passwordStrength: getPasswordStrength(),
         passwordCriteria,
         isFormValid: name && email && password && Object.values(passwordValidation).every(Boolean),
-        validatePassword
+        validatePassword,
+        uiError,
+        setUiError
     };
 };
 

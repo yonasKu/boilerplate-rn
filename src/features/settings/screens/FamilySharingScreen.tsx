@@ -67,16 +67,61 @@ const FamilySharingScreen = () => {
   const handleRevokeAccess = async (viewerId: string) => {
     try {
       await FamilyService.revokeAccess(viewerId);
-      loadFamilyMembers();
+      await Promise.all([loadFamilyMembers(), loadInvitations()]);
     } catch (error) {
       Alert.alert('Error', 'Failed to revoke access');
     }
+  };
+
+  const confirmRevokeAccess = (viewerId: string, displayName: string) => {
+    Alert.alert(
+      'Remove access?',
+      `Remove ${displayName}'s access? They will no longer be able to view your recaps.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => handleRevokeAccess(viewerId),
+        },
+      ]
+    );
+  };
+
+  const handleRevokeInvitation = async (inviteCode: string) => {
+    try {
+      await FamilyService.revokeInvitation(inviteCode);
+      await loadInvitations();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to revoke invitation');
+    }
+  };
+
+  const confirmRevokeInvitation = (inviteCode: string, displayName: string) => {
+    Alert.alert(
+      'Cancel invitation?',
+      `Cancel the invite for ${displayName}? They will no longer be able to accept this invite.`,
+      [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Cancel Invite',
+          style: 'destructive',
+          onPress: () => handleRevokeInvitation(inviteCode),
+        },
+      ]
+    );
   };
 
   const openInviteModal = () => {
     setInviteModalVisible(true);
     setInviteEmail('');
     setInviteName('');
+  };
+
+  const openInviteModalPrefilled = (name?: string, email?: string) => {
+    setInviteName(name || '');
+    setInviteEmail(email || '');
+    setInviteModalVisible(true);
   };
 
   const closeInviteModal = () => setInviteModalVisible(false);
@@ -271,7 +316,14 @@ const FamilySharingScreen = () => {
                 image={imageSource}
                 selected={accepted}
                 onPress={() => setShareModalValue(inv.inviteCode)}
-                hideName
+                onLongPress={() => {
+                  if (accepted && inv.acceptedProfile?.uid) {
+                    confirmRevokeAccess(inv.acceptedProfile.uid, nameSource);
+                  } else {
+                    confirmRevokeInvitation(inv.inviteCode, nameSource);
+                  }
+                }}
+                /* show name for invitations so inviter sees who was invited */
               />
             );
           })}
@@ -292,7 +344,26 @@ const FamilySharingScreen = () => {
               name={member.viewer?.name || 'Family Member'}
               image={member.viewer?.profileImageUrl ? { uri: member.viewer.profileImageUrl } : undefined}
               selected={false}
-              onPress={() => handleRevokeAccess(member.viewerId)}
+              onPress={() => {
+                const display = member.viewer?.name || 'this viewer';
+                Alert.alert(
+                  display,
+                  undefined,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Create new invite',
+                      onPress: () => openInviteModalPrefilled(member.viewer?.name || ''),
+                    },
+                    {
+                      text: 'Remove access',
+                      style: 'destructive',
+                      onPress: () => confirmRevokeAccess(member.viewerId, display),
+                    },
+                  ]
+                );
+              }}
+              onLongPress={() => confirmRevokeAccess(member.viewerId, member.viewer?.name || 'this viewer')}
             />
           ))}
         </View>
