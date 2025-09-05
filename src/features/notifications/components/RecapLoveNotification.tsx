@@ -5,6 +5,7 @@ import { Colors } from '@/theme';
 import AvatarCluster from './AvatarCluster';
 import { getInitials, generateAvatarStyle, getContrastingTextColorForName } from '@/utils/avatarUtils';
 import NotificationService from '@/services/notifications/NotificationService';
+import { router } from 'expo-router';
 
 interface User {
   name: string;
@@ -16,6 +17,7 @@ interface Notification {
   type: 'recap_love' | 'comment' | 'reminder' | 'streak' | 'recap_ready';
   users?: User[];
   recap?: string;
+  recapId?: string;
   comment?: string;
   body?: string;
   title?: string;
@@ -79,7 +81,15 @@ const RecapLoveNotification = ({ item }: { item: Notification }) => {
         console.error('Failed to mark notification as read:', e)
       );
     }
-  }, [item.id, item.isRead]);
+    const id = item.recapId || item.recap;
+    if (id) {
+      try {
+        router.push({ pathname: '/(main)/recaps/recap-view', params: { recapId: String(id) } });
+      } catch (e) {
+        console.warn('Navigation error from RecapLoveNotification:', e);
+      }
+    }
+  }, [item.id, item.isRead, item.recapId, item.recap]);
 
   return (
     <TouchableOpacity style={styles.itemContainer} onPress={handlePress}>

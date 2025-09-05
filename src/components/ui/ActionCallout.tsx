@@ -129,7 +129,8 @@ const styles = StyleSheet.create({
         fontSize: 13,
     },
     successIconWrap: {
-        alignSelf: 'flex-start',
+        marginVertical: 12,
+        alignSelf: 'center',
         backgroundColor: Colors.primary,
         width: 40,
         height: 40,

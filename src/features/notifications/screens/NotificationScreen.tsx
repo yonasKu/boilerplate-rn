@@ -80,6 +80,13 @@ const NotificationScreen = () => {
             ? 'recap_love'
             : rawType === 'recap_comment'
             ? 'comment'
+            : (
+                rawType === 'monthly_recap_ready' ||
+                rawType === 'weekly_recap_ready' ||
+                rawType === 'recap_ready_monthly' ||
+                rawType === 'recap_ready_weekly'
+              )
+            ? 'recap_ready'
             : (['recap_love', 'comment', 'reminder', 'streak', 'recap_ready'] as string[]).includes(rawType)
             ? (rawType as NotificationItem['type'])
             : 'comment';
@@ -88,6 +95,7 @@ const NotificationScreen = () => {
           type: normalizedType,
           users: data.users || [],
           recap: data.recap,
+          recapId: data.recapId || data.recap?.id,
           comment: data.comment,
           body: data.body,
           title: data.title,
@@ -120,7 +128,7 @@ const NotificationScreen = () => {
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ScreenHeader title="Notifications" showBackButton={true} />
+        <ScreenHeader centerTitle title="Notifications" showBackButton={true} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
@@ -130,7 +138,7 @@ const NotificationScreen = () => {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScreenHeader title="Notifications" showBackButton={true} />
+      <ScreenHeader centerTitle title="Notifications" showBackButton={true} />
       <FlatList
         data={notifications}
         renderItem={renderNotificationItem}

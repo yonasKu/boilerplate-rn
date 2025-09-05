@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
 import NotificationService from '@/services/notifications/NotificationService';
+import { router } from 'expo-router';
 
 interface Notification {
   id: string;
@@ -11,6 +12,7 @@ interface Notification {
   isRead: boolean;
   title?: string;
   body?: string;
+  recapId?: string;
 }
 
 const ReminderNotification = ({ item }: { item: Notification }) => {
@@ -21,6 +23,13 @@ const ReminderNotification = ({ item }: { item: Notification }) => {
       NotificationService.markNotificationAsRead(item.id).catch((e) =>
         console.error('Failed to mark notification as read:', e)
       );
+    }
+    if (item.type === 'recap_ready' && item.recapId) {
+      try {
+        router.push({ pathname: '/(main)/recaps/recap-view', params: { recapId: String(item.recapId) } });
+      } catch (e) {
+        console.warn('Navigation error from ReminderNotification:', e);
+      }
     }
   }, [item.id, item.isRead]);
 

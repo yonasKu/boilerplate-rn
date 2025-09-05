@@ -16,6 +16,7 @@ import { Recap } from '../../../services/aiRecapService';
 import { TimelineOption } from '../components/TimelineDropdown';
 import WeeklyRecapPreviewCard from '@/features/home/components/WeeklyRecapPreviewCard';
 import ShareWithLovedOnesCard from '@/features/home/components/ShareWithLovedOnesCard';
+import FamilySharingBubbles from '@/features/recaps/components/FamilySharingBubbles';
 
 const RecapsScreen = () => {
   const insets = useSafeAreaInsets();
@@ -197,6 +198,9 @@ const RecapsScreen = () => {
             </TouchableOpacity>
           </View>
         </View>
+        <View style={styles.bubblesRow}>
+          <FamilySharingBubbles />
+        </View>
       </View>
       {hasAnyRecap ? (
         <>
@@ -276,6 +280,11 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  bubblesRow: {
+    marginTop: 8,
+    alignItems: 'flex-end',
+    paddingRight: 6,
   },
   headerButton: {
     padding: 4,

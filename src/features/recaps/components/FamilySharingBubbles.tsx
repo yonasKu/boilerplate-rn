@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/theme';
 import { ProfileAvatar } from '@/components/ProfileAvatar';
-import { FamilyService, SharedAccess } from '@/services/familyService';
+import { FamilyService, SharedAccess, type Invitation } from '@/services/familyService';
 import { useActiveTimeline } from '@/context/ActiveTimelineContext';
 import { getAuth } from 'firebase/auth';
 import { useRouter } from 'expo-router';
@@ -15,6 +15,7 @@ const FamilySharingBubbles: React.FC = () => {
     const currentUid = auth.currentUser?.uid;
 
     const [profiles, setProfiles] = useState<Array<{uid: string, name: string, profileImageUrl?: string}>>([]);
+    const [invitations, setInvitations] = useState<Invitation[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
 
     const isOwner = useMemo(() => !!activeOwnerId && currentUid === activeOwnerId, [currentUid, activeOwnerId]);
@@ -25,17 +26,46 @@ const FamilySharingBubbles: React.FC = () => {
             if (!activeOwnerId) return;
             setLoading(true);
             try {
-                const list: SharedAccess[] = await FamilyService.getSharedAccess();
-                const forOwner = list.filter(sa => sa.ownerId === activeOwnerId && sa.viewer);
+                // Accepted family members (viewer profiles) for this owner
+                const shared: SharedAccess[] = await FamilyService.getSharedAccess();
+                const forOwner = shared.filter(sa => sa.ownerId === activeOwnerId && sa.viewer);
                 const uniqueViewers = new Map<string, {uid: string, name: string, profileImageUrl?: string}>();
-                
+
                 forOwner.forEach(sa => {
                     if (sa.viewer && sa.viewer.uid) {
                         uniqueViewers.set(sa.viewer.uid, sa.viewer);
                     }
                 });
-                
-                const profs = Array.from(uniqueViewers.values());
+
+                // Pending/accepted invitations created by the owner (only load when viewing own timeline)
+                let invites: Invitation[] = [];
+                if (currentUid && currentUid === activeOwnerId) {
+                    try {
+                        invites = await FamilyService.getInvitations();
+                    } catch (e) {
+                        // ignore errors loading invites to avoid blocking accepted viewers display
+                    }
+                    if (!cancelled) setInvitations(invites);
+                } else {
+                    if (!cancelled) setInvitations([]);
+                }
+
+                // Merge: accepted viewers + accepted/pending invites into a flat list for bubbles
+                const fromInvites: Array<{uid: string, name: string, profileImageUrl?: string}> = invites.map(inv => {
+                    // Prefer accepted profile
+                    const name = inv.acceptedProfile?.name || inv.inviteeName || deriveNameFromContact(inv.inviteeContact);
+                    const profileImageUrl = inv.acceptedProfile?.profileImageUrl || '';
+                    // Use stable uid-like key for invites to de-dupe against accepted viewers if same user
+                    const uid = inv.acceptedProfile?.uid || `invite_${inv.inviteCode}`;
+                    return { uid, name, profileImageUrl };
+                });
+
+                const mergedMap = new Map<string, {uid: string, name: string, profileImageUrl?: string}>([
+                    ...Array.from(uniqueViewers.entries()),
+                    ...fromInvites.map(v => [v.uid, v] as const),
+                ]);
+
+                const profs = Array.from(mergedMap.values());
                 if (!cancelled) setProfiles(profs);
             } catch (e) {
                 if (!cancelled) {
@@ -64,6 +94,15 @@ const FamilySharingBubbles: React.FC = () => {
     const maxVisible = 4;
     const visible = profiles.slice(0, maxVisible);
     const overflow = Math.max(0, profiles.length - visible.length);
+
+    function deriveNameFromContact(contact?: string) {
+        if (!contact) return 'Invited';
+        const at = contact.indexOf('@');
+        let base = at > 0 ? contact.slice(0, at) : contact;
+        base = base.replace(/[^a-zA-Z0-9]+/g, ' ').trim();
+        if (!base) return 'Invited';
+        return base.charAt(0).toUpperCase() + base.slice(1);
+    }
 
     return (
         <View style={styles.container}>

@@ -30,37 +30,40 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, showBackButton = tru
 
   return (
     <View style={styles.header}>
-      {leftComponent ? (
-        leftComponent
-      ) : showBackButton ? (
-        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-          <Image source={require('../../assets/images/Chevron_Left_icon.png')} style={styles.backIcon} />
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.headerSpacer} />
-      )}
-      <View style={[styles.titleContainer, centerTitle && styles.titleCenteredContainer]}>
+      <View style={styles.sideContainer}>
+        {leftComponent ? (
+          leftComponent
+        ) : showBackButton ? (
+          <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+            <Image source={require('../../assets/images/Chevron_Left_icon.png')} style={styles.backIcon} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
+      <View style={styles.titleContainer}>
         {showCalendarIcon && <Image source={require('../../assets/images/calendar.png')} style={styles.calendarIcon} />}
         {onTitlePress ? (
-          <TouchableOpacity onPress={onTitlePress} activeOpacity={0.7} style={centerTitle ? styles.titleTouchableCentered : undefined}>
-            <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }, centerTitle && styles.headerTitleCentered]} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
+          <TouchableOpacity onPress={onTitlePress} activeOpacity={0.7} style={styles.titleTouchableCentered}>
+            <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }, styles.headerTitleCentered]} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
           </TouchableOpacity>
         ) : (
-          <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }, centerTitle && styles.headerTitleCentered]} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
+          <Text style={[styles.headerTitle, showCalendarIcon && { marginLeft: 8 }, styles.headerTitleCentered]} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
         )}
       </View>
-      {rightComponent ? (
-        rightComponent
-      ) : showShareIcon ? (
-        <TouchableOpacity onPress={onSharePress} style={styles.shareIconContainer}>
-          <Image source={require('../../assets/images/Share_Android.png')} style={styles.shareIcon} />
-        </TouchableOpacity>
-      ) : (
-        <View style={styles.rightPlaceholder} />
-      )}
+
+      <View style={styles.sideContainer}>
+        {rightComponent ? (
+          rightComponent
+        ) : showShareIcon ? (
+          <TouchableOpacity onPress={onSharePress} style={styles.shareIconContainer}>
+            <Image source={require('../../assets/images/Share_Android.png')} style={styles.shareIcon} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </View>
   );
-};
+}
+;
 
 const styles = StyleSheet.create({
   header: {
@@ -70,6 +73,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: Colors.white,
+  },
+  sideContainer: {
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   backButton: {
     padding: 4,
@@ -83,11 +91,9 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     flex: 1,
     minWidth: 0,
-  },
-  titleCenteredContainer: {
-    justifyContent: 'center',
   },
   calendarIcon: {
     width: 20,
@@ -100,6 +106,7 @@ const styles = StyleSheet.create({
     color: Colors.darkGrey,
     flexShrink: 1,
     minWidth: 0,
+    textAlign: 'center',
   },
   headerTitleCentered: {
     textAlign: 'center',
@@ -108,12 +115,6 @@ const styles = StyleSheet.create({
   titleTouchableCentered: {
     flex: 1,
     alignItems: 'center',
-  },
-  headerSpacer: {
-    width: 32,
-  },
-  rightPlaceholder: {
-    width: 40,
   },
   shareIconContainer: {
     padding: 8,

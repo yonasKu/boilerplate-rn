@@ -33,6 +33,7 @@ const InitialLayout = () => {
   const [isNavigationReady, setIsNavigationReady] = useState(false);
   const { accountType, loading: accountLoading } = useAccount();
   const [handledPendingInvite, setHandledPendingInvite] = useState(false);
+  const { setupRealTimeNotifications } = useNotification();
 
   const inAuthGroup = segments[0] === '(auth)';
   const inMainGroup = segments[0] === '(main)';
@@ -104,6 +105,28 @@ const InitialLayout = () => {
 
     setIsNavigationReady(true);
   }, [user, authLoading, onboardingLoading, accountLoading, accountType, viewedOnboarding, segments, inAuthGroup, inMainGroup]);
+
+  // Real-time Firestore -> in-app toast wiring (works on emulator; no push required)
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    let canceled = false;
+    (async () => {
+      try {
+        if (user?.uid) {
+          const maybeUnsub = await setupRealTimeNotifications(user.uid);
+          if (!canceled) unsubscribe = maybeUnsub;
+        }
+      } catch (e) {
+        console.warn('🔔 Failed to set up real-time notifications', e);
+      }
+    })();
+    return () => {
+      canceled = true;
+      if (unsubscribe) {
+        try { unsubscribe(); } catch {}
+      }
+    };
+  }, [user?.uid, setupRealTimeNotifications]);
 
   if (authLoading || onboardingLoading || accountLoading || !isNavigationReady || (user && !handledPendingInvite)) {
     return null; // Keep splash screen visible
@@ -184,6 +207,10 @@ const RootLayoutNav = () => {
         const recapId = String(data?.recapId || '');
         if (!recapId) return;
 
+        // Build route to recap view; open comments for recap_comment
+        const basePath = '/(main)/recaps/recap-view';
+        const query = data?.type === 'recap_comment' ? `?recapId=${encodeURIComponent(recapId)}&openComments=true` : `?recapId=${encodeURIComponent(recapId)}`;
+
         // Use actionUrl for NotificationContainer to navigate
         showNotification({
           title,
@@ -191,7 +218,7 @@ const RootLayoutNav = () => {
           type: 'info',
           time: 'Now',
           actionText: 'Open',
-          actionUrl: `/recaps/${recapId}`,
+          actionUrl: `${basePath}${query}`,
           data: { ...data, persistent: true },
           isPush: true,
         });

@@ -65,9 +65,7 @@ const ChildProfilesScreen = () => {
     <View style={[styles.container, { paddingTop: insets.top }] }>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.white} />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.headerTop}>
-          <Text style={styles.sectionTitle}>Let’s create{"\n"}your journal</Text>
-        </View>
+ 
 
         <View style={styles.avatarContainer}>
           <TouchableOpacity onPress={handlePickJournalImage} disabled={isUploadingJournalImage}>
